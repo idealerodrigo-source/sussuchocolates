@@ -41,11 +41,16 @@ export default function ClientesPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Remove campos vazios antes de enviar
+      const cleanData = Object.fromEntries(
+        Object.entries(formData).filter(([_, v]) => v !== '' && v !== null)
+      );
+      
       if (editingCliente) {
-        await clientesAPI.atualizar(editingCliente.id, formData);
+        await clientesAPI.atualizar(editingCliente.id, cleanData);
         toast.success('Cliente atualizado com sucesso');
       } else {
-        await clientesAPI.criar(formData);
+        await clientesAPI.criar(cleanData);
         toast.success('Cliente criado com sucesso');
       }
       setDialogOpen(false);
@@ -157,21 +162,23 @@ export default function ClientesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#6B4423] mb-1">Telefone</label>
+                  <label className="block text-sm font-medium text-[#6B4423] mb-1">Telefone (opcional)</label>
                   <input
                     type="text"
                     value={formData.telefone}
                     onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
                     className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                    placeholder="(11) 98765-4321"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#6B4423] mb-1">Email</label>
+                  <label className="block text-sm font-medium text-[#6B4423] mb-1">Email (opcional)</label>
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                    placeholder="email@exemplo.com"
                   />
                 </div>
                 <div className="md:col-span-2">
