@@ -186,16 +186,18 @@ export default function ProducaoPage() {
               <tr>
                 <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Pedido</th>
                 <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Produto</th>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Início</th>\n                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Conclusão</th>
                 <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Quantidade</th>
                 <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Responsável</th>
+                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Início</th>
+                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Conclusão</th>
+                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Status</th>
                 <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Ações</th>
               </tr>
             </thead>
             <tbody>
               {producoes.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-12 text-[#705A4D] font-sans">
+                  <td colSpan="8" className="text-center py-12 text-[#705A4D] font-sans">
                     Nenhuma produção registrada
                   </td>
                 </tr>
@@ -204,12 +206,23 @@ export default function ProducaoPage() {
                   <tr key={producao.id} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">{producao.pedido_numero}</td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{producao.produto_nome}</td>
+                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans text-right">{producao.quantidade}</td>
+                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{producao.responsavel || '-'}</td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{formatDateTime(producao.data_inicio)}</td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">
                       {producao.data_conclusao ? formatDateTime(producao.data_conclusao) : '-'}
                     </td>
-                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans text-right">{producao.quantidade}</td>
-                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{producao.responsavel || '-'}</td>
+                    <td className="px-6 py-4">
+                      {producao.data_conclusao ? (
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-[#C6F6D5] text-[#2F855A]">
+                          Concluído
+                        </span>
+                      ) : (
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-[#FEFCBF] text-[#D97706]">
+                          Pendente
+                        </span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-right">
                       {!producao.data_conclusao && (
                         <Button
@@ -220,11 +233,6 @@ export default function ProducaoPage() {
                           <CheckCircle size={16} weight="bold" className="mr-1" />
                           Concluir
                         </Button>
-                      )}
-                      {producao.data_conclusao && (
-                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-[#C6F6D5] text-[#2F855A]">
-                          Concluído
-                        </span>
                       )}
                     </td>
                   </tr>
