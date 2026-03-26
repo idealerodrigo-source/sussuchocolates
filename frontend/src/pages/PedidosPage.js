@@ -16,6 +16,7 @@ export default function PedidosPage() {
     cliente_id: '',
     items: [],
     observacoes: '',
+    data_entrega: '',
   });
   const [itemTemp, setItemTemp] = useState({
     produto_id: '',
@@ -96,6 +97,7 @@ export default function PedidosPage() {
       cliente_id: '',
       items: [],
       observacoes: '',
+      data_entrega: '',
     });
     setItemTemp({ produto_id: '', quantidade: 1 });
   };
@@ -213,6 +215,16 @@ export default function PedidosPage() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-[#6B4423] mb-1">Data de Entrega (opcional)</label>
+                <input
+                  type="date"
+                  value={formData.data_entrega}
+                  onChange={(e) => setFormData({ ...formData, data_entrega: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                />
+              </div>
+
               <div className="flex gap-3 justify-end pt-4">
                 <Button type="button" onClick={() => { setDialogOpen(false); resetForm(); }} variant="outline">
                   Cancelar
@@ -233,7 +245,8 @@ export default function PedidosPage() {
               <tr>
                 <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Número</th>
                 <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Cliente</th>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Data</th>
+                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Data Pedido</th>
+                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Data Entrega</th>
                 <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Status</th>
                 <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Valor</th>
                 <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Itens</th>
@@ -242,7 +255,7 @@ export default function PedidosPage() {
             <tbody>
               {pedidos.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="text-center py-12 text-[#705A4D] font-sans">
+                  <td colSpan="7" className="text-center py-12 text-[#705A4D] font-sans">
                     Nenhum pedido cadastrado
                   </td>
                 </tr>
@@ -252,6 +265,9 @@ export default function PedidosPage() {
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">{pedido.numero}</td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{pedido.cliente_nome}</td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{formatDateTime(pedido.data_pedido)}</td>
+                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">
+                      {pedido.data_entrega ? formatDateTime(pedido.data_entrega) : '-'}
+                    </td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(pedido.status)}`}>
                         {getStatusLabel(pedido.status)}

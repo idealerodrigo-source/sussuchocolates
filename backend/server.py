@@ -151,6 +151,7 @@ class PedidoCreate(BaseModel):
     cliente_id: str
     items: List[ItemPedido]
     observacoes: Optional[str] = None
+    data_entrega: Optional[str] = None
 
 class Producao(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -387,11 +388,14 @@ async def criar_pedido(pedido_data: PedidoCreate, current_user: dict = Depends(g
         cliente_nome=cliente['nome'],
         items=pedido_data.items,
         valor_total=valor_total,
-        observacoes=pedido_data.observacoes
+        observacoes=pedido_data.observacoes,
+        data_entrega=datetime.fromisoformat(pedido_data.data_entrega) if pedido_data.data_entrega else None
     )
     
     doc = pedido.model_dump()
     doc['data_pedido'] = doc['data_pedido'].isoformat()
+    if doc.get('data_entrega'):
+        doc['data_entrega'] = doc['data_entrega'].isoformat()
     await db.pedidos.insert_one(doc)
     return pedido
 
