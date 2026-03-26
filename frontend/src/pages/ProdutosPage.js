@@ -146,20 +146,29 @@ export default function ProdutosPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#6B4423] mb-1">Categoria *</label>
-                  <select
+                  <input
+                    type="text"
                     required
+                    list="categorias-sugestoes"
                     value={formData.categoria}
                     onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
                     className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
-                  >
-                    <option value="">Selecione...</option>
-                    <option value="Trufas">Trufas</option>
-                    <option value="Bombons">Bombons</option>
-                    <option value="Barras">Barras</option>
-                    <option value="Ovos de Páscoa">Ovos de Páscoa</option>
-                    <option value="Tabletes">Tabletes</option>
-                    <option value="Outros">Outros</option>
-                  </select>
+                    placeholder="Digite ou selecione uma categoria"
+                  />
+                  <datalist id="categorias-sugestoes">
+                    <option value="Trufas" />
+                    <option value="Bombons" />
+                    <option value="Barras" />
+                    <option value="Ovos de Páscoa" />
+                    <option value="Tabletes" />
+                    <option value="Palitos" />
+                    <option value="Coberturas" />
+                    <option value="Recheios" />
+                    <option value="Outros" />
+                  </datalist>
+                  <p className="text-xs text-[#705A4D] mt-1">
+                    Você pode escolher uma sugestão ou digitar uma nova categoria
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#6B4423] mb-1">Preço de Venda *</label>
