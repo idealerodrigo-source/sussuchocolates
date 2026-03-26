@@ -1,16 +1,274 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { pedidosAPI, clientesAPI, produtosAPI } from '../services/api';
+import { formatCurrency, formatDateTime, getStatusColor, getStatusLabel } from '../utils/formatters';
+import { Plus, ShoppingCart, Trash } from '@phosphor-icons/react';
+import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
+import { Button } from '../components/ui/button';
 
 export default function PedidosPage() {
+  const [pedidos, setPedidos] = useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [produtos, setProdutos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    cliente_id: '',
+    items: [],
+    observacoes: '',
+  });
+  const [itemTemp, setItemTemp] = useState({
+    produto_id: '',
+    quantidade: 1,
+  });
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const [pedidosRes, clientesRes, produtosRes] = await Promise.all([
+        pedidosAPI.listar(),
+        clientesAPI.listar(),
+        produtosAPI.listar(),
+      ]);
+      setPedidos(pedidosRes.data);
+      setClientes(clientesRes.data);
+      setProdutos(produtosRes.data);
+    } catch (error) {
+      toast.error('Erro ao carregar dados');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddItem = () => {
+    if (!itemTemp.produto_id || itemTemp.quantidade <= 0) {
+      toast.error('Selecione um produto e quantidade válida');
+      return;
+    }
+
+    const produto = produtos.find((p) => p.id === itemTemp.produto_id);
+    const subtotal = produto.preco * itemTemp.quantidade;
+
+    const newItem = {
+      produto_id: produto.id,
+      produto_nome: produto.nome,
+      quantidade: itemTemp.quantidade,
+      preco_unitario: produto.preco,
+      subtotal: subtotal,
+    };
+
+    setFormData({
+      ...formData,
+      items: [...formData.items, newItem],
+    });
+
+    setItemTemp({ produto_id: '', quantidade: 1 });
+  };
+
+  const handleRemoveItem = (index) => {
+    const newItems = formData.items.filter((_, i) => i !== index);
+    setFormData({ ...formData, items: newItems });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (formData.items.length === 0) {
+      toast.error('Adicione pelo menos um item ao pedido');
+      return;
+    }
+
+    try {
+      await pedidosAPI.criar(formData);
+      toast.success('Pedido criado com sucesso');
+      setDialogOpen(false);
+      resetForm();
+      fetchData();
+    } catch (error) {
+      toast.error('Erro ao criar pedido');
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      cliente_id: '',
+      items: [],
+      observacoes: '',
+    });
+    setItemTemp({ produto_id: '', quantidade: 1 });
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-12"><p className="text-[#6B4423] font-sans">Carregando...</p></div>;
+  }
+
+  const totalPedido = formData.items.reduce((sum, item) => sum + item.subtotal, 0);
+
   return (
     <div data-testid="pedidos-page">
-      <h1 className="text-4xl sm:text-5xl font-serif font-bold tracking-tight text-[#3E2723] mb-2">
-        Pedidos
-      </h1>
-      <p className="text-base font-sans text-[#705A4D] mb-8">
-        Gerencie os pedidos dos clientes
-      </p>
-      <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-12 text-center">
-        <p className="text-[#705A4D] font-sans">Página de Pedidos em desenvolvimento</p>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-4xl sm:text-5xl font-serif font-bold tracking-tight text-[#3E2723] mb-2">Pedidos</h1>
+          <p className="text-base font-sans text-[#705A4D]">Gerencie os pedidos dos clientes</p>
+        </div>
+        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+          <DialogTrigger asChild>
+            <Button data-testid="btn-add-pedido" className="bg-[#6B4423] text-[#F5E6D3] hover:bg-[#8B5A3C]">
+              <Plus size={20} weight="bold" className="mr-2" />
+              Novo Pedido
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-[#FFFDF8] max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-serif text-[#3E2723]">Novo Pedido</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[#6B4423] mb-1">Cliente *</label>
+                <select
+                  required
+                  value={formData.cliente_id}
+                  onChange={(e) => setFormData({ ...formData, cliente_id: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                >
+                  <option value="">Selecione um cliente...</option>
+                  {clientes.map((cliente) => (
+                    <option key={cliente.id} value={cliente.id}>{cliente.nome}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="border-t border-[#8B5A3C]/15 pt-4">
+                <h3 className="text-lg font-serif font-semibold text-[#3E2723] mb-3">Itens do Pedido</h3>
+                
+                <div className="grid grid-cols-12 gap-3 mb-3">
+                  <div className="col-span-7">
+                    <select
+                      value={itemTemp.produto_id}
+                      onChange={(e) => setItemTemp({ ...itemTemp, produto_id: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                    >
+                      <option value="">Selecione um produto...</option>
+                      {produtos.map((produto) => (
+                        <option key={produto.id} value={produto.id}>
+                          {produto.nome} - {formatCurrency(produto.preco)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-span-3">
+                    <input
+                      type="number"
+                      min="1"
+                      value={itemTemp.quantidade}
+                      onChange={(e) => setItemTemp({ ...itemTemp, quantidade: parseInt(e.target.value) })}
+                      placeholder="Qtd"
+                      className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Button type="button" onClick={handleAddItem} className="w-full bg-[#8B5A3C] text-[#F5E6D3] hover:bg-[#6B4423]">
+                      <Plus size={18} weight="bold" />
+                    </Button>
+                  </div>
+                </div>
+
+                {formData.items.length > 0 && (
+                  <div className="bg-[#F5E6D3]/30 rounded-lg p-4 space-y-2">
+                    {formData.items.map((item, index) => (
+                      <div key={index} className="flex items-center justify-between bg-[#FFFDF8] p-3 rounded-lg">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-[#3E2723]">{item.produto_nome}</p>
+                          <p className="text-xs text-[#705A4D]">
+                            {item.quantidade}x {formatCurrency(item.preco_unitario)} = {formatCurrency(item.subtotal)}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(index)}
+                          className="p-2 text-[#C53030] hover:bg-[#FED7D7] rounded-lg transition-colors"
+                        >
+                          <Trash size={18} />
+                        </button>
+                      </div>
+                    ))}
+                    <div className="pt-2 border-t border-[#8B5A3C]/15 text-right">
+                      <p className="text-lg font-serif font-bold text-[#3E2723]">
+                        Total: {formatCurrency(totalPedido)}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#6B4423] mb-1">Observações</label>
+                <textarea
+                  value={formData.observacoes}
+                  onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+                  rows="2"
+                  className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                />
+              </div>
+
+              <div className="flex gap-3 justify-end pt-4">
+                <Button type="button" onClick={() => { setDialogOpen(false); resetForm(); }} variant="outline">
+                  Cancelar
+                </Button>
+                <Button type="submit" className="bg-[#6B4423] text-[#F5E6D3] hover:bg-[#8B5A3C]">
+                  Criar Pedido
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-[#E8D5C4]">
+              <tr>
+                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Número</th>
+                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Cliente</th>
+                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Data</th>
+                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Status</th>
+                <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Valor</th>
+                <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Itens</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pedidos.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="text-center py-12 text-[#705A4D] font-sans">
+                    Nenhum pedido cadastrado
+                  </td>
+                </tr>
+              ) : (
+                pedidos.map((pedido) => (
+                  <tr key={pedido.id} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
+                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">{pedido.numero}</td>
+                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{pedido.cliente_nome}</td>
+                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{formatDateTime(pedido.data_pedido)}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(pedido.status)}`}>
+                        {getStatusLabel(pedido.status)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans text-right font-medium">
+                      {formatCurrency(pedido.valor_total)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans text-right">
+                      {pedido.items.length} {pedido.items.length === 1 ? 'item' : 'itens'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
