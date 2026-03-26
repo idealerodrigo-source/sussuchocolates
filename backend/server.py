@@ -208,7 +208,7 @@ class EstoqueCreate(BaseModel):
 
 class Venda(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    pedido_id: str
+    pedido_id: Optional[str] = None
     cliente_id: str
     cliente_nome: str
     items: List[ItemPedido]
@@ -217,10 +217,14 @@ class Venda(BaseModel):
     data_venda: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     nfce_emitida: bool = False
     nfce_chave: Optional[str] = None
+    tipo_venda: str = "pedido"  # "pedido" ou "direta"
 
 class VendaCreate(BaseModel):
-    pedido_id: str
+    pedido_id: Optional[str] = None
+    cliente_id: Optional[str] = None
+    items: Optional[List[ItemPedido]] = None
     forma_pagamento: str
+    tipo_venda: str = "pedido"
 
 class NFCe(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -607,38 +611,66 @@ async def obter_saldo_estoque(current_user: dict = Depends(get_current_user)):
 
 @api_router.post("/vendas", response_model=Venda)
 async def criar_venda(venda_data: VendaCreate, current_user: dict = Depends(get_current_user)):
-    pedido = await db.pedidos.find_one({"id": venda_data.pedido_id}, {"_id": 0})
-    if not pedido:
-        raise HTTPException(status_code=404, detail="Pedido não encontrado")
-    
-    venda = Venda(
-        pedido_id=venda_data.pedido_id,
-        cliente_id=pedido['cliente_id'],
-        cliente_nome=pedido['cliente_nome'],
-        items=pedido['items'],
-        valor_total=pedido['valor_total'],
-        forma_pagamento=venda_data.forma_pagamento
-    )
+    if venda_data.tipo_venda == "pedido":
+        # Venda a partir de pedido existente
+        if not venda_data.pedido_id:
+            raise HTTPException(status_code=400, detail="pedido_id é obrigatório para vendas de pedido")
+        
+        pedido = await db.pedidos.find_one({"id": venda_data.pedido_id}, {"_id": 0})
+        if not pedido:
+            raise HTTPException(status_code=404, detail="Pedido não encontrado")
+        
+        venda = Venda(
+            pedido_id=venda_data.pedido_id,
+            cliente_id=pedido['cliente_id'],
+            cliente_nome=pedido['cliente_nome'],
+            items=pedido['items'],
+            valor_total=pedido['valor_total'],
+            forma_pagamento=venda_data.forma_pagamento,
+            tipo_venda="pedido"
+        )
+        
+        # Atualizar status do pedido
+        await db.pedidos.update_one(
+            {"id": venda_data.pedido_id},
+            {"$set": {"status": PedidoStatus.CONCLUIDO}}
+        )
+    else:
+        # Venda direta
+        if not venda_data.cliente_id or not venda_data.items:
+            raise HTTPException(status_code=400, detail="cliente_id e items são obrigatórios para vendas diretas")
+        
+        cliente = await db.clientes.find_one({"id": venda_data.cliente_id}, {"_id": 0})
+        if not cliente:
+            raise HTTPException(status_code=404, detail="Cliente não encontrado")
+        
+        valor_total = sum(item.subtotal for item in venda_data.items)
+        
+        venda = Venda(
+            pedido_id=None,
+            cliente_id=venda_data.cliente_id,
+            cliente_nome=cliente['nome'],
+            items=venda_data.items,
+            valor_total=valor_total,
+            forma_pagamento=venda_data.forma_pagamento,
+            tipo_venda="direta"
+        )
     
     doc = venda.model_dump()
     doc['data_venda'] = doc['data_venda'].isoformat()
     await db.vendas.insert_one(doc)
     
-    await db.pedidos.update_one(
-        {"id": venda_data.pedido_id},
-        {"$set": {"status": PedidoStatus.CONCLUIDO}}
-    )
-    
-    for item in pedido['items']:
+    # Dar baixa no estoque
+    for item in venda.items:
         await db.estoque.insert_one({
             "id": str(uuid.uuid4()),
-            "produto_id": item['produto_id'],
-            "produto_nome": item['produto_nome'],
-            "quantidade": item['quantidade'],
+            "produto_id": item.produto_id,
+            "produto_nome": item.produto_nome,
+            "quantidade": item.quantidade,
             "tipo_movimento": MovimentoEstoque.SAIDA,
             "data_movimento": datetime.now(timezone.utc).isoformat(),
             "responsavel": current_user['nome'],
-            "observacoes": f"Venda do pedido {pedido['numero']}"
+            "observacoes": f"Venda {venda.tipo_venda} - ID: {venda.id}"
         })
     
     return venda
