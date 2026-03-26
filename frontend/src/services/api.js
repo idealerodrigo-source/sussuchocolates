@@ -1,0 +1,85 @@
+import axios from 'axios';
+
+const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
+
+const api = axios.create({
+  baseURL: API_URL,
+});
+
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+export const clientesAPI = {
+  listar: () => api.get('/clientes'),
+  obter: (id) => api.get(`/clientes/${id}`),
+  criar: (data) => api.post('/clientes', data),
+  atualizar: (id, data) => api.put(`/clientes/${id}`, data),
+  deletar: (id) => api.delete(`/clientes/${id}`),
+};
+
+export const produtosAPI = {
+  listar: () => api.get('/produtos'),
+  obter: (id) => api.get(`/produtos/${id}`),
+  criar: (data) => api.post('/produtos', data),
+  atualizar: (id, data) => api.put(`/produtos/${id}`, data),
+  deletar: (id) => api.delete(`/produtos/${id}`),
+};
+
+export const pedidosAPI = {
+  listar: () => api.get('/pedidos'),
+  obter: (id) => api.get(`/pedidos/${id}`),
+  criar: (data) => api.post('/pedidos', data),
+  atualizarStatus: (id, status) => api.patch(`/pedidos/${id}/status?status=${status}`),
+};
+
+export const producaoAPI = {
+  listar: () => api.get('/producao'),
+  criar: (data) => api.post('/producao', data),
+  concluir: (id) => api.patch(`/producao/${id}/concluir`),
+};
+
+export const embalagemAPI = {
+  listar: () => api.get('/embalagem'),
+  criar: (data) => api.post('/embalagem', data),
+};
+
+export const estoqueAPI = {
+  listar: () => api.get('/estoque'),
+  criar: (data) => api.post('/estoque', data),
+  saldo: () => api.get('/estoque/saldo'),
+};
+
+export const vendasAPI = {
+  listar: () => api.get('/vendas'),
+  criar: (data) => api.post('/vendas', data),
+};
+
+export const nfceAPI = {
+  listar: () => api.get('/nfce'),
+  obter: (id) => api.get(`/nfce/${id}`),
+  emitir: (vendaId) => api.post('/nfce/emitir', null, { params: { venda_id: vendaId } }),
+};
+
+export const relatoriosAPI = {
+  vendas: (dataInicio, dataFim) => api.get('/relatorios/vendas', {
+    params: { data_inicio: dataInicio, data_fim: dataFim }
+  }),
+  producao: (dataInicio, dataFim) => api.get('/relatorios/producao', {
+    params: { data_inicio: dataInicio, data_fim: dataFim }
+  }),
+  clientes: () => api.get('/relatorios/clientes'),
+};
+
+export const dashboardAPI = {
+  stats: () => api.get('/dashboard/stats'),
+};
+
+export default api;
