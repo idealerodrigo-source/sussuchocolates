@@ -87,7 +87,7 @@ export default function EmbalagemPage() {
 
   return (
     <div data-testid="embalagem-page">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-4xl sm:text-5xl font-serif font-bold tracking-tight text-[#3E2723] mb-2">Embalagem</h1>
           <p className="text-base font-sans text-[#705A4D]">Controle o processo de embalagem</p>
@@ -96,7 +96,7 @@ export default function EmbalagemPage() {
           <DialogTrigger asChild>
             <Button data-testid="btn-add-embalagem" className="bg-[#6B4423] text-[#F5E6D3] hover:bg-[#8B5A3C]">
               <Plus size={20} weight="bold" className="mr-2" />
-              Registrar Embalagem
+              Registro Manual
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-[#FFFDF8] max-w-2xl">
@@ -171,6 +171,12 @@ export default function EmbalagemPage() {
             </form>
           </DialogContent>
         </Dialog>
+      </div>
+
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+        <p className="text-sm text-blue-800 font-sans">
+          ℹ️ <strong>Fluxo Automático:</strong> Quando uma produção é concluída, a embalagem é criada automaticamente e o produto é adicionado ao estoque. Use o botão "Registro Manual" apenas se necessário.
+        </p>
       </div>
 
       <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl shadow-sm overflow-hidden">

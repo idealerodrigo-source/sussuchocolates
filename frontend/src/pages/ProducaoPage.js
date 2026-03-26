@@ -64,8 +64,8 @@ export default function ProducaoPage() {
 
   const handleConcluir = async (producaoId) => {
     try {
-      await producaoAPI.concluir(producaoId);
-      toast.success('Produção concluída');
+      const result = await producaoAPI.concluir(producaoId);
+      toast.success(result.data.message || 'Produção concluída! Produto adicionado ao estoque automaticamente.');
       fetchData();
     } catch (error) {
       toast.error('Erro ao concluir produção');
