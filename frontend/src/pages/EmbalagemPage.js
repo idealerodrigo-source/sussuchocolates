@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { embalagemAPI, producaoAPI } from '../services/api';
 import { formatDateTime } from '../utils/formatters';
-import { Plus } from '@phosphor-icons/react';
+import { Plus, CheckCircle } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -68,6 +68,16 @@ export default function EmbalagemPage() {
         pedido_id: producao.pedido_id,
         quantidade: producao.quantidade.toString(),
       });
+    }
+  };
+
+  const handleConcluir = async (embalagemId) => {
+    try {
+      const result = await embalagemAPI.concluir(embalagemId);
+      toast.success(result.data.message || 'Embalagem concluída! Produto adicionado ao estoque.');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erro ao concluir embalagem');
     }
   };
 
@@ -175,7 +185,7 @@ export default function EmbalagemPage() {
 
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
         <p className="text-sm text-blue-800 font-sans">
-          ℹ️ <strong>Fluxo Automático:</strong> Quando uma produção é concluída, a embalagem é criada automaticamente e o produto é adicionado ao estoque. Use o botão "Registro Manual" apenas se necessário.
+          ℹ️ <strong>Novo Fluxo:</strong> Quando uma produção é concluída, a embalagem é criada PENDENTE. O responsável deve concluir a embalagem para que o produto seja adicionado ao estoque.
         </p>
       </div>
 
@@ -184,28 +194,53 @@ export default function EmbalagemPage() {
           <table className="w-full">
             <thead className="bg-[#E8D5C4]">
               <tr>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Data</th>
+                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Início</th>
                 <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Produto</th>
                 <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Tipo Embalagem</th>
                 <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Quantidade</th>
                 <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Responsável</th>
+                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Status</th>
+                <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Ações</th>
               </tr>
             </thead>
             <tbody>
               {embalagens.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="text-center py-12 text-[#705A4D] font-sans">
+                  <td colSpan="7" className="text-center py-12 text-[#705A4D] font-sans">
                     Nenhuma embalagem registrada
                   </td>
                 </tr>
               ) : (
                 embalagens.map((embalagem) => (
                   <tr key={embalagem.id} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
-                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{formatDateTime(embalagem.data_embalagem)}</td>
+                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{formatDateTime(embalagem.data_inicio || embalagem.data_embalagem)}</td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">{embalagem.produto_nome}</td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{embalagem.tipo_embalagem || '-'}</td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans text-right">{embalagem.quantidade}</td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{embalagem.responsavel || '-'}</td>
+                    <td className="px-6 py-4">
+                      {embalagem.data_conclusao ? (
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-[#C6F6D5] text-[#2F855A]">
+                          Concluído
+                        </span>
+                      ) : (
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-[#FEFCBF] text-[#D97706]">
+                          Pendente
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {!embalagem.data_conclusao && (
+                        <Button
+                          onClick={() => handleConcluir(embalagem.id)}
+                          size="sm"
+                          className="bg-[#2F855A] text-white hover:bg-[#276749] text-xs"
+                        >
+                          <CheckCircle size={16} weight="bold" className="mr-1" />
+                          Concluir
+                        </Button>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}

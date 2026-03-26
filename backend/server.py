@@ -178,7 +178,8 @@ class Embalagem(BaseModel):
     pedido_id: str
     produto_nome: str
     quantidade: float
-    data_embalagem: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    data_inicio: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    data_conclusao: Optional[datetime] = None
     responsavel: Optional[str] = None
     tipo_embalagem: Optional[str] = None
 
@@ -489,14 +490,15 @@ async def concluir_producao(producao_id: str, current_user: dict = Depends(get_c
         {"$set": {"data_conclusao": datetime.now(timezone.utc).isoformat()}}
     )
     
-    # Criar automaticamente registro de embalagem
+    # Criar automaticamente registro de embalagem PENDENTE
     embalagem = {
         "id": str(uuid.uuid4()),
         "producao_id": producao_id,
         "pedido_id": producao['pedido_id'],
         "produto_nome": producao['produto_nome'],
         "quantidade": producao['quantidade'],
-        "data_embalagem": datetime.now(timezone.utc).isoformat(),
+        "data_inicio": datetime.now(timezone.utc).isoformat(),
+        "data_conclusao": None,
         "responsavel": producao.get('responsavel'),
         "tipo_embalagem": None
     }
@@ -508,20 +510,7 @@ async def concluir_producao(producao_id: str, current_user: dict = Depends(get_c
         {"$set": {"status": PedidoStatus.EM_EMBALAGEM}}
     )
     
-    # Criar automaticamente entrada no estoque
-    estoque = {
-        "id": str(uuid.uuid4()),
-        "produto_id": producao['produto_id'],
-        "produto_nome": producao['produto_nome'],
-        "quantidade": producao['quantidade'],
-        "tipo_movimento": MovimentoEstoque.ENTRADA,
-        "data_movimento": datetime.now(timezone.utc).isoformat(),
-        "responsavel": producao.get('responsavel'),
-        "observacoes": f"Entrada automática da produção do pedido {producao['pedido_numero']}"
-    }
-    await db.estoque.insert_one(estoque)
-    
-    return {"message": "Produção concluída, embalagem criada e produto adicionado ao estoque com sucesso"}
+    return {"message": "Produção concluída e enviada para embalagem"}
 
 @api_router.post("/embalagem", response_model=Embalagem)
 async def criar_embalagem(embalagem_data: EmbalagemCreate, current_user: dict = Depends(get_current_user)):
@@ -551,11 +540,49 @@ async def criar_embalagem(embalagem_data: EmbalagemCreate, current_user: dict = 
 
 @api_router.get("/embalagem", response_model=List[Embalagem])
 async def listar_embalagem(current_user: dict = Depends(get_current_user)):
-    embalagens = await db.embalagem.find({}, {"_id": 0}).sort("data_embalagem", -1).to_list(1000)
+    embalagens = await db.embalagem.find({}, {"_id": 0}).sort("data_inicio", -1).to_list(1000)
     for e in embalagens:
-        if isinstance(e['data_embalagem'], str):
-            e['data_embalagem'] = datetime.fromisoformat(e['data_embalagem'])
+        if isinstance(e.get('data_inicio'), str):
+            e['data_inicio'] = datetime.fromisoformat(e['data_inicio'])
+        if e.get('data_conclusao') and isinstance(e['data_conclusao'], str):
+            e['data_conclusao'] = datetime.fromisoformat(e['data_conclusao'])
+        # Compatibilidade com dados antigos
+        if 'data_embalagem' in e and 'data_inicio' not in e:
+            e['data_inicio'] = datetime.fromisoformat(e['data_embalagem']) if isinstance(e['data_embalagem'], str) else e['data_embalagem']
     return embalagens
+
+@api_router.patch("/embalagem/{embalagem_id}/concluir")
+async def concluir_embalagem(embalagem_id: str, current_user: dict = Depends(get_current_user)):
+    embalagem = await db.embalagem.find_one({"id": embalagem_id}, {"_id": 0})
+    if not embalagem:
+        raise HTTPException(status_code=404, detail="Embalagem não encontrada")
+    
+    if embalagem.get('data_conclusao'):
+        raise HTTPException(status_code=400, detail="Embalagem já foi concluída")
+    
+    # Marcar embalagem como concluída
+    await db.embalagem.update_one(
+        {"id": embalagem_id},
+        {"$set": {"data_conclusao": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    # Buscar produção para obter produto_id
+    producao = await db.producao.find_one({"id": embalagem['producao_id']}, {"_id": 0})
+    
+    # Adicionar automaticamente ao estoque
+    estoque = {
+        "id": str(uuid.uuid4()),
+        "produto_id": producao['produto_id'],
+        "produto_nome": embalagem['produto_nome'],
+        "quantidade": embalagem['quantidade'],
+        "tipo_movimento": MovimentoEstoque.ENTRADA,
+        "data_movimento": datetime.now(timezone.utc).isoformat(),
+        "responsavel": embalagem.get('responsavel') or current_user['nome'],
+        "observacoes": f"Entrada automática - Embalagem concluída (Produção: {producao['pedido_numero']})"
+    }
+    await db.estoque.insert_one(estoque)
+    
+    return {"message": "Embalagem concluída e produto adicionado ao estoque com sucesso"}
 
 @api_router.post("/estoque", response_model=Estoque)
 async def criar_movimento_estoque(estoque_data: EstoqueCreate, current_user: dict = Depends(get_current_user)):
