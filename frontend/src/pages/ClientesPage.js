@@ -133,24 +133,27 @@ export default function ClientesPage() {
                     value={formData.nome}
                     onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                     className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                    placeholder="Nome completo do cliente"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#6B4423] mb-1">CPF</label>
+                  <label className="block text-sm font-medium text-[#6B4423] mb-1">CPF (opcional)</label>
                   <input
                     type="text"
                     value={formData.cpf}
                     onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
                     className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                    placeholder="000.000.000-00"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#6B4423] mb-1">CNPJ</label>
+                  <label className="block text-sm font-medium text-[#6B4423] mb-1">CNPJ (opcional)</label>
                   <input
                     type="text"
                     value={formData.cnpj}
                     onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
                     className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                    placeholder="00.000.000/0000-00"
                   />
                 </div>
                 <div>
