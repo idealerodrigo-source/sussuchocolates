@@ -29,6 +29,7 @@ export default function Layout() {
     { path: '/embalagem', label: 'Embalagem', icon: Archive },
     { path: '/estoque', label: 'Estoque', icon: List },
     { path: '/vendas', label: 'Vendas', icon: Receipt },
+    { path: '/lucratividade', label: 'Lucratividade', icon: ChartBar },
     { path: '/relatorios', label: 'Relatórios', icon: ChartBar },
   ];
 

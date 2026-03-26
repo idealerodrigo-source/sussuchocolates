@@ -82,4 +82,9 @@ export const dashboardAPI = {
   stats: () => api.get('/dashboard/stats'),
 };
 
+export const analiseAPI = {
+  lucratividade: () => api.get('/analise/lucratividade'),
+  desempenho: () => api.get('/analise/produtos-desempenho'),
+};
+
 export default api;
