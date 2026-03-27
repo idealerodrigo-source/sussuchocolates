@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { fornecedoresAPI, insumosAPI, comprasAPI, nfEntradaAPI } from '../services/api';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
 import { 
   Plus, Truck, Package, ShoppingCart, Trash, PencilSimple, 
-  CheckCircle, XCircle, Buildings, Eye, FileText, Barcode, Code, Upload
+  CheckCircle, XCircle, Buildings, Eye, FileText, Barcode, Code, Upload, CloudArrowUp
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
@@ -33,6 +33,9 @@ export default function ComprasPage() {
   const [nfXmlContent, setNfXmlContent] = useState('');
   const [nfChaveAcesso, setNfChaveAcesso] = useState('');
   const [parsingNf, setParsingNf] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [xmlFileName, setXmlFileName] = useState('');
+  const fileInputRef = useRef(null);
   
   // Edit mode
   const [editMode, setEditMode] = useState(false);
@@ -243,6 +246,112 @@ export default function ComprasPage() {
       toast.error('Erro ao processar XML: ' + (error.response?.data?.detail || 'formato inválido'));
     } finally {
       setParsingNf(false);
+    }
+  };
+
+  // Funções de manipulação de arquivo XML
+  const handleFileSelect = async (file) => {
+    if (!file) return;
+    
+    // Validar extensão
+    if (!file.name.toLowerCase().endsWith('.xml')) {
+      toast.error('Por favor, selecione um arquivo XML');
+      return;
+    }
+    
+    // Validar tamanho (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo: 5MB');
+      return;
+    }
+    
+    setXmlFileName(file.name);
+    
+    // Ler o conteúdo do arquivo
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const content = e.target.result;
+      setNfXmlContent(content);
+      
+      // Auto-processar o XML
+      setParsingNf(true);
+      try {
+        const res = await nfEntradaAPI.parseXml(content);
+        if (res.data.success && res.data.data) {
+          const data = res.data.data;
+          setNfForm({
+            chave_acesso: data.chave_acesso || '',
+            numero_nf: data.numero_nf || '',
+            serie: data.serie || '',
+            data_emissao: data.data_emissao ? data.data_emissao.split('T')[0] : '',
+            fornecedor_cnpj: data.fornecedor_cnpj || '',
+            fornecedor_nome: data.fornecedor_nome || '',
+            fornecedor_ie: data.fornecedor_ie || '',
+            fornecedor_endereco: data.fornecedor_endereco || '',
+            fornecedor_municipio: data.fornecedor_municipio || '',
+            fornecedor_uf: data.fornecedor_uf || '',
+            fornecedor_cep: data.fornecedor_cep || '',
+            fornecedor_telefone: data.fornecedor_telefone || '',
+            items: data.items || [],
+            valor_produtos: data.valor_produtos || 0,
+            valor_frete: data.valor_frete || 0,
+            valor_seguro: data.valor_seguro || 0,
+            valor_outras: data.valor_outras || 0,
+            valor_desconto: data.valor_desconto || 0,
+            valor_ipi: data.valor_ipi || 0,
+            valor_icms: data.valor_icms || 0,
+            valor_pis: data.valor_pis || 0,
+            valor_cofins: data.valor_cofins || 0,
+            valor_total: data.valor_total || 0,
+            informacoes_complementares: data.informacoes_complementares || '',
+            observacoes: ''
+          });
+          toast.success(`NF-e ${data.numero_nf} importada com sucesso! ${data.items?.length || 0} itens extraídos.`);
+          setNfImportMode('manual');
+        } else {
+          toast.error('Não foi possível extrair dados do XML.');
+        }
+      } catch (error) {
+        toast.error('Erro ao processar XML: ' + (error.response?.data?.detail || 'formato inválido'));
+      } finally {
+        setParsingNf(false);
+      }
+    };
+    
+    reader.onerror = () => {
+      toast.error('Erro ao ler o arquivo');
+    };
+    
+    reader.readAsText(file);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      handleFileSelect(files[0]);
+    }
+  };
+
+  const handleFileInputChange = (e) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleFileSelect(files[0]);
     }
   };
 
@@ -738,23 +847,81 @@ export default function ComprasPage() {
                         <strong>Importar XML da NF-e (recomendado)</strong>
                       </p>
                       <p className="text-sm text-[#065F46] font-sans">
-                        Cole o conteúdo do arquivo XML da NF-e. Este é o formato nativo e contém todos os dados da nota fiscal (NCM, CST, CFOP, impostos, etc).
+                        Arraste o arquivo XML ou clique para selecionar. O XML é o formato nativo e contém todos os dados da nota fiscal (NCM, CST, CFOP, impostos, etc).
                       </p>
                     </div>
+                    
+                    {/* Área de Drag and Drop */}
+                    <div
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+                        isDragging 
+                          ? 'border-[#059669] bg-[#D1FAE5]' 
+                          : 'border-[#8B5A3C]/40 hover:border-[#6B4423] hover:bg-[#F5E6D3]/30'
+                      }`}
+                    >
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".xml"
+                        onChange={handleFileInputChange}
+                        className="hidden"
+                      />
+                      
+                      {parsingNf ? (
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="w-12 h-12 border-4 border-[#059669] border-t-transparent rounded-full animate-spin" />
+                          <p className="text-[#059669] font-medium">Processando XML...</p>
+                        </div>
+                      ) : xmlFileName ? (
+                        <div className="flex flex-col items-center gap-3">
+                          <FileText size={48} className="text-[#059669]" weight="fill" />
+                          <p className="text-[#065F46] font-medium">{xmlFileName}</p>
+                          <p className="text-sm text-[#059669]">Arquivo carregado! Clique para selecionar outro.</p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-3">
+                          <CloudArrowUp size={48} className={isDragging ? 'text-[#059669]' : 'text-[#8B5A3C]'} weight="duotone" />
+                          <div>
+                            <p className={`font-medium ${isDragging ? 'text-[#059669]' : 'text-[#3E2723]'}`}>
+                              {isDragging ? 'Solte o arquivo aqui!' : 'Arraste o arquivo XML aqui'}
+                            </p>
+                            <p className="text-sm text-[#705A4D] mt-1">ou clique para selecionar</p>
+                          </div>
+                          <p className="text-xs text-[#8B5A3C]">Aceita arquivos .xml até 5MB</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Alternativa: Colar XML */}
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-[#8B5A3C]/20"></div>
+                      </div>
+                      <div className="relative flex justify-center text-sm">
+                        <span className="px-3 bg-white text-[#705A4D]">ou cole o conteúdo do XML</span>
+                      </div>
+                    </div>
+
                     <div>
-                      <label className="block text-sm font-medium text-[#6B4423] mb-1">Cole o XML da NF-e</label>
                       <textarea
                         placeholder='<?xml version="1.0" encoding="UTF-8"?>&#10;<nfeProc>&#10;  ...&#10;</nfeProc>'
                         value={nfXmlContent}
-                        onChange={(e) => setNfXmlContent(e.target.value)}
-                        rows="10"
+                        onChange={(e) => {
+                          setNfXmlContent(e.target.value);
+                          setXmlFileName('');
+                        }}
+                        rows="6"
                         className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-mono text-xs"
                       />
                     </div>
                     <Button 
                       onClick={handleParseXml} 
-                      disabled={parsingNf}
-                      className="w-full bg-[#059669] text-white hover:bg-[#047857]"
+                      disabled={parsingNf || !nfXmlContent.trim()}
+                      className="w-full bg-[#059669] text-white hover:bg-[#047857] disabled:opacity-50"
                     >
                       <Upload size={18} weight="bold" className="mr-2" />
                       {parsingNf ? 'Processando...' : 'Importar XML'}
