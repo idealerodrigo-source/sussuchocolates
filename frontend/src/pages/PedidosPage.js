@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 // Dados da empresa Sussu Chocolates
 const EMPRESA = {
@@ -272,7 +272,7 @@ export default function PedidosPage() {
       formatCurrency(item.subtotal)
     ]);
     
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPos,
       head: [['#', 'Produto', 'Qtd', 'Preço Unit.', 'Subtotal']],
       body: tableData,
