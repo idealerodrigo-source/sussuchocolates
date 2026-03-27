@@ -134,11 +134,18 @@ class ItemNFEntrada(BaseModel):
     codigo: Optional[str] = None
     descricao: str
     ncm: Optional[str] = None
+    cst: Optional[str] = None
     cfop: Optional[str] = None
     unidade: str = "UN"
     quantidade: float
     valor_unitario: float
     valor_total: float
+    valor_desconto: float = 0.0
+    icms_base: float = 0.0
+    icms_valor: float = 0.0
+    ipi_valor: float = 0.0
+    pis_valor: float = 0.0
+    cofins_valor: float = 0.0
 
 class NFEntrada(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -149,12 +156,24 @@ class NFEntrada(BaseModel):
     data_entrada: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     fornecedor_cnpj: str
     fornecedor_nome: str
+    fornecedor_ie: Optional[str] = None
     fornecedor_endereco: Optional[str] = None
+    fornecedor_municipio: Optional[str] = None
+    fornecedor_uf: Optional[str] = None
+    fornecedor_cep: Optional[str] = None
+    fornecedor_telefone: Optional[str] = None
     items: List[ItemNFEntrada]
     valor_produtos: float
     valor_frete: float = 0.0
+    valor_seguro: float = 0.0
+    valor_outras: float = 0.0
     valor_desconto: float = 0.0
+    valor_ipi: float = 0.0
+    valor_icms: float = 0.0
+    valor_pis: float = 0.0
+    valor_cofins: float = 0.0
     valor_total: float
+    informacoes_complementares: Optional[str] = None
     observacoes: Optional[str] = None
     status: str = "registrada"  # registrada, conferida, estornada
 
@@ -165,12 +184,24 @@ class NFEntradaCreate(BaseModel):
     data_emissao: str
     fornecedor_cnpj: str
     fornecedor_nome: str
+    fornecedor_ie: Optional[str] = None
     fornecedor_endereco: Optional[str] = None
+    fornecedor_municipio: Optional[str] = None
+    fornecedor_uf: Optional[str] = None
+    fornecedor_cep: Optional[str] = None
+    fornecedor_telefone: Optional[str] = None
     items: List[ItemNFEntrada]
     valor_produtos: float
     valor_frete: float = 0.0
+    valor_seguro: float = 0.0
+    valor_outras: float = 0.0
     valor_desconto: float = 0.0
+    valor_ipi: float = 0.0
+    valor_icms: float = 0.0
+    valor_pis: float = 0.0
+    valor_cofins: float = 0.0
     valor_total: float
+    informacoes_complementares: Optional[str] = None
     observacoes: Optional[str] = None
 
 def create_access_token(data: dict):
@@ -1422,6 +1453,142 @@ async def deletar_compra(compra_id: str, current_user: dict = Depends(get_curren
     result = await db.compras.delete_one({"id": compra_id})
     return {"message": "Compra removida com sucesso"}
 
+# ============ RELATÓRIOS DE PRODUÇÃO ============
+
+@api_router.get("/relatorios/producao/pendente")
+async def relatorio_producao_pendente(current_user: dict = Depends(get_current_user)):
+    """
+    Relatório de itens a serem produzidos (agrupados por produto)
+    """
+    # Buscar produção pendente e em andamento
+    producoes = await db.producao.find(
+        {"status": {"$in": ["pendente", "em_producao"]}},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    # Agrupar por produto
+    produtos_agrupados = {}
+    for prod in producoes:
+        for item in prod.get('items', []):
+            produto_id = item.get('produto_id')
+            produto_nome = item.get('produto_nome', 'Produto Desconhecido')
+            quantidade = item.get('quantidade', 0)
+            
+            if produto_nome not in produtos_agrupados:
+                produtos_agrupados[produto_nome] = {
+                    'produto_id': produto_id,
+                    'produto_nome': produto_nome,
+                    'quantidade_total': 0,
+                    'pedidos': []
+                }
+            
+            produtos_agrupados[produto_nome]['quantidade_total'] += quantidade
+            produtos_agrupados[produto_nome]['pedidos'].append({
+                'producao_id': prod.get('id'),
+                'pedido_numero': prod.get('pedido_numero', 'Sem Pedido'),
+                'cliente_nome': prod.get('cliente_nome', 'Estoque'),
+                'quantidade': quantidade,
+                'status': prod.get('status')
+            })
+    
+    # Converter para lista e ordenar por quantidade
+    resultado = list(produtos_agrupados.values())
+    resultado.sort(key=lambda x: x['quantidade_total'], reverse=True)
+    
+    return {
+        "total_itens": len(resultado),
+        "quantidade_total_unidades": sum(p['quantidade_total'] for p in resultado),
+        "itens": resultado
+    }
+
+@api_router.get("/relatorios/producao/concluida")
+async def relatorio_producao_concluida(
+    data_inicio: str = None,
+    data_fim: str = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Relatório de itens já produzidos (agrupados por produto)
+    """
+    # Filtro de data
+    filtro = {"status": "concluido"}
+    
+    if data_inicio:
+        filtro["data_conclusao"] = {"$gte": data_inicio}
+    if data_fim:
+        if "data_conclusao" in filtro:
+            filtro["data_conclusao"]["$lte"] = data_fim
+        else:
+            filtro["data_conclusao"] = {"$lte": data_fim}
+    
+    producoes = await db.producao.find(filtro, {"_id": 0}).to_list(5000)
+    
+    # Agrupar por produto
+    produtos_agrupados = {}
+    for prod in producoes:
+        for item in prod.get('items', []):
+            produto_nome = item.get('produto_nome', 'Produto Desconhecido')
+            quantidade = item.get('quantidade', 0)
+            
+            if produto_nome not in produtos_agrupados:
+                produtos_agrupados[produto_nome] = {
+                    'produto_nome': produto_nome,
+                    'quantidade_total': 0,
+                    'producoes_count': 0
+                }
+            
+            produtos_agrupados[produto_nome]['quantidade_total'] += quantidade
+            produtos_agrupados[produto_nome]['producoes_count'] += 1
+    
+    resultado = list(produtos_agrupados.values())
+    resultado.sort(key=lambda x: x['quantidade_total'], reverse=True)
+    
+    return {
+        "total_tipos_produto": len(resultado),
+        "quantidade_total_produzida": sum(p['quantidade_total'] for p in resultado),
+        "itens": resultado
+    }
+
+@api_router.get("/relatorios/pedidos/resumo")
+async def relatorio_pedidos_resumo(current_user: dict = Depends(get_current_user)):
+    """
+    Relatório resumo de itens dos pedidos (pendentes e em produção)
+    """
+    # Buscar pedidos pendentes e em produção
+    pedidos = await db.pedidos.find(
+        {"status": {"$in": ["pendente", "em_producao", "em_embalagem"]}},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    # Agrupar por produto
+    produtos_agrupados = {}
+    for pedido in pedidos:
+        for item in pedido.get('items', []):
+            produto_nome = item.get('produto_nome', 'Produto Desconhecido')
+            quantidade = item.get('quantidade', 0)
+            
+            if produto_nome not in produtos_agrupados:
+                produtos_agrupados[produto_nome] = {
+                    'produto_nome': produto_nome,
+                    'quantidade_total': 0,
+                    'valor_total': 0,
+                    'pedidos_count': 0
+                }
+            
+            produtos_agrupados[produto_nome]['quantidade_total'] += quantidade
+            produtos_agrupados[produto_nome]['valor_total'] += item.get('subtotal', 0)
+            produtos_agrupados[produto_nome]['pedidos_count'] += 1
+    
+    resultado = list(produtos_agrupados.values())
+    resultado.sort(key=lambda x: x['quantidade_total'], reverse=True)
+    
+    return {
+        "total_tipos_produto": len(resultado),
+        "quantidade_total": sum(p['quantidade_total'] for p in resultado),
+        "valor_total": sum(p['valor_total'] for p in resultado),
+        "itens": resultado
+    }
+
 # ============ NF DE ENTRADA ============
 import re
 from bs4 import BeautifulSoup
@@ -1450,12 +1617,24 @@ async def criar_nf_entrada(nf_data: NFEntradaCreate, current_user: dict = Depend
         data_emissao=datetime.fromisoformat(nf_data.data_emissao),
         fornecedor_cnpj=nf_data.fornecedor_cnpj,
         fornecedor_nome=nf_data.fornecedor_nome,
+        fornecedor_ie=nf_data.fornecedor_ie,
         fornecedor_endereco=nf_data.fornecedor_endereco,
+        fornecedor_municipio=nf_data.fornecedor_municipio,
+        fornecedor_uf=nf_data.fornecedor_uf,
+        fornecedor_cep=nf_data.fornecedor_cep,
+        fornecedor_telefone=nf_data.fornecedor_telefone,
         items=[ItemNFEntrada(**item.model_dump()) for item in nf_data.items],
         valor_produtos=nf_data.valor_produtos,
         valor_frete=nf_data.valor_frete,
+        valor_seguro=nf_data.valor_seguro,
+        valor_outras=nf_data.valor_outras,
         valor_desconto=nf_data.valor_desconto,
+        valor_ipi=nf_data.valor_ipi,
+        valor_icms=nf_data.valor_icms,
+        valor_pis=nf_data.valor_pis,
+        valor_cofins=nf_data.valor_cofins,
         valor_total=nf_data.valor_total,
+        informacoes_complementares=nf_data.informacoes_complementares,
         observacoes=nf_data.observacoes
     )
     
@@ -1470,135 +1649,288 @@ async def criar_nf_entrada(nf_data: NFEntradaCreate, current_user: dict = Depend
 async def parse_nf_html(html_content: str = "", current_user: dict = Depends(get_current_user)):
     """
     Parse HTML da página de consulta da NF-e do portal da fazenda
+    Extrai todos os dados: Emitente, Itens (NCM, CST, CFOP), Totais, etc.
     """
     try:
         soup = BeautifulSoup(html_content, 'html.parser')
+        text = soup.get_text()
         
-        # Extrair chave de acesso
-        chave_elem = soup.find(string=re.compile(r'\d{44}'))
+        # ===== CHAVE DE ACESSO =====
         chave_acesso = ""
-        if chave_elem:
-            match = re.search(r'(\d{44})', str(chave_elem))
-            if match:
-                chave_acesso = match.group(1)
+        chave_match = re.search(r'(\d{44})', text.replace(' ', '').replace('\n', ''))
+        if chave_match:
+            chave_acesso = chave_match.group(1)
         
-        # Se não encontrar no texto, procurar em inputs ou spans
+        # Se não encontrar, procurar em elementos específicos
         if not chave_acesso:
             for elem in soup.find_all(['span', 'div', 'td', 'input']):
-                text = elem.get_text() if hasattr(elem, 'get_text') else str(elem.get('value', ''))
-                match = re.search(r'(\d{44})', text.replace(' ', ''))
+                elem_text = elem.get_text() if hasattr(elem, 'get_text') else str(elem.get('value', ''))
+                match = re.search(r'(\d{44})', elem_text.replace(' ', ''))
                 if match:
                     chave_acesso = match.group(1)
                     break
         
-        # Extrair dados do emitente
+        # ===== DADOS DO EMITENTE (FORNECEDOR) =====
         fornecedor_nome = ""
         fornecedor_cnpj = ""
+        fornecedor_ie = ""
         fornecedor_endereco = ""
+        fornecedor_municipio = ""
+        fornecedor_uf = ""
+        fornecedor_cep = ""
+        fornecedor_telefone = ""
         
         # Procurar seção do emitente
-        emitente_section = soup.find(string=re.compile(r'Emitente|EMITENTE|Dados do Emitente', re.I))
-        if emitente_section:
-            parent = emitente_section.find_parent(['div', 'fieldset', 'table'])
-            if parent:
-                # Procurar CNPJ
-                cnpj_match = re.search(r'(\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2})', parent.get_text())
-                if cnpj_match:
-                    fornecedor_cnpj = cnpj_match.group(1).replace('.', '').replace('/', '').replace('-', '')
-                
-                # Procurar nome/razão social
-                razao = parent.find(string=re.compile(r'Raz[aã]o Social|Nome', re.I))
-                if razao:
-                    nome_elem = razao.find_next(['span', 'td', 'div'])
-                    if nome_elem:
-                        fornecedor_nome = nome_elem.get_text().strip()
+        emitente_patterns = [
+            r'Emitente',
+            r'EMITENTE',
+            r'Dados do Emitente',
+            r'Identificação do Emitente'
+        ]
         
-        # Se não encontrou, tentar método alternativo
+        for pattern in emitente_patterns:
+            section = soup.find(string=re.compile(pattern, re.I))
+            if section:
+                parent = section.find_parent(['div', 'fieldset', 'table', 'section'])
+                if parent:
+                    section_text = parent.get_text()
+                    
+                    # CNPJ
+                    cnpj_match = re.search(r'CNPJ[:\s]*(\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2})', section_text, re.I)
+                    if cnpj_match:
+                        fornecedor_cnpj = re.sub(r'[^\d]', '', cnpj_match.group(1))
+                    
+                    # IE
+                    ie_match = re.search(r'Inscri[çc][aã]o Estadual[:\s]*(\d+)', section_text, re.I)
+                    if ie_match:
+                        fornecedor_ie = ie_match.group(1)
+                    
+                    # Razão Social/Nome
+                    nome_match = re.search(r'(?:Raz[aã]o Social|Nome)[:\s]*([^\n\r]+)', section_text, re.I)
+                    if nome_match:
+                        fornecedor_nome = nome_match.group(1).strip()[:200]
+                    
+                    # Endereço
+                    end_match = re.search(r'Endere[çc]o[:\s]*([^\n\r]+)', section_text, re.I)
+                    if end_match:
+                        fornecedor_endereco = end_match.group(1).strip()
+                    
+                    # Município
+                    mun_match = re.search(r'Munic[íi]pio[:\s]*([^\n\r]+)', section_text, re.I)
+                    if mun_match:
+                        fornecedor_municipio = mun_match.group(1).strip()
+                    
+                    # UF
+                    uf_match = re.search(r'\bUF[:\s]*([A-Z]{2})\b', section_text)
+                    if uf_match:
+                        fornecedor_uf = uf_match.group(1)
+                    
+                    # CEP
+                    cep_match = re.search(r'CEP[:\s]*(\d{5}-?\d{3})', section_text, re.I)
+                    if cep_match:
+                        fornecedor_cep = cep_match.group(1)
+                    
+                    # Telefone
+                    tel_match = re.search(r'(?:Telefone|Fone)[:\s]*([\d\s\-\(\)]+)', section_text, re.I)
+                    if tel_match:
+                        fornecedor_telefone = tel_match.group(1).strip()
+                    
+                    break
+        
+        # Fallback para CNPJ se não encontrou na seção
         if not fornecedor_cnpj:
-            cnpj_matches = re.findall(r'(\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2})', soup.get_text())
+            cnpj_matches = re.findall(r'(\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2})', text)
             if cnpj_matches:
-                fornecedor_cnpj = cnpj_matches[0].replace('.', '').replace('/', '').replace('-', '')
+                fornecedor_cnpj = re.sub(r'[^\d]', '', cnpj_matches[0])
         
-        # Extrair número e série da NF
+        # ===== NÚMERO E SÉRIE =====
         numero_nf = ""
         serie = ""
         
-        numero_match = re.search(r'N[uú]mero[:\s]*(\d+)', soup.get_text(), re.I)
-        if numero_match:
-            numero_nf = numero_match.group(1)
+        # Número
+        numero_patterns = [
+            r'N[uú]mero[:\s]*(\d+)',
+            r'NF[:\s-]*(\d+)',
+            r'Nota Fiscal[:\s]*(\d+)'
+        ]
+        for pattern in numero_patterns:
+            match = re.search(pattern, text, re.I)
+            if match:
+                numero_nf = match.group(1)
+                break
         
-        serie_match = re.search(r'S[eé]rie[:\s]*(\d+)', soup.get_text(), re.I)
+        # Série
+        serie_match = re.search(r'S[eé]rie[:\s]*(\d+)', text, re.I)
         if serie_match:
             serie = serie_match.group(1)
         
-        # Extrair data de emissão
+        # ===== DATA DE EMISSÃO =====
         data_emissao = ""
-        data_match = re.search(r'Data de Emiss[aã]o[:\s]*(\d{2}/\d{2}/\d{4})', soup.get_text(), re.I)
-        if data_match:
-            data_str = data_match.group(1)
-            try:
-                data_emissao = datetime.strptime(data_str, '%d/%m/%Y').isoformat()
-            except:
-                data_emissao = datetime.now(timezone.utc).isoformat()
-        else:
+        data_patterns = [
+            r'Data de Emiss[aã]o[:\s]*(\d{2}/\d{2}/\d{4})',
+            r'Emiss[aã]o[:\s]*(\d{2}/\d{2}/\d{4})',
+            r'Data[:\s]*(\d{2}/\d{2}/\d{4})'
+        ]
+        for pattern in data_patterns:
+            match = re.search(pattern, text, re.I)
+            if match:
+                try:
+                    data_emissao = datetime.strptime(match.group(1), '%d/%m/%Y').isoformat()
+                    break
+                except:
+                    pass
+        
+        if not data_emissao:
             data_emissao = datetime.now(timezone.utc).isoformat()
         
-        # Extrair valores
-        valor_total = 0.0
+        # ===== VALORES TOTAIS =====
         valor_produtos = 0.0
+        valor_frete = 0.0
+        valor_seguro = 0.0
+        valor_outras = 0.0
+        valor_desconto = 0.0
+        valor_ipi = 0.0
+        valor_icms = 0.0
+        valor_pis = 0.0
+        valor_cofins = 0.0
+        valor_total = 0.0
         
-        valor_total_match = re.search(r'Valor Total da NF[:\s]*R?\$?\s*([\d.,]+)', soup.get_text(), re.I)
-        if valor_total_match:
-            valor_total = float(valor_total_match.group(1).replace('.', '').replace(',', '.'))
+        # Extrair valores usando padrões específicos
+        def extract_valor(pattern, txt):
+            match = re.search(pattern, txt, re.I)
+            if match:
+                valor_str = match.group(1).replace('.', '').replace(',', '.')
+                try:
+                    return float(valor_str)
+                except:
+                    return 0.0
+            return 0.0
         
-        valor_prod_match = re.search(r'Valor Total dos Produtos[:\s]*R?\$?\s*([\d.,]+)', soup.get_text(), re.I)
-        if valor_prod_match:
-            valor_produtos = float(valor_prod_match.group(1).replace('.', '').replace(',', '.'))
-        else:
-            valor_produtos = valor_total
+        valor_produtos = extract_valor(r'(?:Valor Total dos Produtos|BC do ICMS)[:\s]*R?\$?\s*([\d.,]+)', text)
+        valor_frete = extract_valor(r'(?:Valor do Frete|Frete)[:\s]*R?\$?\s*([\d.,]+)', text)
+        valor_seguro = extract_valor(r'(?:Valor do Seguro|Seguro)[:\s]*R?\$?\s*([\d.,]+)', text)
+        valor_outras = extract_valor(r'(?:Outras Despesas|Despesas Acess[óo]rias)[:\s]*R?\$?\s*([\d.,]+)', text)
+        valor_desconto = extract_valor(r'(?:Valor do Desconto|Desconto)[:\s]*R?\$?\s*([\d.,]+)', text)
+        valor_ipi = extract_valor(r'(?:Valor Total do IPI|IPI)[:\s]*R?\$?\s*([\d.,]+)', text)
+        valor_icms = extract_valor(r'(?:Valor Total do ICMS|ICMS)[:\s]*R?\$?\s*([\d.,]+)', text)
+        valor_pis = extract_valor(r'(?:Valor do PIS|PIS)[:\s]*R?\$?\s*([\d.,]+)', text)
+        valor_cofins = extract_valor(r'(?:Valor do COFINS|COFINS)[:\s]*R?\$?\s*([\d.,]+)', text)
+        valor_total = extract_valor(r'(?:Valor Total da NF|Valor Total)[:\s]*R?\$?\s*([\d.,]+)', text)
         
-        # Extrair itens da NF
+        if valor_total == 0 and valor_produtos > 0:
+            valor_total = valor_produtos + valor_frete + valor_seguro + valor_outras - valor_desconto + valor_ipi
+        
+        # ===== ITENS DA NF =====
         items = []
         
         # Procurar tabela de produtos
         tables = soup.find_all('table')
         for table in tables:
             headers = [th.get_text().strip().lower() for th in table.find_all('th')]
-            if any(h in str(headers) for h in ['descri', 'produto', 'item']):
-                rows = table.find_all('tr')[1:]  # Pular header
-                for row in rows:
+            header_str = ' '.join(headers)
+            
+            # Verificar se é tabela de produtos
+            if any(h in header_str for h in ['descri', 'produto', 'item', 'ncm', 'cfop']):
+                rows = table.find_all('tr')
+                
+                # Mapear colunas
+                col_map = {}
+                for i, h in enumerate(headers):
+                    h_lower = h.lower()
+                    if 'c[óo]d' in h_lower or 'código' in h_lower or h_lower == 'cod':
+                        col_map['codigo'] = i
+                    elif 'descri' in h_lower or 'produto' in h_lower:
+                        col_map['descricao'] = i
+                    elif 'ncm' in h_lower:
+                        col_map['ncm'] = i
+                    elif 'cst' in h_lower or 'csosn' in h_lower:
+                        col_map['cst'] = i
+                    elif 'cfop' in h_lower:
+                        col_map['cfop'] = i
+                    elif 'un' in h_lower or 'unid' in h_lower:
+                        col_map['unidade'] = i
+                    elif 'qtd' in h_lower or 'quant' in h_lower:
+                        col_map['quantidade'] = i
+                    elif 'unit' in h_lower or 'vl.unit' in h_lower:
+                        col_map['valor_unitario'] = i
+                    elif 'total' in h_lower or 'subtotal' in h_lower:
+                        col_map['valor_total'] = i
+                    elif 'desc' in h_lower and 'descri' not in h_lower:
+                        col_map['desconto'] = i
+                    elif 'icms' in h_lower and 'bc' not in h_lower:
+                        col_map['icms'] = i
+                    elif 'ipi' in h_lower:
+                        col_map['ipi'] = i
+                
+                # Processar linhas
+                for row in rows[1:]:  # Pular header
                     cols = row.find_all(['td', 'th'])
-                    if len(cols) >= 4:
-                        try:
-                            # Tentar extrair dados da linha
-                            descricao = cols[1].get_text().strip() if len(cols) > 1 else ""
-                            quantidade_text = cols[2].get_text().strip() if len(cols) > 2 else "1"
-                            valor_text = cols[-1].get_text().strip() if cols else "0"
-                            
-                            quantidade = float(re.sub(r'[^\d.,]', '', quantidade_text).replace(',', '.') or '1')
-                            valor_total_item = float(re.sub(r'[^\d.,]', '', valor_text).replace(',', '.') or '0')
-                            valor_unitario = valor_total_item / quantidade if quantidade > 0 else valor_total_item
-                            
-                            if descricao and valor_total_item > 0:
-                                items.append({
-                                    "descricao": descricao[:200],
-                                    "quantidade": quantidade,
-                                    "valor_unitario": round(valor_unitario, 4),
-                                    "valor_total": round(valor_total_item, 2),
-                                    "unidade": "UN"
-                                })
-                        except:
-                            continue
+                    if len(cols) < 3:
+                        continue
+                    
+                    try:
+                        item = {
+                            "codigo": "",
+                            "descricao": "",
+                            "ncm": "",
+                            "cst": "",
+                            "cfop": "",
+                            "unidade": "UN",
+                            "quantidade": 1.0,
+                            "valor_unitario": 0.0,
+                            "valor_total": 0.0,
+                            "valor_desconto": 0.0,
+                            "icms_valor": 0.0,
+                            "ipi_valor": 0.0
+                        }
+                        
+                        def get_col_value(col_name, default=""):
+                            if col_name in col_map and col_map[col_name] < len(cols):
+                                return cols[col_map[col_name]].get_text().strip()
+                            return default
+                        
+                        def get_col_number(col_name, default=0.0):
+                            val = get_col_value(col_name, "0")
+                            val = re.sub(r'[^\d.,]', '', val).replace(',', '.')
+                            try:
+                                return float(val) if val else default
+                            except:
+                                return default
+                        
+                        item['codigo'] = get_col_value('codigo')
+                        item['descricao'] = get_col_value('descricao')
+                        item['ncm'] = get_col_value('ncm')
+                        item['cst'] = get_col_value('cst')
+                        item['cfop'] = get_col_value('cfop')
+                        item['unidade'] = get_col_value('unidade', 'UN')
+                        item['quantidade'] = get_col_number('quantidade', 1.0)
+                        item['valor_unitario'] = get_col_number('valor_unitario')
+                        item['valor_total'] = get_col_number('valor_total')
+                        item['valor_desconto'] = get_col_number('desconto')
+                        item['icms_valor'] = get_col_number('icms')
+                        item['ipi_valor'] = get_col_number('ipi')
+                        
+                        # Calcular valor unitário se não tiver
+                        if item['valor_unitario'] == 0 and item['quantidade'] > 0 and item['valor_total'] > 0:
+                            item['valor_unitario'] = round(item['valor_total'] / item['quantidade'], 4)
+                        
+                        # Só adicionar se tiver descrição e valor
+                        if item['descricao'] and item['valor_total'] > 0:
+                            items.append(item)
+                    except Exception as e:
+                        logging.warning(f"Erro ao processar linha de item: {e}")
+                        continue
+                
+                if items:
+                    break
         
-        # Se não encontrou itens, criar um item genérico
-        if not items and valor_total > 0:
-            items.append({
-                "descricao": "Produtos conforme NF-e",
-                "quantidade": 1,
-                "valor_unitario": valor_total,
-                "valor_total": valor_total,
-                "unidade": "UN"
-            })
+        # ===== INFORMAÇÕES COMPLEMENTARES =====
+        info_complementares = ""
+        info_section = soup.find(string=re.compile(r'Informa[çc][õo]es Complementares', re.I))
+        if info_section:
+            parent = info_section.find_parent(['div', 'fieldset', 'td'])
+            if parent:
+                info_complementares = parent.get_text().strip()[:1000]
         
         return {
             "success": True,
@@ -1609,20 +1941,29 @@ async def parse_nf_html(html_content: str = "", current_user: dict = Depends(get
                 "data_emissao": data_emissao,
                 "fornecedor_cnpj": fornecedor_cnpj,
                 "fornecedor_nome": fornecedor_nome,
+                "fornecedor_ie": fornecedor_ie,
                 "fornecedor_endereco": fornecedor_endereco,
+                "fornecedor_municipio": fornecedor_municipio,
+                "fornecedor_uf": fornecedor_uf,
+                "fornecedor_cep": fornecedor_cep,
+                "fornecedor_telefone": fornecedor_telefone,
                 "items": items,
                 "valor_produtos": valor_produtos,
+                "valor_frete": valor_frete,
+                "valor_seguro": valor_seguro,
+                "valor_outras": valor_outras,
+                "valor_desconto": valor_desconto,
+                "valor_ipi": valor_ipi,
+                "valor_icms": valor_icms,
+                "valor_pis": valor_pis,
+                "valor_cofins": valor_cofins,
                 "valor_total": valor_total,
-                "valor_frete": 0.0,
-                "valor_desconto": 0.0
+                "informacoes_complementares": info_complementares
             }
         }
     except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "data": None
-        }
+        logging.error(f"Erro ao parsear HTML da NF-e: {e}")
+        raise HTTPException(status_code=400, detail=f"Erro ao processar HTML: {str(e)}")
 
 @api_router.post("/nf-entrada/parse-chave")
 async def parse_chave_acesso(chave: str, current_user: dict = Depends(get_current_user)):

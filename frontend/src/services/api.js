@@ -78,6 +78,11 @@ export const relatoriosAPI = {
     params: { data_inicio: dataInicio, data_fim: dataFim }
   }),
   clientes: () => api.get('/relatorios/clientes'),
+  producaoPendente: () => api.get('/relatorios/producao/pendente'),
+  producaoConcluida: (dataInicio, dataFim) => api.get('/relatorios/producao/concluida', {
+    params: { data_inicio: dataInicio, data_fim: dataFim }
+  }),
+  pedidosResumo: () => api.get('/relatorios/pedidos/resumo'),
 };
 
 export const dashboardAPI = {

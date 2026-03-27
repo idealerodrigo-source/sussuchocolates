@@ -31,7 +31,7 @@ Criar um aplicativo/sistema de controle contendo: Cadastro Cliente, Pedido, Prod
 | **Compras** | ✅ Done | Complete purchasing module |
 | **Relatórios** | ✅ Done | Basic reports |
 
-### Pedidos - PDF Generation (NEW - March 27, 2026)
+### Pedidos - PDF Generation (March 27, 2026)
 - ✅ Geração de PDF do pedido com dados completos
 - ✅ Cabeçalho com logo/nome da empresa
 - ✅ Dados da empresa: telefone, endereço, email
@@ -49,6 +49,30 @@ Criar um aplicativo/sistema de controle contendo: Cadastro Cliente, Pedido, Prod
 - Telefone: (43) 99967-6206
 - Endereço: Rua Quintino Bocaiuva, 737, Jacarezinho - PR, CEP: 86400-000
 - Email: sussuchocolates@hotmail.com
+
+### NF de Entrada - Parser Completo (March 27, 2026)
+- ✅ Parser HTML melhorado para extrair todos os campos:
+  - Dados do Fornecedor: CNPJ, IE, Razão Social, Endereço, Município, UF, CEP, Telefone
+  - Itens: Código, Descrição, NCM, CST, CFOP, Unidade, Quantidade, Valor Unitário, Total
+  - Totais: Produtos, Frete, Seguro, Outras Despesas, Desconto, IPI, ICMS, PIS, COFINS, Total
+  - Informações Complementares
+- ✅ Formulário atualizado com campos NCM, CST, CFOP
+- ✅ Visualização mostra badges para NCM/CST/CFOP nos itens
+
+### Relatórios de Produção (March 27, 2026)
+- ✅ **Itens a Produzir**: Lista de produtos pendentes de produção
+  - Agrupamento por produto
+  - Quantidade total por produto
+  - Detalhes de quais pedidos precisam de cada produto
+  - Gráfico de barras horizontal
+- ✅ **Itens Produzidos**: Lista de produtos já produzidos
+  - Filtro por data (início/fim)
+  - Agrupamento por produto
+  - Quantidade produzida por produto
+  - Gráfico de barras e pizza
+- ✅ **Resumo de Pedidos**: Itens dos pedidos ativos
+  - Tipos de produtos, quantidade total, valor total
+  - Tabela com produtos e valores
 
 ### Compras Module (Latest Implementation)
 
@@ -157,12 +181,11 @@ Criar um aplicativo/sistema de controle contendo: Cadastro Cliente, Pedido, Prod
 - [ ] Implementar NFC-e real para Vendas (integração SEFAZ)
 
 ### P2 (Medium Priority)
-- [ ] Gráficos/Charts na página de Relatórios (Recharts)
-- [ ] Filtros avançados em todas as telas
 - [ ] Exportação PDF/Excel para relatórios
+- [ ] PWA para acesso mobile
 
 ### P3 (Low Priority)
-- [ ] Refatorar server.py (~1700 linhas) em routers separados
+- [ ] Refatorar server.py (~2000 linhas) em routers separados
 - [ ] Otimizar componentes React grandes
 - [ ] Dashboard com métricas em tempo real
 

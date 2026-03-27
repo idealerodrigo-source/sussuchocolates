@@ -57,17 +57,33 @@ export default function ComprasPage() {
     data_emissao: '',
     fornecedor_cnpj: '',
     fornecedor_nome: '',
+    fornecedor_ie: '',
     fornecedor_endereco: '',
+    fornecedor_municipio: '',
+    fornecedor_uf: '',
+    fornecedor_cep: '',
+    fornecedor_telefone: '',
     items: [],
     valor_produtos: 0,
     valor_frete: 0,
+    valor_seguro: 0,
+    valor_outras: 0,
     valor_desconto: 0,
+    valor_ipi: 0,
+    valor_icms: 0,
+    valor_pis: 0,
+    valor_cofins: 0,
     valor_total: 0,
+    informacoes_complementares: '',
     observacoes: ''
   });
   
   const [nfItemTemp, setNfItemTemp] = useState({
+    codigo: '',
     descricao: '',
+    ncm: '',
+    cst: '',
+    cfop: '',
     quantidade: 1,
     valor_unitario: 0,
     unidade: 'UN'
@@ -147,12 +163,24 @@ export default function ComprasPage() {
           data_emissao: data.data_emissao ? data.data_emissao.split('T')[0] : '',
           fornecedor_cnpj: data.fornecedor_cnpj || '',
           fornecedor_nome: data.fornecedor_nome || '',
+          fornecedor_ie: data.fornecedor_ie || '',
           fornecedor_endereco: data.fornecedor_endereco || '',
+          fornecedor_municipio: data.fornecedor_municipio || '',
+          fornecedor_uf: data.fornecedor_uf || '',
+          fornecedor_cep: data.fornecedor_cep || '',
+          fornecedor_telefone: data.fornecedor_telefone || '',
           items: data.items || [],
           valor_produtos: data.valor_produtos || 0,
           valor_frete: data.valor_frete || 0,
+          valor_seguro: data.valor_seguro || 0,
+          valor_outras: data.valor_outras || 0,
           valor_desconto: data.valor_desconto || 0,
+          valor_ipi: data.valor_ipi || 0,
+          valor_icms: data.valor_icms || 0,
+          valor_pis: data.valor_pis || 0,
+          valor_cofins: data.valor_cofins || 0,
           valor_total: data.valor_total || 0,
+          informacoes_complementares: data.informacoes_complementares || '',
           observacoes: ''
         });
         toast.success('Dados extraídos do HTML. Confira e complete as informações.');
@@ -180,16 +208,16 @@ export default function ComprasPage() {
     };
     
     const newItems = [...nfForm.items, newItem];
-    const novoValorProdutos = newItems.reduce((sum, i) => sum + i.valor_total, 0);
+    const novoValorProdutos = newItems.reduce((sum, i) => sum + (i.valor_total || 0), 0);
     
     setNfForm({
       ...nfForm,
       items: newItems,
       valor_produtos: novoValorProdutos,
-      valor_total: novoValorProdutos + nfForm.valor_frete - nfForm.valor_desconto
+      valor_total: novoValorProdutos + (nfForm.valor_frete || 0) + (nfForm.valor_ipi || 0) - (nfForm.valor_desconto || 0)
     });
     
-    setNfItemTemp({ descricao: '', quantidade: 1, valor_unitario: 0, unidade: 'UN' });
+    setNfItemTemp({ codigo: '', descricao: '', ncm: '', cst: '', cfop: '', quantidade: 1, valor_unitario: 0, unidade: 'UN' });
   };
 
   const handleRemoveNfItem = (index) => {
@@ -740,15 +768,73 @@ export default function ComprasPage() {
                     {/* Itens da NF */}
                     <div className="border-t border-[#8B5A3C]/15 pt-4">
                       <h3 className="text-lg font-serif font-semibold text-[#3E2723] mb-3">Itens da NF-e</h3>
-                      <div className="grid grid-cols-12 gap-2 mb-3">
-                        <div className="col-span-5">
+                      
+                      {/* Linha 1: Código e Descrição */}
+                      <div className="grid grid-cols-12 gap-2 mb-2">
+                        <div className="col-span-2">
                           <input
                             type="text"
-                            placeholder="Descrição do produto"
+                            placeholder="Código"
+                            value={nfItemTemp.codigo}
+                            onChange={(e) => setNfItemTemp({ ...nfItemTemp, codigo: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] outline-none text-[#3E2723] font-sans text-sm"
+                          />
+                        </div>
+                        <div className="col-span-10">
+                          <input
+                            type="text"
+                            placeholder="Descrição do produto/serviço"
                             value={nfItemTemp.descricao}
                             onChange={(e) => setNfItemTemp({ ...nfItemTemp, descricao: e.target.value })}
                             className="w-full px-3 py-2 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] outline-none text-[#3E2723] font-sans text-sm"
                           />
+                        </div>
+                      </div>
+                      
+                      {/* Linha 2: NCM, CST, CFOP, Unidade, Qtd, Valor, Botão */}
+                      <div className="grid grid-cols-12 gap-2 mb-3">
+                        <div className="col-span-2">
+                          <input
+                            type="text"
+                            placeholder="NCM/SH"
+                            value={nfItemTemp.ncm}
+                            onChange={(e) => setNfItemTemp({ ...nfItemTemp, ncm: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] outline-none text-[#3E2723] font-sans text-sm"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <input
+                            type="text"
+                            placeholder="CST"
+                            value={nfItemTemp.cst}
+                            onChange={(e) => setNfItemTemp({ ...nfItemTemp, cst: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] outline-none text-[#3E2723] font-sans text-sm"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <input
+                            type="text"
+                            placeholder="CFOP"
+                            value={nfItemTemp.cfop}
+                            onChange={(e) => setNfItemTemp({ ...nfItemTemp, cfop: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] outline-none text-[#3E2723] font-sans text-sm"
+                          />
+                        </div>
+                        <div className="col-span-1">
+                          <select
+                            value={nfItemTemp.unidade}
+                            onChange={(e) => setNfItemTemp({ ...nfItemTemp, unidade: e.target.value })}
+                            className="w-full px-2 py-2 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] outline-none text-[#3E2723] font-sans text-sm"
+                          >
+                            <option value="UN">UN</option>
+                            <option value="KG">KG</option>
+                            <option value="CX">CX</option>
+                            <option value="PCT">PCT</option>
+                            <option value="L">L</option>
+                            <option value="M">M</option>
+                            <option value="M2">M²</option>
+                            <option value="M3">M³</option>
+                          </select>
                         </div>
                         <div className="col-span-2">
                           <input
@@ -772,19 +858,6 @@ export default function ComprasPage() {
                             className="w-full px-3 py-2 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] outline-none text-[#3E2723] font-sans text-sm"
                           />
                         </div>
-                        <div className="col-span-2">
-                          <select
-                            value={nfItemTemp.unidade}
-                            onChange={(e) => setNfItemTemp({ ...nfItemTemp, unidade: e.target.value })}
-                            className="w-full px-3 py-2 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] outline-none text-[#3E2723] font-sans text-sm"
-                          >
-                            <option value="UN">UN</option>
-                            <option value="KG">KG</option>
-                            <option value="CX">CX</option>
-                            <option value="PCT">PCT</option>
-                            <option value="L">L</option>
-                          </select>
-                        </div>
                         <div className="col-span-1">
                           <Button type="button" onClick={handleAddNfItem} className="w-full bg-[#8B5A3C] text-[#F5E6D3] hover:bg-[#6B4423] h-full">
                             <Plus size={16} weight="bold" />
@@ -793,18 +866,27 @@ export default function ComprasPage() {
                       </div>
 
                       {nfForm.items.length > 0 && (
-                        <div className="bg-[#F5E6D3]/30 rounded-lg p-4 space-y-2 max-h-[200px] overflow-y-auto">
+                        <div className="bg-[#F5E6D3]/30 rounded-lg p-4 space-y-2 max-h-[250px] overflow-y-auto">
                           {nfForm.items.map((item, index) => (
-                            <div key={index} className="flex items-center justify-between bg-[#FFFDF8] p-3 rounded-lg">
-                              <div className="flex-1">
-                                <p className="text-sm font-medium text-[#3E2723]">{item.descricao}</p>
-                                <p className="text-xs text-[#705A4D]">
-                                  {item.quantidade} {item.unidade} x {formatCurrency(item.valor_unitario)} = {formatCurrency(item.valor_total)}
-                                </p>
+                            <div key={index} className="bg-[#FFFDF8] p-3 rounded-lg">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-[#3E2723]">{item.codigo && `[${item.codigo}] `}{item.descricao}</p>
+                                  <p className="text-xs text-[#705A4D]">
+                                    {item.quantidade} {item.unidade} x {formatCurrency(item.valor_unitario)} = {formatCurrency(item.valor_total)}
+                                  </p>
+                                  {(item.ncm || item.cst || item.cfop) && (
+                                    <div className="flex gap-2 mt-1">
+                                      {item.ncm && <span className="text-xs bg-[#8B5A3C]/10 px-1.5 py-0.5 rounded">NCM: {item.ncm}</span>}
+                                      {item.cst && <span className="text-xs bg-[#8B5A3C]/10 px-1.5 py-0.5 rounded">CST: {item.cst}</span>}
+                                      {item.cfop && <span className="text-xs bg-[#8B5A3C]/10 px-1.5 py-0.5 rounded">CFOP: {item.cfop}</span>}
+                                    </div>
+                                  )}
+                                </div>
+                                <button type="button" onClick={() => handleRemoveNfItem(index)} className="p-2 text-[#C53030] hover:bg-[#FED7D7] rounded-lg ml-2">
+                                  <Trash size={16} />
+                                </button>
                               </div>
-                              <button type="button" onClick={() => handleRemoveNfItem(index)} className="p-2 text-[#C53030] hover:bg-[#FED7D7] rounded-lg">
-                                <Trash size={16} />
-                              </button>
                             </div>
                           ))}
                         </div>
@@ -976,14 +1058,23 @@ export default function ComprasPage() {
 
               <div className="border-t border-[#8B5A3C]/15 pt-4">
                 <h3 className="text-lg font-serif font-semibold text-[#3E2723] mb-3">Itens ({viewingNf.items?.length || 0})</h3>
-                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                <div className="space-y-3 max-h-[300px] overflow-y-auto">
                   {viewingNf.items?.map((item, index) => (
-                    <div key={index} className="flex justify-between items-center bg-[#F5E6D3]/50 p-3 rounded-lg">
-                      <div>
-                        <p className="font-medium text-[#3E2723]">{item.descricao}</p>
-                        <p className="text-sm text-[#705A4D]">{item.quantidade} {item.unidade} x {formatCurrency(item.valor_unitario)}</p>
+                    <div key={index} className="bg-[#F5E6D3]/50 p-3 rounded-lg">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <p className="font-medium text-[#3E2723]">{item.codigo && `[${item.codigo}] `}{item.descricao}</p>
+                          <p className="text-sm text-[#705A4D]">{item.quantidade} {item.unidade} x {formatCurrency(item.valor_unitario)}</p>
+                        </div>
+                        <p className="font-medium text-[#3E2723] ml-4">{formatCurrency(item.valor_total)}</p>
                       </div>
-                      <p className="font-medium text-[#3E2723]">{formatCurrency(item.valor_total)}</p>
+                      {(item.ncm || item.cst || item.cfop) && (
+                        <div className="flex flex-wrap gap-2 text-xs">
+                          {item.ncm && <span className="bg-[#8B5A3C]/10 px-2 py-1 rounded text-[#6B4423]">NCM: {item.ncm}</span>}
+                          {item.cst && <span className="bg-[#8B5A3C]/10 px-2 py-1 rounded text-[#6B4423]">CST: {item.cst}</span>}
+                          {item.cfop && <span className="bg-[#8B5A3C]/10 px-2 py-1 rounded text-[#6B4423]">CFOP: {item.cfop}</span>}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -994,19 +1085,48 @@ export default function ComprasPage() {
                   <span className="text-[#705A4D]">Valor dos Produtos</span>
                   <span className="text-[#3E2723]">{formatCurrency(viewingNf.valor_produtos)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#705A4D]">Frete</span>
-                  <span className="text-[#3E2723]">{formatCurrency(viewingNf.valor_frete)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#705A4D]">Desconto</span>
-                  <span className="text-[#3E2723]">-{formatCurrency(viewingNf.valor_desconto)}</span>
-                </div>
+                {viewingNf.valor_frete > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#705A4D]">Frete</span>
+                    <span className="text-[#3E2723]">{formatCurrency(viewingNf.valor_frete)}</span>
+                  </div>
+                )}
+                {viewingNf.valor_seguro > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#705A4D]">Seguro</span>
+                    <span className="text-[#3E2723]">{formatCurrency(viewingNf.valor_seguro)}</span>
+                  </div>
+                )}
+                {viewingNf.valor_ipi > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#705A4D]">IPI</span>
+                    <span className="text-[#3E2723]">{formatCurrency(viewingNf.valor_ipi)}</span>
+                  </div>
+                )}
+                {viewingNf.valor_icms > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#705A4D]">ICMS</span>
+                    <span className="text-[#3E2723]">{formatCurrency(viewingNf.valor_icms)}</span>
+                  </div>
+                )}
+                {viewingNf.valor_desconto > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#705A4D]">Desconto</span>
+                    <span className="text-red-600">-{formatCurrency(viewingNf.valor_desconto)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between pt-2 border-t border-[#8B5A3C]/15">
                   <span className="text-lg font-serif font-bold text-[#3E2723]">Total</span>
                   <span className="text-lg font-serif font-bold text-[#6B4423]">{formatCurrency(viewingNf.valor_total)}</span>
                 </div>
               </div>
+
+              {viewingNf.informacoes_complementares && (
+                <div className="border-t border-[#8B5A3C]/15 pt-4">
+                  <p className="text-sm text-[#705A4D]">Informações Complementares</p>
+                  <p className="text-[#3E2723] text-sm">{viewingNf.informacoes_complementares}</p>
+                </div>
+              )}
 
               {viewingNf.observacoes && (
                 <div className="border-t border-[#8B5A3C]/15 pt-4">
