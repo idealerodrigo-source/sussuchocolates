@@ -129,6 +129,50 @@ class CompraCreate(BaseModel):
     data_entrega_prevista: Optional[str] = None
     observacoes: Optional[str] = None
 
+# Modelos para NF de Entrada
+class ItemNFEntrada(BaseModel):
+    codigo: Optional[str] = None
+    descricao: str
+    ncm: Optional[str] = None
+    cfop: Optional[str] = None
+    unidade: str = "UN"
+    quantidade: float
+    valor_unitario: float
+    valor_total: float
+
+class NFEntrada(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    chave_acesso: str
+    numero_nf: str
+    serie: Optional[str] = None
+    data_emissao: datetime
+    data_entrada: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    fornecedor_cnpj: str
+    fornecedor_nome: str
+    fornecedor_endereco: Optional[str] = None
+    items: List[ItemNFEntrada]
+    valor_produtos: float
+    valor_frete: float = 0.0
+    valor_desconto: float = 0.0
+    valor_total: float
+    observacoes: Optional[str] = None
+    status: str = "registrada"  # registrada, conferida, estornada
+
+class NFEntradaCreate(BaseModel):
+    chave_acesso: str
+    numero_nf: str
+    serie: Optional[str] = None
+    data_emissao: str
+    fornecedor_cnpj: str
+    fornecedor_nome: str
+    fornecedor_endereco: Optional[str] = None
+    items: List[ItemNFEntrada]
+    valor_produtos: float
+    valor_frete: float = 0.0
+    valor_desconto: float = 0.0
+    valor_total: float
+    observacoes: Optional[str] = None
+
 def create_access_token(data: dict):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(days=7)
@@ -1377,6 +1421,265 @@ async def deletar_compra(compra_id: str, current_user: dict = Depends(get_curren
     
     result = await db.compras.delete_one({"id": compra_id})
     return {"message": "Compra removida com sucesso"}
+
+# ============ NF DE ENTRADA ============
+import re
+from bs4 import BeautifulSoup
+
+@api_router.get("/nf-entrada")
+async def listar_nf_entrada(current_user: dict = Depends(get_current_user)):
+    nfs = await db.nf_entrada.find({}, {"_id": 0}).sort("data_entrada", -1).to_list(1000)
+    for nf in nfs:
+        if isinstance(nf.get('data_emissao'), str):
+            nf['data_emissao'] = datetime.fromisoformat(nf['data_emissao'])
+        if isinstance(nf.get('data_entrada'), str):
+            nf['data_entrada'] = datetime.fromisoformat(nf['data_entrada'])
+    return nfs
+
+@api_router.post("/nf-entrada")
+async def criar_nf_entrada(nf_data: NFEntradaCreate, current_user: dict = Depends(get_current_user)):
+    # Verificar se já existe NF com essa chave de acesso
+    existing = await db.nf_entrada.find_one({"chave_acesso": nf_data.chave_acesso}, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="NF-e já registrada com essa chave de acesso")
+    
+    nf = NFEntrada(
+        chave_acesso=nf_data.chave_acesso,
+        numero_nf=nf_data.numero_nf,
+        serie=nf_data.serie,
+        data_emissao=datetime.fromisoformat(nf_data.data_emissao),
+        fornecedor_cnpj=nf_data.fornecedor_cnpj,
+        fornecedor_nome=nf_data.fornecedor_nome,
+        fornecedor_endereco=nf_data.fornecedor_endereco,
+        items=[ItemNFEntrada(**item.model_dump()) for item in nf_data.items],
+        valor_produtos=nf_data.valor_produtos,
+        valor_frete=nf_data.valor_frete,
+        valor_desconto=nf_data.valor_desconto,
+        valor_total=nf_data.valor_total,
+        observacoes=nf_data.observacoes
+    )
+    
+    doc = nf.model_dump()
+    doc['data_emissao'] = doc['data_emissao'].isoformat()
+    doc['data_entrada'] = doc['data_entrada'].isoformat()
+    await db.nf_entrada.insert_one(doc)
+    
+    return {"message": "NF-e registrada com sucesso", "id": nf.id}
+
+@api_router.post("/nf-entrada/parse-html")
+async def parse_nf_html(html_content: str = "", current_user: dict = Depends(get_current_user)):
+    """
+    Parse HTML da página de consulta da NF-e do portal da fazenda
+    """
+    try:
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # Extrair chave de acesso
+        chave_elem = soup.find(string=re.compile(r'\d{44}'))
+        chave_acesso = ""
+        if chave_elem:
+            match = re.search(r'(\d{44})', str(chave_elem))
+            if match:
+                chave_acesso = match.group(1)
+        
+        # Se não encontrar no texto, procurar em inputs ou spans
+        if not chave_acesso:
+            for elem in soup.find_all(['span', 'div', 'td', 'input']):
+                text = elem.get_text() if hasattr(elem, 'get_text') else str(elem.get('value', ''))
+                match = re.search(r'(\d{44})', text.replace(' ', ''))
+                if match:
+                    chave_acesso = match.group(1)
+                    break
+        
+        # Extrair dados do emitente
+        fornecedor_nome = ""
+        fornecedor_cnpj = ""
+        fornecedor_endereco = ""
+        
+        # Procurar seção do emitente
+        emitente_section = soup.find(string=re.compile(r'Emitente|EMITENTE|Dados do Emitente', re.I))
+        if emitente_section:
+            parent = emitente_section.find_parent(['div', 'fieldset', 'table'])
+            if parent:
+                # Procurar CNPJ
+                cnpj_match = re.search(r'(\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2})', parent.get_text())
+                if cnpj_match:
+                    fornecedor_cnpj = cnpj_match.group(1).replace('.', '').replace('/', '').replace('-', '')
+                
+                # Procurar nome/razão social
+                razao = parent.find(string=re.compile(r'Raz[aã]o Social|Nome', re.I))
+                if razao:
+                    nome_elem = razao.find_next(['span', 'td', 'div'])
+                    if nome_elem:
+                        fornecedor_nome = nome_elem.get_text().strip()
+        
+        # Se não encontrou, tentar método alternativo
+        if not fornecedor_cnpj:
+            cnpj_matches = re.findall(r'(\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2})', soup.get_text())
+            if cnpj_matches:
+                fornecedor_cnpj = cnpj_matches[0].replace('.', '').replace('/', '').replace('-', '')
+        
+        # Extrair número e série da NF
+        numero_nf = ""
+        serie = ""
+        
+        numero_match = re.search(r'N[uú]mero[:\s]*(\d+)', soup.get_text(), re.I)
+        if numero_match:
+            numero_nf = numero_match.group(1)
+        
+        serie_match = re.search(r'S[eé]rie[:\s]*(\d+)', soup.get_text(), re.I)
+        if serie_match:
+            serie = serie_match.group(1)
+        
+        # Extrair data de emissão
+        data_emissao = ""
+        data_match = re.search(r'Data de Emiss[aã]o[:\s]*(\d{2}/\d{2}/\d{4})', soup.get_text(), re.I)
+        if data_match:
+            data_str = data_match.group(1)
+            try:
+                data_emissao = datetime.strptime(data_str, '%d/%m/%Y').isoformat()
+            except:
+                data_emissao = datetime.now(timezone.utc).isoformat()
+        else:
+            data_emissao = datetime.now(timezone.utc).isoformat()
+        
+        # Extrair valores
+        valor_total = 0.0
+        valor_produtos = 0.0
+        
+        valor_total_match = re.search(r'Valor Total da NF[:\s]*R?\$?\s*([\d.,]+)', soup.get_text(), re.I)
+        if valor_total_match:
+            valor_total = float(valor_total_match.group(1).replace('.', '').replace(',', '.'))
+        
+        valor_prod_match = re.search(r'Valor Total dos Produtos[:\s]*R?\$?\s*([\d.,]+)', soup.get_text(), re.I)
+        if valor_prod_match:
+            valor_produtos = float(valor_prod_match.group(1).replace('.', '').replace(',', '.'))
+        else:
+            valor_produtos = valor_total
+        
+        # Extrair itens da NF
+        items = []
+        
+        # Procurar tabela de produtos
+        tables = soup.find_all('table')
+        for table in tables:
+            headers = [th.get_text().strip().lower() for th in table.find_all('th')]
+            if any(h in str(headers) for h in ['descri', 'produto', 'item']):
+                rows = table.find_all('tr')[1:]  # Pular header
+                for row in rows:
+                    cols = row.find_all(['td', 'th'])
+                    if len(cols) >= 4:
+                        try:
+                            # Tentar extrair dados da linha
+                            descricao = cols[1].get_text().strip() if len(cols) > 1 else ""
+                            quantidade_text = cols[2].get_text().strip() if len(cols) > 2 else "1"
+                            valor_text = cols[-1].get_text().strip() if cols else "0"
+                            
+                            quantidade = float(re.sub(r'[^\d.,]', '', quantidade_text).replace(',', '.') or '1')
+                            valor_total_item = float(re.sub(r'[^\d.,]', '', valor_text).replace(',', '.') or '0')
+                            valor_unitario = valor_total_item / quantidade if quantidade > 0 else valor_total_item
+                            
+                            if descricao and valor_total_item > 0:
+                                items.append({
+                                    "descricao": descricao[:200],
+                                    "quantidade": quantidade,
+                                    "valor_unitario": round(valor_unitario, 4),
+                                    "valor_total": round(valor_total_item, 2),
+                                    "unidade": "UN"
+                                })
+                        except:
+                            continue
+        
+        # Se não encontrou itens, criar um item genérico
+        if not items and valor_total > 0:
+            items.append({
+                "descricao": "Produtos conforme NF-e",
+                "quantidade": 1,
+                "valor_unitario": valor_total,
+                "valor_total": valor_total,
+                "unidade": "UN"
+            })
+        
+        return {
+            "success": True,
+            "data": {
+                "chave_acesso": chave_acesso,
+                "numero_nf": numero_nf,
+                "serie": serie,
+                "data_emissao": data_emissao,
+                "fornecedor_cnpj": fornecedor_cnpj,
+                "fornecedor_nome": fornecedor_nome,
+                "fornecedor_endereco": fornecedor_endereco,
+                "items": items,
+                "valor_produtos": valor_produtos,
+                "valor_total": valor_total,
+                "valor_frete": 0.0,
+                "valor_desconto": 0.0
+            }
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "data": None
+        }
+
+@api_router.post("/nf-entrada/parse-chave")
+async def parse_chave_acesso(chave: str, current_user: dict = Depends(get_current_user)):
+    """
+    Extrai informações básicas da chave de acesso da NF-e (44 dígitos)
+    Formato: UF(2) + AAMM(4) + CNPJ(14) + MOD(2) + SERIE(3) + NUMERO(9) + FORMA(1) + CODIGO(8) + DV(1)
+    """
+    chave = chave.replace(' ', '').replace('.', '').replace('-', '')
+    
+    if len(chave) != 44 or not chave.isdigit():
+        raise HTTPException(status_code=400, detail="Chave de acesso inválida. Deve conter 44 dígitos numéricos.")
+    
+    # Verificar se já existe
+    existing = await db.nf_entrada.find_one({"chave_acesso": chave}, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="NF-e já registrada com essa chave de acesso")
+    
+    # Extrair informações da chave
+    uf = chave[0:2]
+    ano_mes = chave[2:6]
+    cnpj = chave[6:20]
+    modelo = chave[20:22]
+    serie = chave[22:25]
+    numero = chave[25:34]
+    
+    # Formatar CNPJ
+    cnpj_formatado = f"{cnpj[:2]}.{cnpj[2:5]}.{cnpj[5:8]}/{cnpj[8:12]}-{cnpj[12:14]}"
+    
+    # Formatar data (AAMM -> MM/20AA)
+    ano = f"20{ano_mes[:2]}"
+    mes = ano_mes[2:4]
+    data_emissao = f"{ano}-{mes}-01"
+    
+    # Remover zeros à esquerda do número
+    numero_nf = str(int(numero))
+    serie_nf = str(int(serie))
+    
+    return {
+        "success": True,
+        "data": {
+            "chave_acesso": chave,
+            "uf": uf,
+            "cnpj": cnpj,
+            "cnpj_formatado": cnpj_formatado,
+            "modelo": modelo,
+            "serie": serie_nf,
+            "numero_nf": numero_nf,
+            "data_emissao": data_emissao,
+        }
+    }
+
+@api_router.delete("/nf-entrada/{nf_id}")
+async def deletar_nf_entrada(nf_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.nf_entrada.delete_one({"id": nf_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="NF-e não encontrada")
+    return {"message": "NF-e removida com sucesso"}
 
 app.include_router(api_router)
 

@@ -110,4 +110,12 @@ export const comprasAPI = {
   deletar: (id) => api.delete(`/compras/${id}`),
 };
 
+export const nfEntradaAPI = {
+  listar: () => api.get('/nf-entrada'),
+  criar: (data) => api.post('/nf-entrada', data),
+  parseHtml: (html) => api.post('/nf-entrada/parse-html', html, { headers: { 'Content-Type': 'text/plain' } }),
+  parseChave: (chave) => api.post(`/nf-entrada/parse-chave?chave=${chave}`),
+  deletar: (id) => api.delete(`/nf-entrada/${id}`),
+};
+
 export default api;
