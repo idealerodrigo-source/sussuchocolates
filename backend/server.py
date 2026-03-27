@@ -213,6 +213,7 @@ class EstoqueCreate(BaseModel):
 
 class ConcluirEmbalagemRequest(BaseModel):
     localizacao: Optional[str] = None
+    responsavel_conclusao: Optional[str] = None
 
 class Venda(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -632,17 +633,24 @@ async def concluir_embalagem(embalagem_id: str, request: ConcluirEmbalagemReques
     if embalagem.get('data_conclusao'):
         raise HTTPException(status_code=400, detail="Embalagem já foi concluída")
     
-    # Marcar embalagem como concluída
+    # Obter dados do request
+    localizacao = request.localizacao if request else None
+    responsavel_conclusao = request.responsavel_conclusao if request else None
+    
+    # Marcar embalagem como concluída com responsável
+    update_data = {
+        "data_conclusao": datetime.now(timezone.utc).isoformat()
+    }
+    if responsavel_conclusao:
+        update_data["responsavel_conclusao"] = responsavel_conclusao
+    
     await db.embalagem.update_one(
         {"id": embalagem_id},
-        {"$set": {"data_conclusao": datetime.now(timezone.utc).isoformat()}}
+        {"$set": update_data}
     )
     
     # Buscar produção para obter produto_id
     producao = await db.producao.find_one({"id": embalagem['producao_id']}, {"_id": 0})
-    
-    # Obter localização do request (se fornecida)
-    localizacao = request.localizacao if request else None
     
     # Adicionar automaticamente ao estoque
     estoque = {
@@ -652,7 +660,7 @@ async def concluir_embalagem(embalagem_id: str, request: ConcluirEmbalagemReques
         "quantidade": embalagem['quantidade'],
         "tipo_movimento": MovimentoEstoque.ENTRADA,
         "data_movimento": datetime.now(timezone.utc).isoformat(),
-        "responsavel": embalagem.get('responsavel') or current_user['nome'],
+        "responsavel": responsavel_conclusao or embalagem.get('responsavel') or current_user['nome'],
         "observacoes": f"Entrada automática - Embalagem concluída (Produção: {producao['pedido_numero']})",
         "localizacao": localizacao
     }

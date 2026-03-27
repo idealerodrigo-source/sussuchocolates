@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { embalagemAPI, producaoAPI } from '../services/api';
 import { formatDateTime } from '../utils/formatters';
-import { Plus, CheckCircle, MapPin } from '@phosphor-icons/react';
+import { Plus, CheckCircle, MapPin, User } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -14,6 +14,7 @@ export default function EmbalagemPage() {
   const [concluirDialogOpen, setConcluirDialogOpen] = useState(false);
   const [selectedEmbalagem, setSelectedEmbalagem] = useState(null);
   const [localizacao, setLocalizacao] = useState('');
+  const [responsavelConclusao, setResponsavelConclusao] = useState('');
   const [formData, setFormData] = useState({
     producao_id: '',
     pedido_id: '',
@@ -77,16 +78,26 @@ export default function EmbalagemPage() {
   const handleConcluir = async (embalagemId) => {
     setSelectedEmbalagem(embalagemId);
     setLocalizacao('');
+    setResponsavelConclusao('');
     setConcluirDialogOpen(true);
   };
 
   const handleConfirmarConclusao = async () => {
+    if (!responsavelConclusao.trim()) {
+      toast.error('Informe o nome do responsável pela conclusão');
+      return;
+    }
+    
     try {
-      const result = await embalagemAPI.concluir(selectedEmbalagem, { localizacao: localizacao || null });
+      const result = await embalagemAPI.concluir(selectedEmbalagem, { 
+        localizacao: localizacao || null,
+        responsavel_conclusao: responsavelConclusao 
+      });
       toast.success(result.data.message || 'Embalagem concluída! Produto adicionado ao estoque.');
       setConcluirDialogOpen(false);
       setSelectedEmbalagem(null);
       setLocalizacao('');
+      setResponsavelConclusao('');
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Erro ao concluir embalagem');
@@ -261,21 +272,37 @@ export default function EmbalagemPage() {
         </div>
       </div>
 
-      {/* Dialog para informar localização ao concluir */}
-      <Dialog open={concluirDialogOpen} onOpenChange={(open) => { setConcluirDialogOpen(open); if (!open) { setSelectedEmbalagem(null); setLocalizacao(''); } }}>
+      {/* Dialog para informar responsável e localização ao concluir */}
+      <Dialog open={concluirDialogOpen} onOpenChange={(open) => { setConcluirDialogOpen(open); if (!open) { setSelectedEmbalagem(null); setLocalizacao(''); setResponsavelConclusao(''); } }}>
         <DialogContent className="bg-[#FFFDF8] max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl font-serif text-[#3E2723] flex items-center gap-2">
-              <MapPin size={24} className="text-[#6B4423]" />
-              Localização no Estoque
+              <CheckCircle size={24} className="text-[#2F855A]" />
+              Concluir Embalagem
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-[#705A4D] font-sans">
-              Informe a localização onde o produto será armazenado no estoque:
+              Preencha as informações para concluir a embalagem e enviar ao estoque:
             </p>
             <div>
-              <label className="block text-sm font-medium text-[#6B4423] mb-1">Localização</label>
+              <label className="block text-sm font-medium text-[#6B4423] mb-1">
+                <User size={16} className="inline mr-1" />
+                Responsável pela Conclusão *
+              </label>
+              <input
+                type="text"
+                placeholder="Nome do responsável que concluiu a embalagem"
+                value={responsavelConclusao}
+                onChange={(e) => setResponsavelConclusao(e.target.value)}
+                className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#6B4423] mb-1">
+                <MapPin size={16} className="inline mr-1" />
+                Localização no Estoque
+              </label>
               <input
                 type="text"
                 placeholder="Ex: Prateleira A3, Corredor 2, Freezer 1..."
@@ -287,7 +314,7 @@ export default function EmbalagemPage() {
             <div className="flex gap-3 justify-end pt-4">
               <Button 
                 type="button" 
-                onClick={() => { setConcluirDialogOpen(false); setSelectedEmbalagem(null); setLocalizacao(''); }} 
+                onClick={() => { setConcluirDialogOpen(false); setSelectedEmbalagem(null); setLocalizacao(''); setResponsavelConclusao(''); }} 
                 variant="outline"
               >
                 Cancelar
