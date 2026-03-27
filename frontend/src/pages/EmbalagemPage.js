@@ -217,31 +217,37 @@ export default function EmbalagemPage() {
           <table className="w-full">
             <thead className="bg-[#E8D5C4]">
               <tr>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Início</th>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Produto</th>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Tipo Embalagem</th>
-                <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Quantidade</th>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Responsável</th>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Status</th>
-                <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Ações</th>
+                <th className="text-left px-4 py-4 text-sm font-sans font-semibold text-[#3E2723]">Pedido</th>
+                <th className="text-left px-4 py-4 text-sm font-sans font-semibold text-[#3E2723]">Cliente</th>
+                <th className="text-left px-4 py-4 text-sm font-sans font-semibold text-[#3E2723]">Produto</th>
+                <th className="text-right px-4 py-4 text-sm font-sans font-semibold text-[#3E2723]">Qtd</th>
+                <th className="text-left px-4 py-4 text-sm font-sans font-semibold text-[#3E2723]">Responsável</th>
+                <th className="text-left px-4 py-4 text-sm font-sans font-semibold text-[#3E2723]">Início</th>
+                <th className="text-left px-4 py-4 text-sm font-sans font-semibold text-[#3E2723]">Status</th>
+                <th className="text-right px-4 py-4 text-sm font-sans font-semibold text-[#3E2723]">Ações</th>
               </tr>
             </thead>
             <tbody>
               {embalagens.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-12 text-[#705A4D] font-sans">
+                  <td colSpan="8" className="text-center py-12 text-[#705A4D] font-sans">
                     Nenhuma embalagem registrada
                   </td>
                 </tr>
               ) : (
                 embalagens.map((embalagem) => (
                   <tr key={embalagem.id} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
-                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{formatDateTime(embalagem.data_inicio || embalagem.data_embalagem)}</td>
-                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">{embalagem.produto_nome}</td>
-                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{embalagem.tipo_embalagem || '-'}</td>
-                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans text-right">{embalagem.quantidade}</td>
-                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{embalagem.responsavel || '-'}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4 text-sm text-[#4A3B32] font-sans font-medium">
+                      {embalagem.pedido_numero || '-'}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-[#4A3B32] font-sans">
+                      {embalagem.cliente_nome || '-'}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-[#4A3B32] font-sans font-medium">{embalagem.produto_nome}</td>
+                    <td className="px-4 py-4 text-sm text-[#4A3B32] font-sans text-right">{embalagem.quantidade}</td>
+                    <td className="px-4 py-4 text-sm text-[#4A3B32] font-sans">{embalagem.responsavel || '-'}</td>
+                    <td className="px-4 py-4 text-sm text-[#4A3B32] font-sans">{formatDateTime(embalagem.data_inicio || embalagem.data_embalagem)}</td>
+                    <td className="px-4 py-4">
                       {embalagem.data_conclusao ? (
                         <span className="px-3 py-1 rounded-full text-xs font-medium bg-[#C6F6D5] text-[#2F855A]">
                           Concluído
@@ -252,7 +258,7 @@ export default function EmbalagemPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 py-4 text-right">
                       {!embalagem.data_conclusao && (
                         <Button
                           onClick={() => handleConcluir(embalagem.id)}

@@ -177,17 +177,20 @@ class ProducaoCreate(BaseModel):
 class Embalagem(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     producao_id: str
-    pedido_id: str
+    pedido_id: Optional[str] = None
+    pedido_numero: Optional[str] = None
+    cliente_nome: Optional[str] = None
     produto_nome: str
     quantidade: float
     data_inicio: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     data_conclusao: Optional[datetime] = None
     responsavel: Optional[str] = None
+    responsavel_conclusao: Optional[str] = None
     tipo_embalagem: Optional[str] = None
 
 class EmbalagemCreate(BaseModel):
     producao_id: str
-    pedido_id: str
+    pedido_id: Optional[str] = None
     quantidade: float
     responsavel: Optional[str] = None
     tipo_embalagem: Optional[str] = None
@@ -562,11 +565,22 @@ async def concluir_producao(producao_id: str, current_user: dict = Depends(get_c
         {"$set": {"data_conclusao": datetime.now(timezone.utc).isoformat()}}
     )
     
+    # Buscar informações do pedido se existir
+    pedido_numero = None
+    cliente_nome = None
+    if producao.get('pedido_id'):
+        pedido = await db.pedidos.find_one({"id": producao['pedido_id']}, {"_id": 0})
+        if pedido:
+            pedido_numero = pedido.get('numero')
+            cliente_nome = pedido.get('cliente_nome')
+    
     # Criar automaticamente registro de embalagem PENDENTE
     embalagem = {
         "id": str(uuid.uuid4()),
         "producao_id": producao_id,
         "pedido_id": producao.get('pedido_id'),
+        "pedido_numero": pedido_numero or producao.get('pedido_numero'),
+        "cliente_nome": cliente_nome,
         "produto_nome": producao['produto_nome'],
         "quantidade": producao['quantidade'],
         "data_inicio": datetime.now(timezone.utc).isoformat(),
@@ -622,6 +636,22 @@ async def listar_embalagem(current_user: dict = Depends(get_current_user)):
         # Compatibilidade com dados antigos
         if 'data_embalagem' in e and 'data_inicio' not in e:
             e['data_inicio'] = datetime.fromisoformat(e['data_embalagem']) if isinstance(e['data_embalagem'], str) else e['data_embalagem']
+        
+        # Buscar pedido_numero e cliente_nome se não existir
+        if not e.get('pedido_numero') and e.get('pedido_id'):
+            pedido = await db.pedidos.find_one({"id": e['pedido_id']}, {"_id": 0})
+            if pedido:
+                e['pedido_numero'] = pedido.get('numero')
+                e['cliente_nome'] = pedido.get('cliente_nome')
+        elif not e.get('pedido_numero') and e.get('producao_id'):
+            # Tentar buscar da produção
+            producao = await db.producao.find_one({"id": e['producao_id']}, {"_id": 0})
+            if producao:
+                e['pedido_numero'] = producao.get('pedido_numero')
+                if producao.get('pedido_id'):
+                    pedido = await db.pedidos.find_one({"id": producao['pedido_id']}, {"_id": 0})
+                    if pedido:
+                        e['cliente_nome'] = pedido.get('cliente_nome')
     return embalagens
 
 @api_router.patch("/embalagem/{embalagem_id}/concluir")
