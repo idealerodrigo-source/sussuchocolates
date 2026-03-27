@@ -445,6 +445,53 @@ async def atualizar_status_pedido(pedido_id: str, status: PedidoStatus, current_
     await db.pedidos.update_one({"id": pedido_id}, {"$set": update_data})
     return {"message": "Status atualizado com sucesso"}
 
+class PedidoUpdate(BaseModel):
+    cliente_id: Optional[str] = None
+    items: Optional[List[ItemPedido]] = None
+    observacoes: Optional[str] = None
+    data_entrega: Optional[str] = None
+
+@api_router.put("/pedidos/{pedido_id}", response_model=Pedido)
+async def atualizar_pedido(pedido_id: str, pedido_data: PedidoUpdate, current_user: dict = Depends(get_current_user)):
+    pedido = await db.pedidos.find_one({"id": pedido_id}, {"_id": 0})
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    
+    update_data = {}
+    
+    # Atualizar cliente se fornecido
+    if pedido_data.cliente_id:
+        cliente = await db.clientes.find_one({"id": pedido_data.cliente_id}, {"_id": 0})
+        if not cliente:
+            raise HTTPException(status_code=404, detail="Cliente não encontrado")
+        update_data["cliente_id"] = pedido_data.cliente_id
+        update_data["cliente_nome"] = cliente['nome']
+    
+    # Atualizar itens se fornecidos
+    if pedido_data.items is not None:
+        items_dict = [item.model_dump() for item in pedido_data.items]
+        update_data["items"] = items_dict
+        update_data["valor_total"] = sum(item.subtotal for item in pedido_data.items)
+    
+    # Atualizar observações
+    if pedido_data.observacoes is not None:
+        update_data["observacoes"] = pedido_data.observacoes
+    
+    # Atualizar data de entrega
+    if pedido_data.data_entrega is not None:
+        update_data["data_entrega"] = pedido_data.data_entrega if pedido_data.data_entrega else None
+    
+    if update_data:
+        await db.pedidos.update_one({"id": pedido_id}, {"$set": update_data})
+    
+    # Retornar pedido atualizado
+    updated = await db.pedidos.find_one({"id": pedido_id}, {"_id": 0})
+    if isinstance(updated['data_pedido'], str):
+        updated['data_pedido'] = datetime.fromisoformat(updated['data_pedido'])
+    if updated.get('data_entrega') and isinstance(updated['data_entrega'], str):
+        updated['data_entrega'] = datetime.fromisoformat(updated['data_entrega'])
+    return updated
+
 @api_router.post("/producao", response_model=Producao)
 async def criar_producao(producao_data: ProducaoCreate, current_user: dict = Depends(get_current_user)):
     produto = await db.produtos.find_one({"id": producao_data.produto_id}, {"_id": 0})

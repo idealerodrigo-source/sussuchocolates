@@ -37,6 +37,7 @@ export const pedidosAPI = {
   listar: () => api.get('/pedidos'),
   obter: (id) => api.get(`/pedidos/${id}`),
   criar: (data) => api.post('/pedidos', data),
+  atualizar: (id, data) => api.put(`/pedidos/${id}`, data),
   atualizarStatus: (id, status) => api.patch(`/pedidos/${id}/status?status=${status}`),
 };
 

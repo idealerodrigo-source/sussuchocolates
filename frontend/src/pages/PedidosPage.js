@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { pedidosAPI, clientesAPI, produtosAPI } from '../services/api';
 import { formatCurrency, formatDateTime, getStatusColor, getStatusLabel } from '../utils/formatters';
-import { Plus, ShoppingCart, Trash } from '@phosphor-icons/react';
+import { Plus, ShoppingCart, Trash, PencilSimple, Eye } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -12,6 +12,10 @@ export default function PedidosPage() {
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editingPedidoId, setEditingPedidoId] = useState(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewingPedido, setViewingPedido] = useState(null);
   const [formData, setFormData] = useState({
     cliente_id: '',
     items: [],
@@ -82,14 +86,42 @@ export default function PedidosPage() {
     }
 
     try {
-      await pedidosAPI.criar(formData);
-      toast.success('Pedido criado com sucesso');
+      if (editMode && editingPedidoId) {
+        await pedidosAPI.atualizar(editingPedidoId, formData);
+        toast.success('Pedido atualizado com sucesso');
+      } else {
+        await pedidosAPI.criar(formData);
+        toast.success('Pedido criado com sucesso');
+      }
       setDialogOpen(false);
       resetForm();
       fetchData();
     } catch (error) {
-      toast.error('Erro ao criar pedido');
+      toast.error(editMode ? 'Erro ao atualizar pedido' : 'Erro ao criar pedido');
     }
+  };
+
+  const handleEdit = (pedido) => {
+    setEditMode(true);
+    setEditingPedidoId(pedido.id);
+    setFormData({
+      cliente_id: pedido.cliente_id,
+      items: pedido.items.map(item => ({
+        produto_id: item.produto_id,
+        produto_nome: item.produto_nome,
+        quantidade: item.quantidade,
+        preco_unitario: item.preco_unitario,
+        subtotal: item.subtotal,
+      })),
+      observacoes: pedido.observacoes || '',
+      data_entrega: pedido.data_entrega ? pedido.data_entrega.split('T')[0] : '',
+    });
+    setDialogOpen(true);
+  };
+
+  const handleView = (pedido) => {
+    setViewingPedido(pedido);
+    setViewDialogOpen(true);
   };
 
   const resetForm = () => {
@@ -100,6 +132,8 @@ export default function PedidosPage() {
       data_entrega: '',
     });
     setItemTemp({ produto_id: '', quantidade: 1 });
+    setEditMode(false);
+    setEditingPedidoId(null);
   };
 
   if (loading) {
@@ -124,7 +158,9 @@ export default function PedidosPage() {
           </DialogTrigger>
           <DialogContent className="bg-[#FFFDF8] max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-serif text-[#3E2723]">Novo Pedido</DialogTitle>
+              <DialogTitle className="text-2xl font-serif text-[#3E2723]">
+                {editMode ? 'Editar Pedido' : 'Novo Pedido'}
+              </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -165,7 +201,7 @@ export default function PedidosPage() {
                       type="number"
                       min="1"
                       value={itemTemp.quantidade}
-                      onChange={(e) => setItemTemp({ ...itemTemp, quantidade: parseInt(e.target.value) })}
+                      onChange={(e) => setItemTemp({ ...itemTemp, quantidade: parseInt(e.target.value) || 1 })}
                       placeholder="Qtd"
                       className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
                     />
@@ -230,7 +266,7 @@ export default function PedidosPage() {
                   Cancelar
                 </Button>
                 <Button type="submit" className="bg-[#6B4423] text-[#F5E6D3] hover:bg-[#8B5A3C]">
-                  Criar Pedido
+                  {editMode ? 'Salvar Alterações' : 'Criar Pedido'}
                 </Button>
               </div>
             </form>
@@ -249,7 +285,7 @@ export default function PedidosPage() {
                 <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Data Entrega</th>
                 <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Status</th>
                 <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Valor</th>
-                <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Itens</th>
+                <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -276,8 +312,24 @@ export default function PedidosPage() {
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans text-right font-medium">
                       {formatCurrency(pedido.valor_total)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans text-right">
-                      {pedido.items.length} {pedido.items.length === 1 ? 'item' : 'itens'}
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          onClick={() => handleView(pedido)}
+                          size="sm"
+                          variant="outline"
+                          className="text-[#6B4423] border-[#6B4423] hover:bg-[#F5E6D3]"
+                        >
+                          <Eye size={16} weight="bold" />
+                        </Button>
+                        <Button
+                          onClick={() => handleEdit(pedido)}
+                          size="sm"
+                          className="bg-[#8B5A3C] text-white hover:bg-[#6B4423]"
+                        >
+                          <PencilSimple size={16} weight="bold" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -286,6 +338,82 @@ export default function PedidosPage() {
           </table>
         </div>
       </div>
+
+      {/* Dialog para visualizar pedido */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className="bg-[#FFFDF8] max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-serif text-[#3E2723]">
+              Detalhes do Pedido {viewingPedido?.numero}
+            </DialogTitle>
+          </DialogHeader>
+          {viewingPedido && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-[#705A4D]">Cliente</p>
+                  <p className="font-medium text-[#3E2723]">{viewingPedido.cliente_nome}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-[#705A4D]">Status</p>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(viewingPedido.status)}`}>
+                    {getStatusLabel(viewingPedido.status)}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-sm text-[#705A4D]">Data do Pedido</p>
+                  <p className="font-medium text-[#3E2723]">{formatDateTime(viewingPedido.data_pedido)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-[#705A4D]">Data de Entrega</p>
+                  <p className="font-medium text-[#3E2723]">
+                    {viewingPedido.data_entrega ? formatDateTime(viewingPedido.data_entrega) : 'Não definida'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="border-t border-[#8B5A3C]/15 pt-4">
+                <h3 className="text-lg font-serif font-semibold text-[#3E2723] mb-3">Itens do Pedido</h3>
+                <div className="space-y-2">
+                  {viewingPedido.items.map((item, index) => (
+                    <div key={index} className="flex justify-between items-center bg-[#F5E6D3]/50 p-3 rounded-lg">
+                      <div>
+                        <p className="font-medium text-[#3E2723]">{item.produto_nome}</p>
+                        <p className="text-sm text-[#705A4D]">{item.quantidade}x {formatCurrency(item.preco_unitario)}</p>
+                      </div>
+                      <p className="font-medium text-[#3E2723]">{formatCurrency(item.subtotal)}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 pt-4 border-t border-[#8B5A3C]/15 flex justify-between">
+                  <span className="text-lg font-serif font-bold text-[#3E2723]">Total</span>
+                  <span className="text-lg font-serif font-bold text-[#6B4423]">{formatCurrency(viewingPedido.valor_total)}</span>
+                </div>
+              </div>
+
+              {viewingPedido.observacoes && (
+                <div className="border-t border-[#8B5A3C]/15 pt-4">
+                  <p className="text-sm text-[#705A4D]">Observações</p>
+                  <p className="text-[#3E2723]">{viewingPedido.observacoes}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-4">
+                <Button
+                  onClick={() => {
+                    setViewDialogOpen(false);
+                    handleEdit(viewingPedido);
+                  }}
+                  className="bg-[#6B4423] text-[#F5E6D3] hover:bg-[#8B5A3C]"
+                >
+                  <PencilSimple size={18} weight="bold" className="mr-2" />
+                  Editar Pedido
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

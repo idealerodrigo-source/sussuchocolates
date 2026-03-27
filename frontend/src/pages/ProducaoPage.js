@@ -9,6 +9,7 @@ import { Button } from '../components/ui/button';
 export default function ProducaoPage() {
   const [producoes, setProducoes] = useState([]);
   const [pedidos, setPedidos] = useState([]);
+  const [allPedidos, setAllPedidos] = useState([]); // Todos os pedidos para referência
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -37,6 +38,7 @@ export default function ProducaoPage() {
         produtosAPI.listar(),
       ]);
       setProducoes(producoesRes.data);
+      setAllPedidos(pedidosRes.data);
       
       const pedidosPendentes = pedidosRes.data.filter(
         (p) => p.status === 'pendente' || p.status === 'em_producao'
@@ -47,6 +49,27 @@ export default function ProducaoPage() {
       toast.error('Erro ao carregar dados');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Função para carregar itens do pedido selecionado
+  const handlePedidoChange = (pedidoId) => {
+    setFormData({ ...formData, pedido_id: pedidoId });
+    
+    if (pedidoId) {
+      const pedido = allPedidos.find(p => p.id === pedidoId);
+      if (pedido && pedido.items && pedido.items.length > 0) {
+        // Converter itens do pedido para formato de produção
+        const itensFromPedido = pedido.items.map(item => ({
+          produto_id: item.produto_id,
+          quantidade: item.quantidade.toString()
+        }));
+        setItensProducao(itensFromPedido);
+        toast.success(`${itensFromPedido.length} item(s) carregado(s) do pedido`);
+      }
+    } else {
+      // Limpar itens se nenhum pedido selecionado
+      setItensProducao([{ produto_id: '', quantidade: '' }]);
     }
   };
 
@@ -245,16 +268,21 @@ export default function ProducaoPage() {
                   <select
                     required={tipoProducao === 'pedido'}
                     value={formData.pedido_id}
-                    onChange={(e) => setFormData({ ...formData, pedido_id: e.target.value })}
+                    onChange={(e) => handlePedidoChange(e.target.value)}
                     className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
                   >
                     <option value="">Selecione um pedido...</option>
                     {pedidos.map((pedido) => (
                       <option key={pedido.id} value={pedido.id}>
-                        {pedido.numero} - {pedido.cliente_nome}
+                        {pedido.numero} - {pedido.cliente_nome} ({pedido.items?.length || 0} itens)
                       </option>
                     ))}
                   </select>
+                  {formData.pedido_id && (
+                    <p className="text-xs text-[#2F855A] mt-1 font-sans">
+                      Os itens do pedido foram carregados automaticamente abaixo
+                    </p>
+                  )}
                 </div>
               )}
 
