@@ -14,6 +14,7 @@ import ProducaoPage from './pages/ProducaoPage';
 import EmbalagemPage from './pages/EmbalagemPage';
 import EstoquePage from './pages/EstoquePage';
 import VendasPage from './pages/VendasPage';
+import ComprasPage from './pages/ComprasPage';
 import LucratividadePage from './pages/LucratividadePage';
 import RelatoriosPage from './pages/RelatoriosPage';
 
@@ -40,6 +41,7 @@ function App() {
             <Route path="embalagem" element={<EmbalagemPage />} />
             <Route path="estoque" element={<EstoquePage />} />
             <Route path="vendas" element={<VendasPage />} />
+            <Route path="compras" element={<ComprasPage />} />
             <Route path="lucratividade" element={<LucratividadePage />} />
             <Route path="relatorios" element={<RelatoriosPage />} />
           </Route>

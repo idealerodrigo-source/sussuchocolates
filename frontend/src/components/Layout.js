@@ -12,6 +12,7 @@ import {
   Receipt,
   SignOut,
   List,
+  Truck,
 } from '@phosphor-icons/react';
 
 export default function Layout() {
@@ -29,6 +30,7 @@ export default function Layout() {
     { path: '/embalagem', label: 'Embalagem', icon: Archive },
     { path: '/estoque', label: 'Estoque', icon: List },
     { path: '/vendas', label: 'Vendas', icon: Receipt },
+    { path: '/compras', label: 'Compras', icon: Truck },
     { path: '/lucratividade', label: 'Lucratividade', icon: ChartBar },
     { path: '/relatorios', label: 'Relatórios', icon: ChartBar },
   ];

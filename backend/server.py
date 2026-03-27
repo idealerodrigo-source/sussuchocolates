@@ -45,6 +45,90 @@ class MovimentoEstoque(str, Enum):
     SAIDA = "saida"
     AJUSTE = "ajuste"
 
+class StatusCompra(str, Enum):
+    PENDENTE = "pendente"
+    APROVADA = "aprovada"
+    RECEBIDA = "recebida"
+    CANCELADA = "cancelada"
+
+# Modelos de Fornecedores
+class Fornecedor(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    nome: str
+    cnpj: Optional[str] = None
+    email: Optional[str] = None
+    telefone: Optional[str] = None
+    endereco: Optional[str] = None
+    cidade: Optional[str] = None
+    estado: Optional[str] = None
+    contato_nome: Optional[str] = None
+    observacoes: Optional[str] = None
+    ativo: bool = True
+    data_cadastro: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class FornecedorCreate(BaseModel):
+    nome: str
+    cnpj: Optional[str] = None
+    email: Optional[str] = None
+    telefone: Optional[str] = None
+    endereco: Optional[str] = None
+    cidade: Optional[str] = None
+    estado: Optional[str] = None
+    contato_nome: Optional[str] = None
+    observacoes: Optional[str] = None
+
+# Modelos de Insumos
+class Insumo(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    nome: str
+    descricao: Optional[str] = None
+    categoria: Optional[str] = None
+    unidade_medida: str = "un"
+    fornecedor_id: Optional[str] = None
+    fornecedor_nome: Optional[str] = None
+    preco_unitario: float = 0.0
+    estoque_minimo: float = 0.0
+    estoque_atual: float = 0.0
+    ativo: bool = True
+    data_cadastro: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class InsumoCreate(BaseModel):
+    nome: str
+    descricao: Optional[str] = None
+    categoria: Optional[str] = None
+    unidade_medida: str = "un"
+    fornecedor_id: Optional[str] = None
+    preco_unitario: float = 0.0
+    estoque_minimo: float = 0.0
+    estoque_atual: float = 0.0
+
+# Modelos de Compras
+class ItemCompra(BaseModel):
+    insumo_id: str
+    insumo_nome: str
+    quantidade: float
+    preco_unitario: float
+    subtotal: float
+
+class Compra(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    numero: str
+    fornecedor_id: str
+    fornecedor_nome: str
+    items: List[ItemCompra]
+    valor_total: float
+    status: StatusCompra = StatusCompra.PENDENTE
+    data_pedido: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    data_entrega_prevista: Optional[datetime] = None
+    data_recebimento: Optional[datetime] = None
+    observacoes: Optional[str] = None
+
+class CompraCreate(BaseModel):
+    fornecedor_id: str
+    items: List[ItemCompra]
+    data_entrega_prevista: Optional[str] = None
+    observacoes: Optional[str] = None
+
 def create_access_token(data: dict):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(days=7)
@@ -1125,6 +1209,174 @@ async def dashboard_stats(current_user: dict = Depends(get_current_user)):
             "valor_total": valor_vendas_hoje
         }
     }
+
+# ============ FORNECEDORES ============
+@api_router.get("/fornecedores", response_model=List[Fornecedor])
+async def listar_fornecedores(current_user: dict = Depends(get_current_user)):
+    fornecedores = await db.fornecedores.find({}, {"_id": 0}).sort("nome", 1).to_list(1000)
+    for f in fornecedores:
+        if isinstance(f.get('data_cadastro'), str):
+            f['data_cadastro'] = datetime.fromisoformat(f['data_cadastro'])
+    return fornecedores
+
+@api_router.post("/fornecedores", response_model=Fornecedor)
+async def criar_fornecedor(fornecedor_data: FornecedorCreate, current_user: dict = Depends(get_current_user)):
+    fornecedor = Fornecedor(**fornecedor_data.model_dump())
+    doc = fornecedor.model_dump()
+    doc['data_cadastro'] = doc['data_cadastro'].isoformat()
+    await db.fornecedores.insert_one(doc)
+    return fornecedor
+
+@api_router.put("/fornecedores/{fornecedor_id}", response_model=Fornecedor)
+async def atualizar_fornecedor(fornecedor_id: str, fornecedor_data: FornecedorCreate, current_user: dict = Depends(get_current_user)):
+    fornecedor = await db.fornecedores.find_one({"id": fornecedor_id}, {"_id": 0})
+    if not fornecedor:
+        raise HTTPException(status_code=404, detail="Fornecedor não encontrado")
+    
+    update_data = fornecedor_data.model_dump()
+    await db.fornecedores.update_one({"id": fornecedor_id}, {"$set": update_data})
+    
+    updated = await db.fornecedores.find_one({"id": fornecedor_id}, {"_id": 0})
+    if isinstance(updated.get('data_cadastro'), str):
+        updated['data_cadastro'] = datetime.fromisoformat(updated['data_cadastro'])
+    return updated
+
+@api_router.delete("/fornecedores/{fornecedor_id}")
+async def deletar_fornecedor(fornecedor_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.fornecedores.delete_one({"id": fornecedor_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Fornecedor não encontrado")
+    return {"message": "Fornecedor removido com sucesso"}
+
+# ============ INSUMOS ============
+@api_router.get("/insumos", response_model=List[Insumo])
+async def listar_insumos(current_user: dict = Depends(get_current_user)):
+    insumos = await db.insumos.find({}, {"_id": 0}).sort("nome", 1).to_list(1000)
+    for i in insumos:
+        if isinstance(i.get('data_cadastro'), str):
+            i['data_cadastro'] = datetime.fromisoformat(i['data_cadastro'])
+    return insumos
+
+@api_router.post("/insumos", response_model=Insumo)
+async def criar_insumo(insumo_data: InsumoCreate, current_user: dict = Depends(get_current_user)):
+    fornecedor_nome = None
+    if insumo_data.fornecedor_id:
+        fornecedor = await db.fornecedores.find_one({"id": insumo_data.fornecedor_id}, {"_id": 0})
+        if fornecedor:
+            fornecedor_nome = fornecedor['nome']
+    
+    insumo = Insumo(**insumo_data.model_dump(), fornecedor_nome=fornecedor_nome)
+    doc = insumo.model_dump()
+    doc['data_cadastro'] = doc['data_cadastro'].isoformat()
+    await db.insumos.insert_one(doc)
+    return insumo
+
+@api_router.put("/insumos/{insumo_id}", response_model=Insumo)
+async def atualizar_insumo(insumo_id: str, insumo_data: InsumoCreate, current_user: dict = Depends(get_current_user)):
+    insumo = await db.insumos.find_one({"id": insumo_id}, {"_id": 0})
+    if not insumo:
+        raise HTTPException(status_code=404, detail="Insumo não encontrado")
+    
+    fornecedor_nome = None
+    if insumo_data.fornecedor_id:
+        fornecedor = await db.fornecedores.find_one({"id": insumo_data.fornecedor_id}, {"_id": 0})
+        if fornecedor:
+            fornecedor_nome = fornecedor['nome']
+    
+    update_data = insumo_data.model_dump()
+    update_data['fornecedor_nome'] = fornecedor_nome
+    await db.insumos.update_one({"id": insumo_id}, {"$set": update_data})
+    
+    updated = await db.insumos.find_one({"id": insumo_id}, {"_id": 0})
+    if isinstance(updated.get('data_cadastro'), str):
+        updated['data_cadastro'] = datetime.fromisoformat(updated['data_cadastro'])
+    return updated
+
+@api_router.delete("/insumos/{insumo_id}")
+async def deletar_insumo(insumo_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.insumos.delete_one({"id": insumo_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Insumo não encontrado")
+    return {"message": "Insumo removido com sucesso"}
+
+# ============ COMPRAS ============
+@api_router.get("/compras", response_model=List[Compra])
+async def listar_compras(current_user: dict = Depends(get_current_user)):
+    compras = await db.compras.find({}, {"_id": 0}).sort("data_pedido", -1).to_list(1000)
+    for c in compras:
+        if isinstance(c.get('data_pedido'), str):
+            c['data_pedido'] = datetime.fromisoformat(c['data_pedido'])
+        if c.get('data_entrega_prevista') and isinstance(c['data_entrega_prevista'], str):
+            c['data_entrega_prevista'] = datetime.fromisoformat(c['data_entrega_prevista'])
+        if c.get('data_recebimento') and isinstance(c['data_recebimento'], str):
+            c['data_recebimento'] = datetime.fromisoformat(c['data_recebimento'])
+    return compras
+
+@api_router.post("/compras", response_model=Compra)
+async def criar_compra(compra_data: CompraCreate, current_user: dict = Depends(get_current_user)):
+    fornecedor = await db.fornecedores.find_one({"id": compra_data.fornecedor_id}, {"_id": 0})
+    if not fornecedor:
+        raise HTTPException(status_code=404, detail="Fornecedor não encontrado")
+    
+    # Gerar número da compra
+    count = await db.compras.count_documents({})
+    numero = f"CMP-{count + 1:06d}"
+    
+    valor_total = sum(item.subtotal for item in compra_data.items)
+    
+    compra = Compra(
+        numero=numero,
+        fornecedor_id=compra_data.fornecedor_id,
+        fornecedor_nome=fornecedor['nome'],
+        items=compra_data.items,
+        valor_total=valor_total,
+        observacoes=compra_data.observacoes
+    )
+    
+    if compra_data.data_entrega_prevista:
+        compra.data_entrega_prevista = datetime.fromisoformat(compra_data.data_entrega_prevista)
+    
+    doc = compra.model_dump()
+    doc['data_pedido'] = doc['data_pedido'].isoformat()
+    if doc.get('data_entrega_prevista'):
+        doc['data_entrega_prevista'] = doc['data_entrega_prevista'].isoformat()
+    
+    await db.compras.insert_one(doc)
+    return compra
+
+@api_router.patch("/compras/{compra_id}/status")
+async def atualizar_status_compra(compra_id: str, status: StatusCompra, current_user: dict = Depends(get_current_user)):
+    compra = await db.compras.find_one({"id": compra_id}, {"_id": 0})
+    if not compra:
+        raise HTTPException(status_code=404, detail="Compra não encontrada")
+    
+    update_data = {"status": status}
+    
+    # Se estiver recebendo, atualiza estoque de insumos
+    if status == StatusCompra.RECEBIDA:
+        update_data["data_recebimento"] = datetime.now(timezone.utc).isoformat()
+        
+        # Atualizar estoque dos insumos
+        for item in compra['items']:
+            await db.insumos.update_one(
+                {"id": item['insumo_id']},
+                {"$inc": {"estoque_atual": item['quantidade']}}
+            )
+    
+    await db.compras.update_one({"id": compra_id}, {"$set": update_data})
+    return {"message": f"Status da compra atualizado para {status}"}
+
+@api_router.delete("/compras/{compra_id}")
+async def deletar_compra(compra_id: str, current_user: dict = Depends(get_current_user)):
+    compra = await db.compras.find_one({"id": compra_id}, {"_id": 0})
+    if not compra:
+        raise HTTPException(status_code=404, detail="Compra não encontrada")
+    
+    if compra['status'] == StatusCompra.RECEBIDA:
+        raise HTTPException(status_code=400, detail="Não é possível excluir uma compra já recebida")
+    
+    result = await db.compras.delete_one({"id": compra_id})
+    return {"message": "Compra removida com sucesso"}
 
 app.include_router(api_router)
 

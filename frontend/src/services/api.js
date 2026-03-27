@@ -89,4 +89,25 @@ export const analiseAPI = {
   desempenho: () => api.get('/analise/produtos-desempenho'),
 };
 
+export const fornecedoresAPI = {
+  listar: () => api.get('/fornecedores'),
+  criar: (data) => api.post('/fornecedores', data),
+  atualizar: (id, data) => api.put(`/fornecedores/${id}`, data),
+  deletar: (id) => api.delete(`/fornecedores/${id}`),
+};
+
+export const insumosAPI = {
+  listar: () => api.get('/insumos'),
+  criar: (data) => api.post('/insumos', data),
+  atualizar: (id, data) => api.put(`/insumos/${id}`, data),
+  deletar: (id) => api.delete(`/insumos/${id}`),
+};
+
+export const comprasAPI = {
+  listar: () => api.get('/compras'),
+  criar: (data) => api.post('/compras', data),
+  atualizarStatus: (id, status) => api.patch(`/compras/${id}/status?status=${status}`),
+  deletar: (id) => api.delete(`/compras/${id}`),
+};
+
 export default api;
