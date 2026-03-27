@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
@@ -180,29 +180,33 @@ export default function RelatoriosPage() {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(62, 39, 35);
-    doc.text(`Total de Tipos: ${producaoPendente.total_itens} | Total de Unidades: ${producaoPendente.quantidade_total_unidades}`, 15, startY);
+    doc.text(`Solicitado: ${producaoPendente.quantidade_total_solicitada || 0} | Produzido: ${producaoPendente.quantidade_total_produzida || 0} | Faltante: ${producaoPendente.quantidade_total_faltante || 0}`, 15, startY);
 
     // Tabela
     const tableData = producaoPendente.itens.map((item, index) => [
       index + 1,
       item.produto_nome,
-      item.quantidade_total,
-      item.pedidos?.map(p => `${p.pedido_numero} (${p.quantidade})`).join(', ') || '-'
+      item.quantidade_solicitada || 0,
+      item.quantidade_produzida || 0,
+      item.quantidade_faltante || 0,
+      item.pedidos?.map(p => `${p.pedido_numero} (${p.quantidade_faltante})`).join(', ') || '-'
     ]);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: startY + 8,
-      head: [['#', 'Produto', 'Qtd Total', 'Pedidos (Qtd)']],
+      head: [['#', 'Produto', 'Solicitado', 'Produzido', 'Faltante', 'Pedidos']],
       body: tableData,
       theme: 'striped',
       headStyles: { fillColor: [107, 68, 35], textColor: 255, fontStyle: 'bold' },
       bodyStyles: { textColor: [62, 39, 35] },
       alternateRowStyles: { fillColor: [250, 245, 235] },
       columnStyles: {
-        0: { cellWidth: 12, halign: 'center' },
-        1: { cellWidth: 60 },
-        2: { cellWidth: 25, halign: 'center' },
-        3: { cellWidth: 'auto' }
+        0: { cellWidth: 10, halign: 'center' },
+        1: { cellWidth: 45 },
+        2: { cellWidth: 22, halign: 'center' },
+        3: { cellWidth: 22, halign: 'center' },
+        4: { cellWidth: 22, halign: 'center' },
+        5: { cellWidth: 'auto' }
       }
     });
 
@@ -221,15 +225,17 @@ export default function RelatoriosPage() {
       ['SUSSU CHOCOLATES - RELATÓRIO DE ITENS A PRODUZIR'],
       [`Gerado em: ${new Date().toLocaleString('pt-BR')}`],
       [],
-      ['#', 'Produto', 'Quantidade Total', 'Pedidos'],
+      ['#', 'Produto', 'Qtd Solicitada', 'Qtd Produzida', 'Qtd Faltante', 'Pedidos'],
       ...producaoPendente.itens.map((item, index) => [
         index + 1,
         item.produto_nome,
-        item.quantidade_total,
-        item.pedidos?.map(p => `${p.pedido_numero} (${p.quantidade})`).join(', ') || '-'
+        item.quantidade_solicitada || 0,
+        item.quantidade_produzida || 0,
+        item.quantidade_faltante || 0,
+        item.pedidos?.map(p => `${p.pedido_numero} - ${p.cliente_nome} (faltam ${p.quantidade_faltante})`).join('; ') || '-'
       ]),
       [],
-      ['', 'TOTAL', producaoPendente.quantidade_total_unidades, '']
+      ['', 'TOTAL', producaoPendente.quantidade_total_solicitada || 0, producaoPendente.quantidade_total_produzida || 0, producaoPendente.quantidade_total_faltante || 0, '']
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -237,9 +243,11 @@ export default function RelatoriosPage() {
     // Ajustar largura das colunas
     ws['!cols'] = [
       { wch: 5 },
-      { wch: 40 },
+      { wch: 35 },
       { wch: 15 },
-      { wch: 50 }
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 60 }
     ];
 
     const wb = XLSX.utils.book_new();
@@ -275,7 +283,7 @@ export default function RelatoriosPage() {
       item.producoes_count
     ]);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: startY + 8,
       head: [['#', 'Produto', 'Qtd Produzida', 'Nº Produções']],
       body: tableData,
@@ -349,7 +357,7 @@ export default function RelatoriosPage() {
       formatCurrency(item.valor_total)
     ]);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: startY + 8,
       head: [['#', 'Produto', 'Qtd Total', 'Nº Pedidos', 'Valor Total']],
       body: tableData,
@@ -436,7 +444,7 @@ export default function RelatoriosPage() {
         formatCurrency(v.valor)
       ]);
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: startY + 20,
         head: [['Data', 'Quantidade', 'Valor']],
         body: tableData,
@@ -547,21 +555,29 @@ export default function RelatoriosPage() {
 
           {producaoPendente && (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-5 shadow-sm">
                   <p className="text-xs font-sans uppercase tracking-wider font-semibold text-[#8B5A3C] mb-2">Tipos de Produtos</p>
                   <p className="text-3xl font-serif font-bold text-[#3E2723]">{producaoPendente.total_itens}</p>
                 </div>
-                <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm">
-                  <p className="text-xs font-sans uppercase tracking-wider font-semibold text-[#8B5A3C] mb-2">Total de Unidades</p>
-                  <p className="text-3xl font-serif font-bold text-[#D97706]">{producaoPendente.quantidade_total_unidades}</p>
+                <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-5 shadow-sm">
+                  <p className="text-xs font-sans uppercase tracking-wider font-semibold text-[#8B5A3C] mb-2">Total Solicitado</p>
+                  <p className="text-3xl font-serif font-bold text-[#3E2723]">{producaoPendente.quantidade_total_solicitada || 0}</p>
+                </div>
+                <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-5 shadow-sm">
+                  <p className="text-xs font-sans uppercase tracking-wider font-semibold text-[#2F855A] mb-2">Total Produzido</p>
+                  <p className="text-3xl font-serif font-bold text-[#2F855A]">{producaoPendente.quantidade_total_produzida || 0}</p>
+                </div>
+                <div className="bg-[#FFFDF8] border border-[#D97706]/20 rounded-xl p-5 shadow-sm">
+                  <p className="text-xs font-sans uppercase tracking-wider font-semibold text-[#D97706] mb-2">Total Faltante</p>
+                  <p className="text-3xl font-serif font-bold text-[#D97706]">{producaoPendente.quantidade_total_faltante || 0}</p>
                 </div>
               </div>
 
               {producaoPendente.itens?.length > 0 && (
                 <>
                   <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm">
-                    <h3 className="text-xl font-serif font-semibold text-[#3E2723] mb-4">Quantidade por Produto</h3>
+                    <h3 className="text-xl font-serif font-semibold text-[#3E2723] mb-4">Quantidade Faltante por Produto</h3>
                     <ResponsiveContainer width="100%" height={300}>
                       <BarChart data={producaoPendente.itens.slice(0, 10)} layout="vertical">
                         <CartesianGrid strokeDasharray="3 3" stroke="#8B5A3C20" />
@@ -574,7 +590,7 @@ export default function RelatoriosPage() {
                             borderRadius: '8px',
                           }}
                         />
-                        <Bar dataKey="quantidade_total" fill="#D97706" name="Quantidade" radius={[0, 8, 8, 0]} />
+                        <Bar dataKey="quantidade_faltante" fill="#D97706" name="Faltante" radius={[0, 8, 8, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -587,24 +603,36 @@ export default function RelatoriosPage() {
                       <table className="w-full">
                         <thead className="bg-[#F5E6D3]">
                           <tr>
-                            <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Produto</th>
-                            <th className="text-center px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Qtd Total</th>
-                            <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Detalhes</th>
+                            <th className="text-left px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Produto</th>
+                            <th className="text-center px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Solicitado</th>
+                            <th className="text-center px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Produzido</th>
+                            <th className="text-center px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Faltante</th>
+                            <th className="text-left px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Pedidos</th>
                           </tr>
                         </thead>
                         <tbody>
                           {producaoPendente.itens.map((item, index) => (
                             <tr key={index} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
-                              <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">{item.produto_nome}</td>
-                              <td className="px-6 py-4 text-center">
-                                <span className="bg-[#D97706]/20 text-[#D97706] px-3 py-1 rounded-full text-sm font-bold">
-                                  {item.quantidade_total}
+                              <td className="px-4 py-3 text-sm text-[#4A3B32] font-sans font-medium">{item.produto_nome}</td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="text-[#3E2723] text-sm font-semibold">
+                                  {item.quantidade_solicitada || 0}
                                 </span>
                               </td>
-                              <td className="px-6 py-4 text-xs text-[#705A4D]">
+                              <td className="px-4 py-3 text-center">
+                                <span className="bg-[#2F855A]/20 text-[#2F855A] px-3 py-1 rounded-full text-sm font-bold">
+                                  {item.quantidade_produzida || 0}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="bg-[#D97706]/20 text-[#D97706] px-3 py-1 rounded-full text-sm font-bold">
+                                  {item.quantidade_faltante || 0}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-xs text-[#705A4D]">
                                 {item.pedidos?.map((p, i) => (
                                   <span key={i} className="inline-block bg-[#8B5A3C]/10 px-2 py-1 rounded mr-1 mb-1">
-                                    {p.pedido_numero}: {p.quantidade} ({p.cliente_nome})
+                                    {p.pedido_numero}: faltam {p.quantidade_faltante} ({p.cliente_nome})
                                   </span>
                                 ))}
                               </td>

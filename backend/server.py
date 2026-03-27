@@ -1528,46 +1528,85 @@ async def deletar_compra(compra_id: str, current_user: dict = Depends(get_curren
 @api_router.get("/relatorios/producao/pendente")
 async def relatorio_producao_pendente(current_user: dict = Depends(get_current_user)):
     """
-    Relatório de itens a serem produzidos (agrupados por produto)
+    Relatório de itens a serem produzidos com quantidade solicitada, produzida e faltante
     """
-    # Buscar produção pendente e em andamento
-    producoes = await db.producao.find(
-        {"status": {"$in": ["pendente", "em_producao"]}},
+    # Buscar pedidos ativos (não entregues e não cancelados)
+    pedidos = await db.pedidos.find(
+        {"status": {"$nin": ["entregue", "cancelado"]}},
         {"_id": 0}
     ).to_list(1000)
     
-    # Agrupar por produto
-    produtos_agrupados = {}
-    for prod in producoes:
+    # Buscar todas as produções
+    todas_producoes = await db.producao.find({}, {"_id": 0}).to_list(5000)
+    
+    # Calcular quantidade já produzida por pedido e produto
+    producao_por_pedido = {}  # {pedido_id: {produto_nome: quantidade_produzida}}
+    for prod in todas_producoes:
+        pedido_id = prod.get('pedido_id')
+        if not pedido_id:
+            continue
+        
+        if pedido_id not in producao_por_pedido:
+            producao_por_pedido[pedido_id] = {}
+        
         for item in prod.get('items', []):
-            produto_id = item.get('produto_id')
             produto_nome = item.get('produto_nome', 'Produto Desconhecido')
             quantidade = item.get('quantidade', 0)
             
+            # Só contar se a produção está concluída ou em andamento
+            if prod.get('status') in ['concluido', 'em_producao', 'em_embalagem']:
+                if produto_nome not in producao_por_pedido[pedido_id]:
+                    producao_por_pedido[pedido_id][produto_nome] = 0
+                producao_por_pedido[pedido_id][produto_nome] += quantidade
+    
+    # Agrupar por produto com totais
+    produtos_agrupados = {}
+    for pedido in pedidos:
+        pedido_id = pedido.get('id')
+        pedido_numero = pedido.get('numero', 'N/A')
+        cliente_nome = pedido.get('cliente_nome', 'N/A')
+        
+        for item in pedido.get('items', []):
+            produto_nome = item.get('produto_nome', 'Produto Desconhecido')
+            quantidade_solicitada = item.get('quantidade', 0)
+            
+            # Quantidade já produzida para este pedido/produto
+            quantidade_produzida = producao_por_pedido.get(pedido_id, {}).get(produto_nome, 0)
+            quantidade_faltante = max(0, quantidade_solicitada - quantidade_produzida)
+            
             if produto_nome not in produtos_agrupados:
                 produtos_agrupados[produto_nome] = {
-                    'produto_id': produto_id,
                     'produto_nome': produto_nome,
-                    'quantidade_total': 0,
+                    'quantidade_solicitada': 0,
+                    'quantidade_produzida': 0,
+                    'quantidade_faltante': 0,
                     'pedidos': []
                 }
             
-            produtos_agrupados[produto_nome]['quantidade_total'] += quantidade
-            produtos_agrupados[produto_nome]['pedidos'].append({
-                'producao_id': prod.get('id'),
-                'pedido_numero': prod.get('pedido_numero', 'Sem Pedido'),
-                'cliente_nome': prod.get('cliente_nome', 'Estoque'),
-                'quantidade': quantidade,
-                'status': prod.get('status')
-            })
+            produtos_agrupados[produto_nome]['quantidade_solicitada'] += quantidade_solicitada
+            produtos_agrupados[produto_nome]['quantidade_produzida'] += quantidade_produzida
+            produtos_agrupados[produto_nome]['quantidade_faltante'] += quantidade_faltante
+            
+            # Só adicionar pedido se tiver quantidade faltante
+            if quantidade_faltante > 0:
+                produtos_agrupados[produto_nome]['pedidos'].append({
+                    'pedido_id': pedido_id,
+                    'pedido_numero': pedido_numero,
+                    'cliente_nome': cliente_nome,
+                    'quantidade_solicitada': quantidade_solicitada,
+                    'quantidade_produzida': quantidade_produzida,
+                    'quantidade_faltante': quantidade_faltante
+                })
     
-    # Converter para lista e ordenar por quantidade
-    resultado = list(produtos_agrupados.values())
-    resultado.sort(key=lambda x: x['quantidade_total'], reverse=True)
+    # Filtrar apenas produtos com quantidade faltante > 0
+    resultado = [p for p in produtos_agrupados.values() if p['quantidade_faltante'] > 0]
+    resultado.sort(key=lambda x: x['quantidade_faltante'], reverse=True)
     
     return {
         "total_itens": len(resultado),
-        "quantidade_total_unidades": sum(p['quantidade_total'] for p in resultado),
+        "quantidade_total_solicitada": sum(p['quantidade_solicitada'] for p in resultado),
+        "quantidade_total_produzida": sum(p['quantidade_produzida'] for p in resultado),
+        "quantidade_total_faltante": sum(p['quantidade_faltante'] for p in resultado),
         "itens": resultado
     }
 
