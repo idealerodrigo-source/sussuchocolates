@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -1590,6 +1590,244 @@ async def relatorio_pedidos_resumo(current_user: dict = Depends(get_current_user
     }
 
 # ============ NF DE ENTRADA ============
+
+# Importar ElementTree para parsing XML
+import xml.etree.ElementTree as ET
+
+@api_router.post("/nf-entrada/parse-xml")
+async def parse_nf_xml(request: Request, current_user: dict = Depends(get_current_user)):
+    """
+    Parse XML da NF-e (formato nativo da Nota Fiscal Eletrônica)
+    Extrai todos os dados: Emitente, Itens (NCM, CST, CFOP), Totais, etc.
+    """
+    try:
+        # Ler o body da requisição
+        xml_content = await request.body()
+        xml_content = xml_content.decode('utf-8').strip()
+        
+        # Remove BOM
+        if xml_content.startswith('\ufeff'):
+            xml_content = xml_content[1:]
+        
+        if not xml_content:
+            raise HTTPException(status_code=400, detail="XML vazio")
+        
+        # Registrar namespace default para evitar problemas
+        namespaces = {
+            'nfe': 'http://www.portalfiscal.inf.br/nfe',
+            '': 'http://www.portalfiscal.inf.br/nfe'
+        }
+        
+        # Parse XML
+        try:
+            root = ET.fromstring(xml_content)
+        except ET.ParseError as pe:
+            logging.error(f"XML Parse Error: {pe}")
+            raise HTTPException(status_code=400, detail=f"XML inválido: {str(pe)}")
+        
+        # Função para encontrar elemento considerando namespace
+        def find_elem(parent, tag_name):
+            if parent is None:
+                return None
+            
+            # Tentar busca direta com namespace
+            ns_url = 'http://www.portalfiscal.inf.br/nfe'
+            elem = parent.find(f'.//{{{ns_url}}}{tag_name}')
+            
+            if elem is None:
+                # Tentar busca sem namespace
+                elem = parent.find(f'.//{tag_name}')
+            
+            if elem is None:
+                # Busca recursiva por tag que termina com o nome
+                for child in parent.iter():
+                    tag = child.tag
+                    # Remover namespace do tag para comparação
+                    if '}' in tag:
+                        tag = tag.split('}')[1]
+                    if tag == tag_name:
+                        return child
+            
+            return elem
+        
+        def get_text(parent, tag_name, default=""):
+            if parent is None:
+                return default
+            elem = find_elem(parent, tag_name)
+            if elem is not None and elem.text:
+                return elem.text.strip()
+            return default
+        
+        def get_attr(elem, attr_name, default=""):
+            if elem is None:
+                return default
+            return elem.get(attr_name, default)
+        
+        # ===== CHAVE DE ACESSO =====
+        chave_acesso = ""
+        infNFe = find_elem(root, 'infNFe')
+        if infNFe is not None:
+            chave_acesso = get_attr(infNFe, 'Id', '').replace('NFe', '')
+        
+        # ===== IDENTIFICAÇÃO =====
+        ide = find_elem(root, 'ide')
+        numero_nf = get_text(ide, 'nNF') if ide is not None else ""
+        serie = get_text(ide, 'serie') if ide is not None else ""
+        data_emissao_raw = get_text(ide, 'dhEmi') if ide is not None else ""
+        
+        # Converter data
+        data_emissao = ""
+        if data_emissao_raw:
+            try:
+                # Formato: 2026-03-17T17:37:28-03:00
+                data_emissao = data_emissao_raw.split('T')[0]
+            except:
+                data_emissao = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        
+        # ===== EMITENTE (FORNECEDOR) =====
+        emit = find_elem(root, 'emit')
+        fornecedor_cnpj = get_text(emit, 'CNPJ') if emit is not None else ""
+        fornecedor_nome = get_text(emit, 'xNome') if emit is not None else ""
+        fornecedor_ie = get_text(emit, 'IE') if emit is not None else ""
+        
+        # Endereço do emitente
+        enderEmit = find_elem(emit, 'enderEmit') if emit is not None else None
+        fornecedor_endereco = ""
+        fornecedor_municipio = ""
+        fornecedor_uf = ""
+        fornecedor_cep = ""
+        fornecedor_telefone = ""
+        
+        if enderEmit is not None:
+            logradouro = get_text(enderEmit, 'xLgr')
+            numero = get_text(enderEmit, 'nro')
+            complemento = get_text(enderEmit, 'xCpl')
+            bairro = get_text(enderEmit, 'xBairro')
+            
+            partes_end = [logradouro]
+            if numero:
+                partes_end.append(f"nº {numero}")
+            if complemento:
+                partes_end.append(complemento)
+            if bairro:
+                partes_end.append(bairro)
+            fornecedor_endereco = ", ".join(partes_end)
+            
+            fornecedor_municipio = get_text(enderEmit, 'xMun')
+            fornecedor_uf = get_text(enderEmit, 'UF')
+            fornecedor_cep = get_text(enderEmit, 'CEP')
+            fornecedor_telefone = get_text(enderEmit, 'fone')
+        
+        # ===== ITENS =====
+        items = []
+        dets = root.iter()
+        for elem in root.iter():
+            if elem.tag.endswith('det'):
+                prod = find_elem(elem, 'prod')
+                imposto = find_elem(elem, 'imposto')
+                
+                if prod is not None:
+                    item = {
+                        "codigo": get_text(prod, 'cProd'),
+                        "descricao": get_text(prod, 'xProd'),
+                        "ncm": get_text(prod, 'NCM'),
+                        "cfop": get_text(prod, 'CFOP'),
+                        "unidade": get_text(prod, 'uCom', 'UN'),
+                        "quantidade": float(get_text(prod, 'qCom', '0').replace(',', '.')),
+                        "valor_unitario": float(get_text(prod, 'vUnCom', '0').replace(',', '.')),
+                        "valor_total": float(get_text(prod, 'vProd', '0').replace(',', '.')),
+                        "valor_desconto": float(get_text(prod, 'vDesc', '0').replace(',', '.')),
+                        "cst": "",
+                        "icms_base": 0.0,
+                        "icms_valor": 0.0,
+                        "ipi_valor": 0.0,
+                        "pis_valor": 0.0,
+                        "cofins_valor": 0.0
+                    }
+                    
+                    # CST e ICMS
+                    if imposto is not None:
+                        # Procurar por qualquer tipo de ICMS (ICMS00, ICMS10, ICMS20, ICMS51, etc.)
+                        icms_elem = find_elem(imposto, 'ICMS')
+                        if icms_elem is not None:
+                            for icms_type in icms_elem:
+                                item['cst'] = get_text(icms_type, 'CST') or get_text(icms_type, 'CSOSN')
+                                item['icms_base'] = float(get_text(icms_type, 'vBC', '0').replace(',', '.'))
+                                item['icms_valor'] = float(get_text(icms_type, 'vICMS', '0').replace(',', '.'))
+                                break
+                        
+                        # IPI
+                        ipi_elem = find_elem(imposto, 'IPI')
+                        if ipi_elem is not None:
+                            item['ipi_valor'] = float(get_text(ipi_elem, 'vIPI', '0').replace(',', '.'))
+                        
+                        # PIS
+                        pis_elem = find_elem(imposto, 'PIS')
+                        if pis_elem is not None:
+                            item['pis_valor'] = float(get_text(pis_elem, 'vPIS', '0').replace(',', '.'))
+                        
+                        # COFINS
+                        cofins_elem = find_elem(imposto, 'COFINS')
+                        if cofins_elem is not None:
+                            item['cofins_valor'] = float(get_text(cofins_elem, 'vCOFINS', '0').replace(',', '.'))
+                    
+                    items.append(item)
+        
+        # ===== TOTAIS =====
+        icmsTot = find_elem(root, 'ICMSTot')
+        valor_produtos = float(get_text(icmsTot, 'vProd', '0').replace(',', '.')) if icmsTot is not None else 0.0
+        valor_frete = float(get_text(icmsTot, 'vFrete', '0').replace(',', '.')) if icmsTot is not None else 0.0
+        valor_seguro = float(get_text(icmsTot, 'vSeg', '0').replace(',', '.')) if icmsTot is not None else 0.0
+        valor_outras = float(get_text(icmsTot, 'vOutro', '0').replace(',', '.')) if icmsTot is not None else 0.0
+        valor_desconto = float(get_text(icmsTot, 'vDesc', '0').replace(',', '.')) if icmsTot is not None else 0.0
+        valor_ipi = float(get_text(icmsTot, 'vIPI', '0').replace(',', '.')) if icmsTot is not None else 0.0
+        valor_icms = float(get_text(icmsTot, 'vICMS', '0').replace(',', '.')) if icmsTot is not None else 0.0
+        valor_pis = float(get_text(icmsTot, 'vPIS', '0').replace(',', '.')) if icmsTot is not None else 0.0
+        valor_cofins = float(get_text(icmsTot, 'vCOFINS', '0').replace(',', '.')) if icmsTot is not None else 0.0
+        valor_total = float(get_text(icmsTot, 'vNF', '0').replace(',', '.')) if icmsTot is not None else 0.0
+        
+        # ===== INFORMAÇÕES COMPLEMENTARES =====
+        infAdic = find_elem(root, 'infAdic')
+        info_complementares = get_text(infAdic, 'infCpl') if infAdic is not None else ""
+        
+        return {
+            "success": True,
+            "source": "xml",
+            "data": {
+                "chave_acesso": chave_acesso,
+                "numero_nf": numero_nf,
+                "serie": serie,
+                "data_emissao": data_emissao,
+                "fornecedor_cnpj": fornecedor_cnpj,
+                "fornecedor_nome": fornecedor_nome,
+                "fornecedor_ie": fornecedor_ie,
+                "fornecedor_endereco": fornecedor_endereco,
+                "fornecedor_municipio": fornecedor_municipio,
+                "fornecedor_uf": fornecedor_uf,
+                "fornecedor_cep": fornecedor_cep,
+                "fornecedor_telefone": fornecedor_telefone,
+                "items": items,
+                "valor_produtos": valor_produtos,
+                "valor_frete": valor_frete,
+                "valor_seguro": valor_seguro,
+                "valor_outras": valor_outras,
+                "valor_desconto": valor_desconto,
+                "valor_ipi": valor_ipi,
+                "valor_icms": valor_icms,
+                "valor_pis": valor_pis,
+                "valor_cofins": valor_cofins,
+                "valor_total": valor_total,
+                "informacoes_complementares": info_complementares
+            }
+        }
+    except ET.ParseError as e:
+        logging.error(f"Erro ao parsear XML da NF-e: {e}")
+        raise HTTPException(status_code=400, detail=f"Erro ao processar XML: formato inválido")
+    except Exception as e:
+        logging.error(f"Erro ao parsear XML da NF-e: {e}")
+        raise HTTPException(status_code=400, detail=f"Erro ao processar XML: {str(e)}")
+
+# ============ NF DE ENTRADA (CRUD) ============
 import re
 from bs4 import BeautifulSoup
 

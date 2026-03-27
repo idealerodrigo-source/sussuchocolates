@@ -28,8 +28,9 @@ export default function ComprasPage() {
   const [viewingNf, setViewingNf] = useState(null);
   
   // NF Import mode
-  const [nfImportMode, setNfImportMode] = useState('chave'); // 'chave', 'html', 'manual'
+  const [nfImportMode, setNfImportMode] = useState('chave'); // 'chave', 'xml', 'html', 'manual'
   const [nfHtmlContent, setNfHtmlContent] = useState('');
+  const [nfXmlContent, setNfXmlContent] = useState('');
   const [nfChaveAcesso, setNfChaveAcesso] = useState('');
   const [parsingNf, setParsingNf] = useState(false);
   
@@ -190,6 +191,56 @@ export default function ComprasPage() {
       }
     } catch (error) {
       toast.error('Erro ao processar HTML');
+    } finally {
+      setParsingNf(false);
+    }
+  };
+
+  const handleParseXml = async () => {
+    if (!nfXmlContent.trim()) {
+      toast.error('Cole o conteúdo XML da NF-e');
+      return;
+    }
+    
+    setParsingNf(true);
+    try {
+      const res = await nfEntradaAPI.parseXml(nfXmlContent);
+      if (res.data.success && res.data.data) {
+        const data = res.data.data;
+        setNfForm({
+          chave_acesso: data.chave_acesso || '',
+          numero_nf: data.numero_nf || '',
+          serie: data.serie || '',
+          data_emissao: data.data_emissao ? data.data_emissao.split('T')[0] : '',
+          fornecedor_cnpj: data.fornecedor_cnpj || '',
+          fornecedor_nome: data.fornecedor_nome || '',
+          fornecedor_ie: data.fornecedor_ie || '',
+          fornecedor_endereco: data.fornecedor_endereco || '',
+          fornecedor_municipio: data.fornecedor_municipio || '',
+          fornecedor_uf: data.fornecedor_uf || '',
+          fornecedor_cep: data.fornecedor_cep || '',
+          fornecedor_telefone: data.fornecedor_telefone || '',
+          items: data.items || [],
+          valor_produtos: data.valor_produtos || 0,
+          valor_frete: data.valor_frete || 0,
+          valor_seguro: data.valor_seguro || 0,
+          valor_outras: data.valor_outras || 0,
+          valor_desconto: data.valor_desconto || 0,
+          valor_ipi: data.valor_ipi || 0,
+          valor_icms: data.valor_icms || 0,
+          valor_pis: data.valor_pis || 0,
+          valor_cofins: data.valor_cofins || 0,
+          valor_total: data.valor_total || 0,
+          informacoes_complementares: data.informacoes_complementares || '',
+          observacoes: ''
+        });
+        toast.success(`NF-e ${data.numero_nf} importada com sucesso! ${data.items?.length || 0} itens extraídos.`);
+        setNfImportMode('manual');
+      } else {
+        toast.error('Não foi possível extrair dados do XML.');
+      }
+    } catch (error) {
+      toast.error('Erro ao processar XML: ' + (error.response?.data?.detail || 'formato inválido'));
     } finally {
       setParsingNf(false);
     }
@@ -608,6 +659,20 @@ export default function ComprasPage() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => setNfImportMode('xml')}
+                    className={`p-3 rounded-lg border-2 transition-all flex flex-col items-center gap-2 ${
+                      nfImportMode === 'xml'
+                        ? 'border-[#6B4423] bg-[#F5E6D3]'
+                        : 'border-[#8B5A3C]/30 hover:border-[#8B5A3C]/50'
+                    }`}
+                  >
+                    <FileText size={24} className={nfImportMode === 'xml' ? 'text-[#6B4423]' : 'text-[#705A4D]'} weight="bold" />
+                    <span className={`text-sm font-medium ${nfImportMode === 'xml' ? 'text-[#6B4423]' : 'text-[#705A4D]'}`}>
+                      Importar XML
+                    </span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setNfImportMode('html')}
                     className={`p-3 rounded-lg border-2 transition-all flex flex-col items-center gap-2 ${
                       nfImportMode === 'html'
@@ -661,6 +726,38 @@ export default function ComprasPage() {
                       className="w-full bg-[#6B4423] text-[#F5E6D3] hover:bg-[#8B5A3C]"
                     >
                       {parsingNf ? 'Processando...' : 'Processar Chave'}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Importação por XML */}
+                {nfImportMode === 'xml' && (
+                  <div className="space-y-4">
+                    <div className="bg-[#D1FAE5] border border-[#059669]/30 rounded-lg p-4">
+                      <p className="text-sm text-[#065F46] font-sans mb-2">
+                        <strong>Importar XML da NF-e (recomendado)</strong>
+                      </p>
+                      <p className="text-sm text-[#065F46] font-sans">
+                        Cole o conteúdo do arquivo XML da NF-e. Este é o formato nativo e contém todos os dados da nota fiscal (NCM, CST, CFOP, impostos, etc).
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[#6B4423] mb-1">Cole o XML da NF-e</label>
+                      <textarea
+                        placeholder='<?xml version="1.0" encoding="UTF-8"?>&#10;<nfeProc>&#10;  ...&#10;</nfeProc>'
+                        value={nfXmlContent}
+                        onChange={(e) => setNfXmlContent(e.target.value)}
+                        rows="10"
+                        className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-mono text-xs"
+                      />
+                    </div>
+                    <Button 
+                      onClick={handleParseXml} 
+                      disabled={parsingNf}
+                      className="w-full bg-[#059669] text-white hover:bg-[#047857]"
+                    >
+                      <Upload size={18} weight="bold" className="mr-2" />
+                      {parsingNf ? 'Processando...' : 'Importar XML'}
                     </Button>
                   </div>
                 )}
