@@ -155,8 +155,8 @@ class PedidoCreate(BaseModel):
 
 class Producao(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    pedido_id: str
-    pedido_numero: str
+    pedido_id: Optional[str] = None
+    pedido_numero: Optional[str] = None
     produto_id: str
     produto_nome: str
     quantidade: float
@@ -164,13 +164,15 @@ class Producao(BaseModel):
     data_conclusao: Optional[datetime] = None
     responsavel: Optional[str] = None
     observacoes: Optional[str] = None
+    tipo_producao: str = "pedido"  # "pedido" ou "estoque"
 
 class ProducaoCreate(BaseModel):
-    pedido_id: str
+    pedido_id: Optional[str] = None
     produto_id: str
     quantidade: float
     responsavel: Optional[str] = None
     observacoes: Optional[str] = None
+    tipo_producao: str = "pedido"  # "pedido" ou "estoque"
 
 class Embalagem(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -199,6 +201,7 @@ class Estoque(BaseModel):
     data_movimento: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     responsavel: Optional[str] = None
     observacoes: Optional[str] = None
+    localizacao: Optional[str] = None
 
 class EstoqueCreate(BaseModel):
     produto_id: str
@@ -206,6 +209,10 @@ class EstoqueCreate(BaseModel):
     tipo_movimento: MovimentoEstoque
     responsavel: Optional[str] = None
     observacoes: Optional[str] = None
+    localizacao: Optional[str] = None
+
+class ConcluirEmbalagemRequest(BaseModel):
+    localizacao: Optional[str] = None
 
 class Venda(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -440,32 +447,49 @@ async def atualizar_status_pedido(pedido_id: str, status: PedidoStatus, current_
 
 @api_router.post("/producao", response_model=Producao)
 async def criar_producao(producao_data: ProducaoCreate, current_user: dict = Depends(get_current_user)):
-    pedido = await db.pedidos.find_one({"id": producao_data.pedido_id}, {"_id": 0})
-    if not pedido:
-        raise HTTPException(status_code=404, detail="Pedido não encontrado")
-    
     produto = await db.produtos.find_one({"id": producao_data.produto_id}, {"_id": 0})
     if not produto:
         raise HTTPException(status_code=404, detail="Produto não encontrado")
     
+    pedido_numero = None
+    pedido_id = None
+    tipo_producao = producao_data.tipo_producao
+    
+    # Se tem pedido_id, valida e usa dados do pedido
+    if producao_data.pedido_id:
+        pedido = await db.pedidos.find_one({"id": producao_data.pedido_id}, {"_id": 0})
+        if not pedido:
+            raise HTTPException(status_code=404, detail="Pedido não encontrado")
+        pedido_numero = pedido['numero']
+        pedido_id = producao_data.pedido_id
+        tipo_producao = "pedido"
+        
+        # Atualizar status do pedido
+        await db.pedidos.update_one(
+            {"id": producao_data.pedido_id},
+            {"$set": {"status": PedidoStatus.EM_PRODUCAO}}
+        )
+    else:
+        # Produção para estoque (sem pedido)
+        tipo_producao = "estoque"
+        # Gerar número de produção interno
+        count = await db.producao.count_documents({"tipo_producao": "estoque"})
+        pedido_numero = f"EST-{count + 1:06d}"
+    
     producao = Producao(
-        pedido_id=producao_data.pedido_id,
-        pedido_numero=pedido['numero'],
+        pedido_id=pedido_id,
+        pedido_numero=pedido_numero,
         produto_id=producao_data.produto_id,
         produto_nome=produto['nome'],
         quantidade=producao_data.quantidade,
         responsavel=producao_data.responsavel,
-        observacoes=producao_data.observacoes
+        observacoes=producao_data.observacoes,
+        tipo_producao=tipo_producao
     )
     
     doc = producao.model_dump()
     doc['data_inicio'] = doc['data_inicio'].isoformat()
     await db.producao.insert_one(doc)
-    
-    await db.pedidos.update_one(
-        {"id": producao_data.pedido_id},
-        {"$set": {"status": PedidoStatus.EM_PRODUCAO}}
-    )
     
     return producao
 
@@ -494,7 +518,7 @@ async def concluir_producao(producao_id: str, current_user: dict = Depends(get_c
     embalagem = {
         "id": str(uuid.uuid4()),
         "producao_id": producao_id,
-        "pedido_id": producao['pedido_id'],
+        "pedido_id": producao.get('pedido_id'),
         "produto_nome": producao['produto_nome'],
         "quantidade": producao['quantidade'],
         "data_inicio": datetime.now(timezone.utc).isoformat(),
@@ -504,11 +528,12 @@ async def concluir_producao(producao_id: str, current_user: dict = Depends(get_c
     }
     await db.embalagem.insert_one(embalagem)
     
-    # Atualizar status do pedido para em_embalagem
-    await db.pedidos.update_one(
-        {"id": producao['pedido_id']},
-        {"$set": {"status": PedidoStatus.EM_EMBALAGEM}}
-    )
+    # Atualizar status do pedido para em_embalagem (se tiver pedido)
+    if producao.get('pedido_id'):
+        await db.pedidos.update_one(
+            {"id": producao['pedido_id']},
+            {"$set": {"status": PedidoStatus.EM_EMBALAGEM}}
+        )
     
     return {"message": "Produção concluída e enviada para embalagem"}
 
@@ -552,7 +577,7 @@ async def listar_embalagem(current_user: dict = Depends(get_current_user)):
     return embalagens
 
 @api_router.patch("/embalagem/{embalagem_id}/concluir")
-async def concluir_embalagem(embalagem_id: str, current_user: dict = Depends(get_current_user)):
+async def concluir_embalagem(embalagem_id: str, request: ConcluirEmbalagemRequest = None, current_user: dict = Depends(get_current_user)):
     embalagem = await db.embalagem.find_one({"id": embalagem_id}, {"_id": 0})
     if not embalagem:
         raise HTTPException(status_code=404, detail="Embalagem não encontrada")
@@ -569,6 +594,9 @@ async def concluir_embalagem(embalagem_id: str, current_user: dict = Depends(get
     # Buscar produção para obter produto_id
     producao = await db.producao.find_one({"id": embalagem['producao_id']}, {"_id": 0})
     
+    # Obter localização do request (se fornecida)
+    localizacao = request.localizacao if request else None
+    
     # Adicionar automaticamente ao estoque
     estoque = {
         "id": str(uuid.uuid4()),
@@ -578,7 +606,8 @@ async def concluir_embalagem(embalagem_id: str, current_user: dict = Depends(get
         "tipo_movimento": MovimentoEstoque.ENTRADA,
         "data_movimento": datetime.now(timezone.utc).isoformat(),
         "responsavel": embalagem.get('responsavel') or current_user['nome'],
-        "observacoes": f"Entrada automática - Embalagem concluída (Produção: {producao['pedido_numero']})"
+        "observacoes": f"Entrada automática - Embalagem concluída (Produção: {producao['pedido_numero']})",
+        "localizacao": localizacao
     }
     await db.estoque.insert_one(estoque)
     
@@ -596,7 +625,8 @@ async def criar_movimento_estoque(estoque_data: EstoqueCreate, current_user: dic
         quantidade=estoque_data.quantidade,
         tipo_movimento=estoque_data.tipo_movimento,
         responsavel=estoque_data.responsavel,
-        observacoes=estoque_data.observacoes
+        observacoes=estoque_data.observacoes,
+        localizacao=estoque_data.localizacao
     )
     
     doc = estoque.model_dump()
@@ -624,15 +654,21 @@ async def obter_saldo_estoque(current_user: dict = Depends(get_current_user)):
             saldos[pid] = {
                 "produto_id": pid,
                 "produto_nome": mov['produto_nome'],
-                "quantidade": 0
+                "quantidade": 0,
+                "localizacao": mov.get('localizacao')
             }
         
         if mov['tipo_movimento'] == MovimentoEstoque.ENTRADA:
             saldos[pid]['quantidade'] += mov['quantidade']
+            # Atualiza a localização com a mais recente entrada
+            if mov.get('localizacao'):
+                saldos[pid]['localizacao'] = mov.get('localizacao')
         elif mov['tipo_movimento'] == MovimentoEstoque.SAIDA:
             saldos[pid]['quantidade'] -= mov['quantidade']
         else:
             saldos[pid]['quantidade'] = mov['quantidade']
+            if mov.get('localizacao'):
+                saldos[pid]['localizacao'] = mov.get('localizacao')
     
     return list(saldos.values())
 

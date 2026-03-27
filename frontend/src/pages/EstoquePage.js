@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { estoqueAPI, produtosAPI } from '../services/api';
 import { formatDateTime } from '../utils/formatters';
-import { Plus, TrendUp, TrendDown, ArrowsClockwise } from '@phosphor-icons/react';
+import { Plus, TrendUp, TrendDown, ArrowsClockwise, MapPin } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -19,6 +19,7 @@ export default function EstoquePage() {
     tipo_movimento: 'entrada',
     responsavel: '',
     observacoes: '',
+    localizacao: '',
   });
 
   useEffect(() => {
@@ -48,6 +49,7 @@ export default function EstoquePage() {
       const data = {
         ...formData,
         quantidade: parseFloat(formData.quantidade),
+        localizacao: formData.localizacao || null,
       };
       await estoqueAPI.criar(data);
       toast.success('Movimento registrado com sucesso');
@@ -66,6 +68,7 @@ export default function EstoquePage() {
       tipo_movimento: 'entrada',
       responsavel: '',
       observacoes: '',
+      localizacao: '',
     });
   };
 
@@ -155,6 +158,16 @@ export default function EstoquePage() {
                     className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
                   />
                 </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-[#6B4423] mb-1">Localização no Estoque</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Prateleira A3, Corredor 2, Freezer 1..."
+                    value={formData.localizacao}
+                    onChange={(e) => setFormData({ ...formData, localizacao: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                  />
+                </div>
               </div>
               <div className="flex gap-3 justify-end pt-4">
                 <Button type="button" onClick={() => { setDialogOpen(false); resetForm(); }} variant="outline">
@@ -201,13 +214,14 @@ export default function EstoquePage() {
               <thead className="bg-[#E8D5C4]">
                 <tr>
                   <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Produto</th>
+                  <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Localização</th>
                   <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Quantidade em Estoque</th>
                 </tr>
               </thead>
               <tbody>
                 {saldos.length === 0 ? (
                   <tr>
-                    <td colSpan="2" className="text-center py-12 text-[#705A4D] font-sans">
+                    <td colSpan="3" className="text-center py-12 text-[#705A4D] font-sans">
                       Nenhum produto em estoque
                     </td>
                   </tr>
@@ -215,6 +229,16 @@ export default function EstoquePage() {
                   saldos.map((saldo) => (
                     <tr key={saldo.produto_id} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
                       <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">{saldo.produto_nome}</td>
+                      <td className="px-6 py-4">
+                        {saldo.localizacao ? (
+                          <div className="flex items-center gap-2">
+                            <MapPin size={16} className="text-[#6B4423]" />
+                            <span className="text-sm text-[#4A3B32] font-sans">{saldo.localizacao}</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-[#705A4D] font-sans italic">Não informada</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-right">
                         <span className={`text-sm font-sans font-bold ${
                           saldo.quantidade > 10 ? 'text-[#2F855A]' : saldo.quantidade > 0 ? 'text-[#D97706]' : 'text-[#C53030]'
@@ -241,6 +265,7 @@ export default function EstoquePage() {
                   <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Produto</th>
                   <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Tipo</th>
                   <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Quantidade</th>
+                  <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Localização</th>
                   <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Responsável</th>
                   <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Observações</th>
                 </tr>
@@ -248,7 +273,7 @@ export default function EstoquePage() {
               <tbody>
                 {movimentos.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="text-center py-12 text-[#705A4D] font-sans">
+                    <td colSpan="7" className="text-center py-12 text-[#705A4D] font-sans">
                       Nenhuma movimentação registrada
                     </td>
                   </tr>
@@ -265,6 +290,16 @@ export default function EstoquePage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans text-right font-medium">
                         {mov.quantidade.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4">
+                        {mov.localizacao ? (
+                          <div className="flex items-center gap-1">
+                            <MapPin size={14} className="text-[#6B4423]" />
+                            <span className="text-sm text-[#4A3B32] font-sans">{mov.localizacao}</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-[#705A4D] font-sans">-</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{mov.responsavel || '-'}</td>
                       <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{mov.observacoes || '-'}</td>
