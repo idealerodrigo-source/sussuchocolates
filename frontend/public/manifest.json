@@ -1,0 +1,27 @@
+{
+  "name": "Sussu Chocolates - Sistema de Gestão",
+  "short_name": "Sussu Chocolates",
+  "description": "Sistema de controle para fábrica de chocolates artesanais",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F5E6D3",
+  "theme_color": "#6B4423",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo-sussu.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo-sussu.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "lang": "pt-BR",
+  "dir": "ltr"
+}

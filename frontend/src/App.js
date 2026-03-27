@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from './contexts/AuthContext';
@@ -18,7 +18,26 @@ import ComprasPage from './pages/ComprasPage';
 import LucratividadePage from './pages/LucratividadePage';
 import RelatoriosPage from './pages/RelatoriosPage';
 
+// Registrar Service Worker para PWA
+const registerServiceWorker = () => {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/service-worker.js')
+        .then((registration) => {
+          console.log('SW registrado:', registration.scope);
+        })
+        .catch((error) => {
+          console.log('Erro ao registrar SW:', error);
+        });
+    });
+  }
+};
+
 function App() {
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
+
   return (
     <AuthProvider>
       <BrowserRouter>

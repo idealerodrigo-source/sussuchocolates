@@ -112,11 +112,49 @@ export default function VendasPage() {
     }
   };
 
-  const handleEmitirNFCe = async (vendaId) => {
+  const handleEmitirNFCe = async (venda) => {
     try {
-      await nfceAPI.emitir(vendaId);
-      toast.success('NFC-e emitida com sucesso');
-      fetchData();
+      // Preparar dados para NFC-e
+      const dadosNFCe = {
+        venda_id: venda.id,
+        items: venda.items.map(item => ({
+          codigo: item.produto_id || '0001',
+          descricao: item.produto_nome,
+          ncm: '18069000', // NCM para chocolates
+          cfop: '5102',
+          unidade: 'UN',
+          quantidade: item.quantidade,
+          valor_unitario: item.preco_unitario,
+          valor_total: item.subtotal
+        })),
+        valor_produtos: venda.valor_total,
+        valor_desconto: 0,
+        valor_total: venda.valor_total,
+        forma_pagamento: venda.forma_pagamento === 'dinheiro' ? '01' : 
+                         venda.forma_pagamento === 'cartao_credito' ? '03' :
+                         venda.forma_pagamento === 'cartao_debito' ? '04' : 
+                         venda.forma_pagamento === 'pix' ? '17' : '01',
+        valor_pago: venda.valor_total,
+        valor_troco: 0
+      };
+      
+      const response = await nfceAPI.emitir(dadosNFCe);
+      
+      if (response.data.success) {
+        toast.success(`NFC-e ${response.data.numero_nfce} emitida com sucesso!`);
+        
+        // Atualizar venda com dados da NFC-e
+        await vendasAPI.atualizar(venda.id, {
+          nfce_emitida: true,
+          nfce_chave: response.data.chave_acesso,
+          nfce_numero: response.data.numero_nfce,
+          nfce_protocolo: response.data.protocolo
+        });
+        
+        fetchData();
+      } else {
+        toast.error(response.data.message || 'Erro ao emitir NFC-e');
+      }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Erro ao emitir NFC-e');
     }
@@ -368,13 +406,18 @@ export default function VendasPage() {
                     <td className="px-6 py-4 text-right">
                       {!venda.nfce_emitida && (
                         <Button
-                          onClick={() => handleEmitirNFCe(venda.id)}
+                          onClick={() => handleEmitirNFCe(venda)}
                           size="sm"
                           className="bg-[#8B5A3C] text-[#F5E6D3] hover:bg-[#6B4423] text-xs"
                         >
                           <Receipt size={16} weight="bold" className="mr-1" />
                           Emitir NFC-e
                         </Button>
+                      )}
+                      {venda.nfce_emitida && venda.nfce_numero && (
+                        <span className="text-xs text-[#705A4D]">
+                          NFC-e: {venda.nfce_numero}
+                        </span>
                       )}
                     </td>
                   </tr>

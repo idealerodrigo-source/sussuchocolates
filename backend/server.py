@@ -2260,6 +2260,108 @@ async def deletar_nf_entrada(nf_id: str, current_user: dict = Depends(get_curren
         raise HTTPException(status_code=404, detail="NF-e não encontrada")
     return {"message": "NF-e removida com sucesso"}
 
+# ============ NFC-e (CUPOM FISCAL) ============
+from nfce_service import (
+    verificar_certificado, 
+    status_servico_sefaz, 
+    emitir_nfce,
+    cancelar_nfce,
+    NFCeEmissao,
+    ItemNFCe,
+    DadosClienteNFCe,
+    HOMOLOGACAO
+)
+
+@api_router.get("/nfce/configuracao")
+async def nfce_configuracao(current_user: dict = Depends(get_current_user)):
+    """Retorna configuração e status do módulo NFC-e"""
+    cert_info = verificar_certificado()
+    
+    return {
+        "certificado": cert_info,
+        "ambiente": "Homologação" if HOMOLOGACAO else "Produção",
+        "uf": "PR",
+        "configurado": cert_info.get("valido", False)
+    }
+
+@api_router.get("/nfce/status-sefaz")
+async def nfce_status_sefaz(current_user: dict = Depends(get_current_user)):
+    """Consulta status do serviço da SEFAZ"""
+    return status_servico_sefaz()
+
+@api_router.post("/nfce/emitir")
+async def nfce_emitir(dados: dict, current_user: dict = Depends(get_current_user)):
+    """Emite uma NFC-e"""
+    try:
+        # Converter itens
+        items = [ItemNFCe(**item) for item in dados.get('items', [])]
+        
+        # Dados do cliente (opcional)
+        cliente = None
+        if dados.get('cliente'):
+            cliente = DadosClienteNFCe(**dados['cliente'])
+        
+        # Criar objeto de emissão
+        emissao = NFCeEmissao(
+            venda_id=dados.get('venda_id'),
+            cliente=cliente,
+            items=items,
+            valor_produtos=dados.get('valor_produtos', 0),
+            valor_desconto=dados.get('valor_desconto', 0),
+            valor_total=dados.get('valor_total', 0),
+            forma_pagamento=dados.get('forma_pagamento', '01'),
+            valor_pago=dados.get('valor_pago', 0),
+            valor_troco=dados.get('valor_troco', 0)
+        )
+        
+        # Emitir NFC-e
+        resultado = emitir_nfce(emissao)
+        
+        # Se sucesso, salvar no banco
+        if resultado.success:
+            nfce_doc = {
+                "id": emissao.id,
+                "venda_id": emissao.venda_id,
+                "chave_acesso": resultado.chave_acesso,
+                "numero_nfce": resultado.numero_nfce,
+                "protocolo": resultado.protocolo,
+                "data_autorizacao": resultado.data_autorizacao,
+                "data_emissao": datetime.now(timezone.utc).isoformat(),
+                "valor_total": emissao.valor_total,
+                "status": "autorizada",
+                "ambiente": "homologacao" if HOMOLOGACAO else "producao",
+                "qrcode_url": resultado.qrcode_url
+            }
+            await db.nfce.insert_one(nfce_doc)
+        
+        return resultado.model_dump()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@api_router.post("/nfce/cancelar/{chave_acesso}")
+async def nfce_cancelar(chave_acesso: str, justificativa: str, current_user: dict = Depends(get_current_user)):
+    """Cancela uma NFC-e"""
+    resultado = cancelar_nfce(chave_acesso, justificativa)
+    
+    if resultado.get('success'):
+        await db.nfce.update_one(
+            {"chave_acesso": chave_acesso},
+            {"$set": {"status": "cancelada", "data_cancelamento": datetime.now(timezone.utc).isoformat()}}
+        )
+    
+    return resultado
+
+@api_router.get("/nfce/historico")
+async def nfce_historico(
+    limit: int = 50,
+    skip: int = 0,
+    current_user: dict = Depends(get_current_user)
+):
+    """Lista histórico de NFC-e emitidas"""
+    nfces = await db.nfce.find({}, {"_id": 0}).sort("data_emissao", -1).skip(skip).limit(limit).to_list(limit)
+    total = await db.nfce.count_documents({})
+    return {"items": nfces, "total": total}
+
 app.include_router(api_router)
 
 app.add_middleware(

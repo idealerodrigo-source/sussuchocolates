@@ -124,4 +124,13 @@ export const nfEntradaAPI = {
   deletar: (id) => api.delete(`/nf-entrada/${id}`),
 };
 
+// NFC-e (Cupom Fiscal)
+export const nfceAPI = {
+  configuracao: () => api.get('/nfce/configuracao'),
+  statusSefaz: () => api.get('/nfce/status-sefaz'),
+  emitir: (dados) => api.post('/nfce/emitir', dados),
+  cancelar: (chaveAcesso, justificativa) => api.post(`/nfce/cancelar/${chaveAcesso}?justificativa=${encodeURIComponent(justificativa)}`),
+  historico: (limit = 50, skip = 0) => api.get(`/nfce/historico?limit=${limit}&skip=${skip}`),
+};
+
 export default api;
