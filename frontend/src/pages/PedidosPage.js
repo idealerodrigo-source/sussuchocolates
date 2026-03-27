@@ -136,7 +136,7 @@ export default function PedidosPage() {
     setViewDialogOpen(true);
   };
 
-  const generatePDF = (pedido) => {
+  const generatePDF = async (pedido) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     
@@ -145,43 +145,77 @@ export default function PedidosPage() {
     const marromMedio = [107, 68, 35]; // #6B4423
     const bege = [245, 230, 211]; // #F5E6D3
     
-    // ===== CABEÇALHO =====
-    // Fundo do cabeçalho
-    doc.setFillColor(...bege);
-    doc.rect(0, 0, pageWidth, 45, 'F');
+    // Carregar o logo
+    let logoLoaded = false;
+    try {
+      const logoImg = new Image();
+      logoImg.crossOrigin = 'anonymous';
+      await new Promise((resolve, reject) => {
+        logoImg.onload = resolve;
+        logoImg.onerror = reject;
+        logoImg.src = '/logo-sussu.png';
+      });
+      
+      // Adicionar logo ao PDF
+      const canvas = document.createElement('canvas');
+      canvas.width = logoImg.width;
+      canvas.height = logoImg.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(logoImg, 0, 0);
+      const logoBase64 = canvas.toDataURL('image/png');
+      
+      // Fundo do cabeçalho
+      doc.setFillColor(...bege);
+      doc.rect(0, 0, pageWidth, 50, 'F');
+      
+      // Adicionar logo (proporção mantida)
+      const logoWidth = 35;
+      const logoHeight = (logoImg.height / logoImg.width) * logoWidth;
+      doc.addImage(logoBase64, 'PNG', 15, 5, logoWidth, logoHeight);
+      logoLoaded = true;
+    } catch (e) {
+      console.log('Não foi possível carregar o logo, usando texto');
+      // Fundo do cabeçalho sem logo
+      doc.setFillColor(...bege);
+      doc.rect(0, 0, pageWidth, 45, 'F');
+    }
     
-    // Logo/Nome da empresa
-    doc.setFontSize(24);
+    // Dados da empresa (ao lado do logo ou no topo)
+    const textStartX = logoLoaded ? 55 : 15;
+    const headerHeight = logoLoaded ? 50 : 45;
+    
+    doc.setFontSize(logoLoaded ? 18 : 24);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...marromEscuro);
-    doc.text(EMPRESA.nome, 15, 18);
+    doc.text(EMPRESA.nome, textStartX, logoLoaded ? 15 : 18);
     
     // Linha decorativa
     doc.setDrawColor(...marromMedio);
     doc.setLineWidth(0.5);
-    doc.line(15, 22, pageWidth - 15, 22);
+    doc.line(textStartX, logoLoaded ? 19 : 22, pageWidth - 15, logoLoaded ? 19 : 22);
     
     // Dados da empresa
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...marromMedio);
-    doc.text(`Tel: ${EMPRESA.telefone}`, 15, 28);
-    doc.text(`${EMPRESA.endereco}, ${EMPRESA.cidade} - CEP: ${EMPRESA.cep}`, 15, 33);
-    doc.text(`Email: ${EMPRESA.email}`, 15, 38);
+    doc.text(`Tel: ${EMPRESA.telefone}`, textStartX, logoLoaded ? 25 : 28);
+    doc.text(`${EMPRESA.endereco}, ${EMPRESA.cidade}`, textStartX, logoLoaded ? 30 : 33);
+    doc.text(`CEP: ${EMPRESA.cep}`, textStartX, logoLoaded ? 35 : 38);
+    doc.text(`Email: ${EMPRESA.email}`, textStartX, logoLoaded ? 40 : 43);
     
     // ===== DADOS DO PEDIDO =====
     doc.setFillColor(...marromMedio);
-    doc.rect(0, 48, pageWidth, 10, 'F');
+    doc.rect(0, headerHeight + 3, pageWidth, 10, 'F');
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(255, 255, 255);
-    doc.text(`PEDIDO Nº ${pedido.numero}`, 15, 55);
+    doc.text(`PEDIDO Nº ${pedido.numero}`, 15, headerHeight + 10);
     
     const dataPedido = new Date(pedido.data_pedido).toLocaleDateString('pt-BR');
-    doc.text(`Data: ${dataPedido}`, pageWidth - 50, 55);
+    doc.text(`Data: ${dataPedido}`, pageWidth - 50, headerHeight + 10);
     
     // ===== DADOS DO CLIENTE =====
-    let yPos = 68;
+    let yPos = headerHeight + 23;
     
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
