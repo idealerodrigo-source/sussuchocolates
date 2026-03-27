@@ -181,13 +181,19 @@ Criar um aplicativo/sistema de controle contendo: Cadastro Cliente, Pedido, Prod
 - [ ] Implementar NFC-e real para Vendas (integração SEFAZ)
 
 ### P2 (Medium Priority)
-- [ ] Exportação PDF/Excel para relatórios
 - [ ] PWA para acesso mobile
 
 ### P3 (Low Priority)
 - [ ] Refatorar server.py (~2000 linhas) em routers separados
 - [ ] Otimizar componentes React grandes
 - [ ] Dashboard com métricas em tempo real
+
+## Recently Completed (March 27, 2026)
+- ✅ Parser XML de NF-e com todos os campos (NCM, CST, CFOP)
+- ✅ Upload de arquivo XML com drag-and-drop
+- ✅ Exportação PDF/Excel para todos os relatórios
+- ✅ Relatórios de Itens a Produzir e Itens Produzidos
+- ✅ Geração de PDF para Pedidos com logo da empresa
 
 ---
 

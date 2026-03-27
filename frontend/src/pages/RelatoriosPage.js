@@ -1,12 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { relatoriosAPI } from '../services/api';
 import { formatCurrency } from '../utils/formatters';
-import { MagnifyingGlass, Factory, Package, Users, ShoppingCart, CheckCircle } from '@phosphor-icons/react';
+import { MagnifyingGlass, Factory, Package, Users, ShoppingCart, CheckCircle, FilePdf, FileXls, DownloadSimple } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 const COLORS = ['#6B4423', '#8B5A3C', '#A67C5B', '#C4A77D', '#D4B896', '#E8D5C4'];
+
+// Dados da empresa para cabeçalho dos relatórios
+const EMPRESA = {
+  nome: 'SUSSU CHOCOLATES',
+  telefone: '(43) 99967-6206',
+  endereco: 'Rua Quintino Bocaiuva, 737, Jacarezinho - PR, CEP: 86400-000',
+  email: 'sussuchocolates@hotmail.com'
+};
 
 export default function RelatoriosPage() {
   const [activeTab, setActiveTab] = useState('a-produzir');
@@ -108,6 +120,371 @@ export default function RelatoriosPage() {
     }
   };
 
+  // ============ FUNÇÕES DE EXPORTAÇÃO ============
+
+  // Função auxiliar para adicionar cabeçalho da empresa no PDF
+  const addPdfHeader = (doc, titulo, subtitulo = '') => {
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Fundo do cabeçalho
+    doc.setFillColor(245, 230, 211); // Bege
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    
+    // Nome da empresa
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(62, 39, 35); // Marrom escuro
+    doc.text(EMPRESA.nome, 15, 15);
+    
+    // Dados da empresa
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(107, 68, 35); // Marrom médio
+    doc.text(`Tel: ${EMPRESA.telefone} | ${EMPRESA.endereco}`, 15, 22);
+    doc.text(`Email: ${EMPRESA.email}`, 15, 27);
+    
+    // Título do relatório
+    doc.setFillColor(107, 68, 35); // Marrom
+    doc.rect(0, 43, pageWidth, 12, 'F');
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text(titulo, 15, 51);
+    
+    // Data de geração
+    const dataGeracao = new Date().toLocaleString('pt-BR');
+    doc.setFontSize(9);
+    doc.text(`Gerado em: ${dataGeracao}`, pageWidth - 60, 51);
+    
+    if (subtitulo) {
+      doc.setFontSize(10);
+      doc.setTextColor(107, 68, 35);
+      doc.text(subtitulo, 15, 62);
+      return 70;
+    }
+    
+    return 60;
+  };
+
+  // Exportar para PDF - Itens a Produzir
+  const exportarPdfProducaoPendente = () => {
+    if (!producaoPendente?.itens?.length) {
+      toast.error('Nenhum dado para exportar');
+      return;
+    }
+
+    const doc = new jsPDF();
+    const startY = addPdfHeader(doc, 'RELATÓRIO DE ITENS A PRODUZIR');
+
+    // Resumo
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(62, 39, 35);
+    doc.text(`Total de Tipos: ${producaoPendente.total_itens} | Total de Unidades: ${producaoPendente.quantidade_total_unidades}`, 15, startY);
+
+    // Tabela
+    const tableData = producaoPendente.itens.map((item, index) => [
+      index + 1,
+      item.produto_nome,
+      item.quantidade_total,
+      item.pedidos?.map(p => `${p.pedido_numero} (${p.quantidade})`).join(', ') || '-'
+    ]);
+
+    doc.autoTable({
+      startY: startY + 8,
+      head: [['#', 'Produto', 'Qtd Total', 'Pedidos (Qtd)']],
+      body: tableData,
+      theme: 'striped',
+      headStyles: { fillColor: [107, 68, 35], textColor: 255, fontStyle: 'bold' },
+      bodyStyles: { textColor: [62, 39, 35] },
+      alternateRowStyles: { fillColor: [250, 245, 235] },
+      columnStyles: {
+        0: { cellWidth: 12, halign: 'center' },
+        1: { cellWidth: 60 },
+        2: { cellWidth: 25, halign: 'center' },
+        3: { cellWidth: 'auto' }
+      }
+    });
+
+    doc.save('Relatorio_Itens_a_Produzir.pdf');
+    toast.success('PDF exportado com sucesso!');
+  };
+
+  // Exportar para Excel - Itens a Produzir
+  const exportarExcelProducaoPendente = () => {
+    if (!producaoPendente?.itens?.length) {
+      toast.error('Nenhum dado para exportar');
+      return;
+    }
+
+    const wsData = [
+      ['SUSSU CHOCOLATES - RELATÓRIO DE ITENS A PRODUZIR'],
+      [`Gerado em: ${new Date().toLocaleString('pt-BR')}`],
+      [],
+      ['#', 'Produto', 'Quantidade Total', 'Pedidos'],
+      ...producaoPendente.itens.map((item, index) => [
+        index + 1,
+        item.produto_nome,
+        item.quantidade_total,
+        item.pedidos?.map(p => `${p.pedido_numero} (${p.quantidade})`).join(', ') || '-'
+      ]),
+      [],
+      ['', 'TOTAL', producaoPendente.quantidade_total_unidades, '']
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    
+    // Ajustar largura das colunas
+    ws['!cols'] = [
+      { wch: 5 },
+      { wch: 40 },
+      { wch: 15 },
+      { wch: 50 }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Itens a Produzir');
+    
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(data, 'Relatorio_Itens_a_Produzir.xlsx');
+    toast.success('Excel exportado com sucesso!');
+  };
+
+  // Exportar para PDF - Itens Produzidos
+  const exportarPdfProducaoConcluida = () => {
+    if (!producaoConcluida?.itens?.length) {
+      toast.error('Nenhum dado para exportar');
+      return;
+    }
+
+    const doc = new jsPDF();
+    const periodo = filtros.data_inicio && filtros.data_fim 
+      ? `Período: ${new Date(filtros.data_inicio).toLocaleDateString('pt-BR')} a ${new Date(filtros.data_fim).toLocaleDateString('pt-BR')}`
+      : 'Todos os períodos';
+    const startY = addPdfHeader(doc, 'RELATÓRIO DE ITENS PRODUZIDOS', periodo);
+
+    doc.setFontSize(10);
+    doc.setTextColor(62, 39, 35);
+    doc.text(`Total Produzido: ${producaoConcluida.quantidade_total_produzida} unidades`, 15, startY);
+
+    const tableData = producaoConcluida.itens.map((item, index) => [
+      index + 1,
+      item.produto_nome,
+      item.quantidade_total,
+      item.producoes_count
+    ]);
+
+    doc.autoTable({
+      startY: startY + 8,
+      head: [['#', 'Produto', 'Qtd Produzida', 'Nº Produções']],
+      body: tableData,
+      theme: 'striped',
+      headStyles: { fillColor: [47, 133, 90], textColor: 255, fontStyle: 'bold' },
+      bodyStyles: { textColor: [62, 39, 35] },
+      alternateRowStyles: { fillColor: [209, 250, 229] }
+    });
+
+    doc.save('Relatorio_Itens_Produzidos.pdf');
+    toast.success('PDF exportado com sucesso!');
+  };
+
+  // Exportar para Excel - Itens Produzidos
+  const exportarExcelProducaoConcluida = () => {
+    if (!producaoConcluida?.itens?.length) {
+      toast.error('Nenhum dado para exportar');
+      return;
+    }
+
+    const periodo = filtros.data_inicio && filtros.data_fim 
+      ? `Período: ${new Date(filtros.data_inicio).toLocaleDateString('pt-BR')} a ${new Date(filtros.data_fim).toLocaleDateString('pt-BR')}`
+      : 'Todos os períodos';
+
+    const wsData = [
+      ['SUSSU CHOCOLATES - RELATÓRIO DE ITENS PRODUZIDOS'],
+      [periodo],
+      [`Gerado em: ${new Date().toLocaleString('pt-BR')}`],
+      [],
+      ['#', 'Produto', 'Quantidade Produzida', 'Nº Produções'],
+      ...producaoConcluida.itens.map((item, index) => [
+        index + 1,
+        item.produto_nome,
+        item.quantidade_total,
+        item.producoes_count
+      ]),
+      [],
+      ['', 'TOTAL', producaoConcluida.quantidade_total_produzida, '']
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = [{ wch: 5 }, { wch: 40 }, { wch: 20 }, { wch: 15 }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Itens Produzidos');
+    
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    saveAs(new Blob([excelBuffer]), 'Relatorio_Itens_Produzidos.xlsx');
+    toast.success('Excel exportado com sucesso!');
+  };
+
+  // Exportar para PDF - Resumo Pedidos
+  const exportarPdfPedidosResumo = () => {
+    if (!pedidosResumo?.itens?.length) {
+      toast.error('Nenhum dado para exportar');
+      return;
+    }
+
+    const doc = new jsPDF();
+    const startY = addPdfHeader(doc, 'RELATÓRIO RESUMO DE PEDIDOS');
+
+    doc.setFontSize(10);
+    doc.setTextColor(62, 39, 35);
+    doc.text(`Total: ${pedidosResumo.quantidade_total} unidades | Valor: ${formatCurrency(pedidosResumo.valor_total)}`, 15, startY);
+
+    const tableData = pedidosResumo.itens.map((item, index) => [
+      index + 1,
+      item.produto_nome,
+      item.quantidade_total,
+      item.pedidos_count,
+      formatCurrency(item.valor_total)
+    ]);
+
+    doc.autoTable({
+      startY: startY + 8,
+      head: [['#', 'Produto', 'Qtd Total', 'Nº Pedidos', 'Valor Total']],
+      body: tableData,
+      theme: 'striped',
+      headStyles: { fillColor: [107, 68, 35], textColor: 255, fontStyle: 'bold' },
+      bodyStyles: { textColor: [62, 39, 35] },
+      columnStyles: {
+        4: { halign: 'right' }
+      },
+      foot: [['', 'TOTAL', pedidosResumo.quantidade_total, '', formatCurrency(pedidosResumo.valor_total)]],
+      footStyles: { fillColor: [245, 230, 211], textColor: [62, 39, 35], fontStyle: 'bold' }
+    });
+
+    doc.save('Relatorio_Resumo_Pedidos.pdf');
+    toast.success('PDF exportado com sucesso!');
+  };
+
+  // Exportar para Excel - Resumo Pedidos
+  const exportarExcelPedidosResumo = () => {
+    if (!pedidosResumo?.itens?.length) {
+      toast.error('Nenhum dado para exportar');
+      return;
+    }
+
+    const wsData = [
+      ['SUSSU CHOCOLATES - RELATÓRIO RESUMO DE PEDIDOS'],
+      [`Gerado em: ${new Date().toLocaleString('pt-BR')}`],
+      [],
+      ['#', 'Produto', 'Quantidade Total', 'Nº Pedidos', 'Valor Total'],
+      ...pedidosResumo.itens.map((item, index) => [
+        index + 1,
+        item.produto_nome,
+        item.quantidade_total,
+        item.pedidos_count,
+        item.valor_total
+      ]),
+      [],
+      ['', 'TOTAL', pedidosResumo.quantidade_total, '', pedidosResumo.valor_total]
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = [{ wch: 5 }, { wch: 40 }, { wch: 18 }, { wch: 12 }, { wch: 15 }];
+
+    // Formatar coluna de valor como moeda
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let R = 4; R <= range.e.r; ++R) {
+      const cell = ws[XLSX.utils.encode_cell({ r: R, c: 4 })];
+      if (cell && typeof cell.v === 'number') {
+        cell.z = 'R$ #,##0.00';
+      }
+    }
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Resumo Pedidos');
+    
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    saveAs(new Blob([excelBuffer]), 'Relatorio_Resumo_Pedidos.xlsx');
+    toast.success('Excel exportado com sucesso!');
+  };
+
+  // Exportar para PDF - Vendas
+  const exportarPdfVendas = () => {
+    if (!relatorioVendas) {
+      toast.error('Nenhum dado para exportar');
+      return;
+    }
+
+    const doc = new jsPDF();
+    const periodo = filtros.data_inicio && filtros.data_fim 
+      ? `Período: ${new Date(filtros.data_inicio).toLocaleDateString('pt-BR')} a ${new Date(filtros.data_fim).toLocaleDateString('pt-BR')}`
+      : 'Todos os períodos';
+    const startY = addPdfHeader(doc, 'RELATÓRIO DE VENDAS', periodo);
+
+    doc.setFontSize(11);
+    doc.setTextColor(62, 39, 35);
+    doc.text(`Total de Vendas: ${relatorioVendas.total_vendas}`, 15, startY);
+    doc.text(`Valor Total: ${formatCurrency(relatorioVendas.valor_total)}`, 15, startY + 6);
+    doc.text(`Ticket Médio: ${formatCurrency(relatorioVendas.ticket_medio)}`, 15, startY + 12);
+
+    if (relatorioVendas.vendas_por_dia?.length) {
+      const tableData = relatorioVendas.vendas_por_dia.map(v => [
+        v.data,
+        v.quantidade || 1,
+        formatCurrency(v.valor)
+      ]);
+
+      doc.autoTable({
+        startY: startY + 20,
+        head: [['Data', 'Quantidade', 'Valor']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: [107, 68, 35], textColor: 255 },
+        columnStyles: { 2: { halign: 'right' } }
+      });
+    }
+
+    doc.save('Relatorio_Vendas.pdf');
+    toast.success('PDF exportado com sucesso!');
+  };
+
+  // Exportar para Excel - Vendas
+  const exportarExcelVendas = () => {
+    if (!relatorioVendas) {
+      toast.error('Nenhum dado para exportar');
+      return;
+    }
+
+    const periodo = filtros.data_inicio && filtros.data_fim 
+      ? `Período: ${new Date(filtros.data_inicio).toLocaleDateString('pt-BR')} a ${new Date(filtros.data_fim).toLocaleDateString('pt-BR')}`
+      : 'Todos os períodos';
+
+    const wsData = [
+      ['SUSSU CHOCOLATES - RELATÓRIO DE VENDAS'],
+      [periodo],
+      [`Gerado em: ${new Date().toLocaleString('pt-BR')}`],
+      [],
+      ['Total de Vendas:', relatorioVendas.total_vendas],
+      ['Valor Total:', relatorioVendas.valor_total],
+      ['Ticket Médio:', relatorioVendas.ticket_medio],
+      [],
+      ['Data', 'Quantidade', 'Valor'],
+      ...(relatorioVendas.vendas_por_dia || []).map(v => [v.data, v.quantidade || 1, v.valor])
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = [{ wch: 15 }, { wch: 12 }, { wch: 15 }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Vendas');
+    
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    saveAs(new Blob([excelBuffer]), 'Relatorio_Vendas.xlsx');
+    toast.success('Excel exportado com sucesso!');
+  };
+
   const tabs = [
     { id: 'a-produzir', label: 'Itens a Produzir', icon: Factory },
     { id: 'produzidos', label: 'Itens Produzidos', icon: CheckCircle },
@@ -146,12 +523,26 @@ export default function RelatoriosPage() {
       {/* TAB: ITENS A PRODUZIR */}
       {activeTab === 'a-produzir' && (
         <div className="space-y-6">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center flex-wrap gap-3">
             <h2 className="text-2xl font-serif font-semibold text-[#3E2723]">Itens Pendentes de Produção</h2>
-            <Button onClick={buscarProducaoPendente} disabled={loading} variant="outline" className="text-[#6B4423] border-[#6B4423]">
-              <MagnifyingGlass size={18} className="mr-2" />
-              Atualizar
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={buscarProducaoPendente} disabled={loading} variant="outline" className="text-[#6B4423] border-[#6B4423]">
+                <MagnifyingGlass size={18} className="mr-2" />
+                Atualizar
+              </Button>
+              {producaoPendente?.itens?.length > 0 && (
+                <>
+                  <Button onClick={exportarPdfProducaoPendente} variant="outline" className="text-red-600 border-red-600 hover:bg-red-50">
+                    <FilePdf size={18} className="mr-2" weight="fill" />
+                    PDF
+                  </Button>
+                  <Button onClick={exportarExcelProducaoPendente} variant="outline" className="text-green-600 border-green-600 hover:bg-green-50">
+                    <FileXls size={18} className="mr-2" weight="fill" />
+                    Excel
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
 
           {producaoPendente && (
@@ -273,6 +664,20 @@ export default function RelatoriosPage() {
 
           {producaoConcluida && (
             <>
+              <div className="flex justify-end gap-2 -mt-2">
+                {producaoConcluida.itens?.length > 0 && (
+                  <>
+                    <Button onClick={exportarPdfProducaoConcluida} variant="outline" className="text-red-600 border-red-600 hover:bg-red-50">
+                      <FilePdf size={18} className="mr-2" weight="fill" />
+                      PDF
+                    </Button>
+                    <Button onClick={exportarExcelProducaoConcluida} variant="outline" className="text-green-600 border-green-600 hover:bg-green-50">
+                      <FileXls size={18} className="mr-2" weight="fill" />
+                      Excel
+                    </Button>
+                  </>
+                )}
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm">
                   <p className="text-xs font-sans uppercase tracking-wider font-semibold text-[#8B5A3C] mb-2">Tipos de Produtos</p>
@@ -377,12 +782,26 @@ export default function RelatoriosPage() {
       {/* TAB: RESUMO PEDIDOS */}
       {activeTab === 'pedidos-resumo' && (
         <div className="space-y-6">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center flex-wrap gap-3">
             <h2 className="text-2xl font-serif font-semibold text-[#3E2723]">Resumo de Itens dos Pedidos Ativos</h2>
-            <Button onClick={buscarPedidosResumo} disabled={loading} variant="outline" className="text-[#6B4423] border-[#6B4423]">
-              <MagnifyingGlass size={18} className="mr-2" />
-              Atualizar
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={buscarPedidosResumo} disabled={loading} variant="outline" className="text-[#6B4423] border-[#6B4423]">
+                <MagnifyingGlass size={18} className="mr-2" />
+                Atualizar
+              </Button>
+              {pedidosResumo?.itens?.length > 0 && (
+                <>
+                  <Button onClick={exportarPdfPedidosResumo} variant="outline" className="text-red-600 border-red-600 hover:bg-red-50">
+                    <FilePdf size={18} className="mr-2" weight="fill" />
+                    PDF
+                  </Button>
+                  <Button onClick={exportarExcelPedidosResumo} variant="outline" className="text-green-600 border-green-600 hover:bg-green-50">
+                    <FileXls size={18} className="mr-2" weight="fill" />
+                    Excel
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
 
           {pedidosResumo && (
@@ -475,6 +894,16 @@ export default function RelatoriosPage() {
 
           {relatorioVendas && (
             <>
+              <div className="flex justify-end gap-2 -mt-2">
+                <Button onClick={exportarPdfVendas} variant="outline" className="text-red-600 border-red-600 hover:bg-red-50">
+                  <FilePdf size={18} className="mr-2" weight="fill" />
+                  PDF
+                </Button>
+                <Button onClick={exportarExcelVendas} variant="outline" className="text-green-600 border-green-600 hover:bg-green-50">
+                  <FileXls size={18} className="mr-2" weight="fill" />
+                  Excel
+                </Button>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm">
                   <p className="text-xs font-sans uppercase tracking-wider font-semibold text-[#8B5A3C] mb-2">Total de Vendas</p>
