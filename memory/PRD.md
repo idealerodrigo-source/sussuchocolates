@@ -5,7 +5,7 @@
 Criar um aplicativo/sistema de controle contendo: Cadastro Cliente, Pedido, Produção, Embalagem, Estoque, Venda, Emissão de Cupom Fiscal. Que possa gerar relatórios e controles. Trata-se de uma fábrica de chocolates artesanais chamada Sussu Chocolates.
 
 ### Tech Stack
-- **Frontend**: React.js, Tailwind CSS, Shadcn/UI, Recharts
+- **Frontend**: React.js, Tailwind CSS, Shadcn/UI, Recharts, jsPDF
 - **Backend**: FastAPI, Motor (Async MongoDB), Pydantic, BeautifulSoup4
 - **Database**: MongoDB
 - **Authentication**: JWT
@@ -22,7 +22,7 @@ Criar um aplicativo/sistema de controle contendo: Cadastro Cliente, Pedido, Prod
 | **Dashboard** | ✅ Done | Overview with stats and quick actions |
 | **Clientes** | ✅ Done | Full CRUD for customers |
 | **Produtos** | ✅ Done | Full CRUD for chocolate products |
-| **Pedidos** | ✅ Done | Orders management with status workflow |
+| **Pedidos** | ✅ Done | Orders management with PDF generation |
 | **Produção** | ✅ Done | Production tracking with order linking |
 | **Embalagem** | ✅ Done | Packaging workflow with responsible tracking |
 | **Estoque** | ✅ Done | Inventory with location tracking |
@@ -30,6 +30,25 @@ Criar um aplicativo/sistema de controle contendo: Cadastro Cliente, Pedido, Prod
 | **Lucratividade** | ✅ Done | Profitability analysis |
 | **Compras** | ✅ Done | Complete purchasing module |
 | **Relatórios** | ✅ Done | Basic reports |
+
+### Pedidos - PDF Generation (NEW - March 27, 2026)
+- ✅ Geração de PDF do pedido com dados completos
+- ✅ Cabeçalho com logo/nome da empresa
+- ✅ Dados da empresa: telefone, endereço, email
+- ✅ Dados do cliente (nome, telefone, email, endereço)
+- ✅ Data de entrega prevista
+- ✅ Tabela de itens com quantidade e valores
+- ✅ Total do pedido
+- ✅ Campo de observações
+- ✅ Rodapé com mensagem de agradecimento
+- ✅ Botão de PDF na tabela (acesso rápido)
+- ✅ Botão de PDF no modal de detalhes
+
+**Dados da Empresa no PDF:**
+- Nome: SUSSU CHOCOLATES
+- Telefone: (43) 99967-6206
+- Endereço: Rua Quintino Bocaiuva, 737, Jacarezinho - PR, CEP: 86400-000
+- Email: sussuchocolates@hotmail.com
 
 ### Compras Module (Latest Implementation)
 

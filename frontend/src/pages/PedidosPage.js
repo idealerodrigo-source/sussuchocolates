@@ -1,10 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { pedidosAPI, clientesAPI, produtosAPI } from '../services/api';
 import { formatCurrency, formatDateTime, getStatusColor, getStatusLabel } from '../utils/formatters';
-import { Plus, ShoppingCart, Trash, PencilSimple, Eye } from '@phosphor-icons/react';
+import { Plus, ShoppingCart, Trash, PencilSimple, Eye, FilePdf } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
+// Dados da empresa Sussu Chocolates
+const EMPRESA = {
+  nome: 'SUSSU CHOCOLATES',
+  telefone: '(43) 99967-6206',
+  endereco: 'Rua Quintino Bocaiuva, 737',
+  cidade: 'Jacarezinho - PR',
+  cep: '86400-000',
+  email: 'sussuchocolates@hotmail.com'
+};
 
 export default function PedidosPage() {
   const [pedidos, setPedidos] = useState([]);
@@ -122,6 +134,181 @@ export default function PedidosPage() {
   const handleView = (pedido) => {
     setViewingPedido(pedido);
     setViewDialogOpen(true);
+  };
+
+  const generatePDF = (pedido) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Cores da marca
+    const marromEscuro = [62, 39, 35]; // #3E2723
+    const marromMedio = [107, 68, 35]; // #6B4423
+    const bege = [245, 230, 211]; // #F5E6D3
+    
+    // ===== CABEÇALHO =====
+    // Fundo do cabeçalho
+    doc.setFillColor(...bege);
+    doc.rect(0, 0, pageWidth, 45, 'F');
+    
+    // Logo/Nome da empresa
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...marromEscuro);
+    doc.text(EMPRESA.nome, 15, 18);
+    
+    // Linha decorativa
+    doc.setDrawColor(...marromMedio);
+    doc.setLineWidth(0.5);
+    doc.line(15, 22, pageWidth - 15, 22);
+    
+    // Dados da empresa
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...marromMedio);
+    doc.text(`Tel: ${EMPRESA.telefone}`, 15, 28);
+    doc.text(`${EMPRESA.endereco}, ${EMPRESA.cidade} - CEP: ${EMPRESA.cep}`, 15, 33);
+    doc.text(`Email: ${EMPRESA.email}`, 15, 38);
+    
+    // ===== DADOS DO PEDIDO =====
+    doc.setFillColor(...marromMedio);
+    doc.rect(0, 48, pageWidth, 10, 'F');
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text(`PEDIDO Nº ${pedido.numero}`, 15, 55);
+    
+    const dataPedido = new Date(pedido.data_pedido).toLocaleDateString('pt-BR');
+    doc.text(`Data: ${dataPedido}`, pageWidth - 50, 55);
+    
+    // ===== DADOS DO CLIENTE =====
+    let yPos = 68;
+    
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...marromEscuro);
+    doc.text('DADOS DO CLIENTE', 15, yPos);
+    
+    yPos += 7;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    
+    // Buscar dados completos do cliente
+    const cliente = clientes.find(c => c.id === pedido.cliente_id);
+    
+    doc.text(`Nome: ${pedido.cliente_nome}`, 15, yPos);
+    yPos += 5;
+    
+    if (cliente) {
+      if (cliente.telefone) {
+        doc.text(`Telefone: ${cliente.telefone}`, 15, yPos);
+        yPos += 5;
+      }
+      if (cliente.email) {
+        doc.text(`Email: ${cliente.email}`, 15, yPos);
+        yPos += 5;
+      }
+      if (cliente.endereco) {
+        doc.text(`Endereço: ${cliente.endereco}`, 15, yPos);
+        yPos += 5;
+      }
+    }
+    
+    if (pedido.data_entrega) {
+      const dataEntrega = new Date(pedido.data_entrega).toLocaleDateString('pt-BR');
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Data de Entrega Prevista: ${dataEntrega}`, 15, yPos);
+      yPos += 5;
+    }
+    
+    yPos += 5;
+    
+    // ===== ITENS DO PEDIDO =====
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...marromEscuro);
+    doc.text('ITENS DO PEDIDO', 15, yPos);
+    yPos += 3;
+    
+    // Tabela de itens
+    const tableData = pedido.items.map((item, index) => [
+      index + 1,
+      item.produto_nome,
+      item.quantidade,
+      formatCurrency(item.preco_unitario),
+      formatCurrency(item.subtotal)
+    ]);
+    
+    doc.autoTable({
+      startY: yPos,
+      head: [['#', 'Produto', 'Qtd', 'Preço Unit.', 'Subtotal']],
+      body: tableData,
+      theme: 'striped',
+      headStyles: {
+        fillColor: marromMedio,
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 10
+      },
+      bodyStyles: {
+        textColor: marromEscuro,
+        fontSize: 9
+      },
+      alternateRowStyles: {
+        fillColor: [250, 245, 235]
+      },
+      columnStyles: {
+        0: { cellWidth: 10, halign: 'center' },
+        1: { cellWidth: 'auto' },
+        2: { cellWidth: 20, halign: 'center' },
+        3: { cellWidth: 30, halign: 'right' },
+        4: { cellWidth: 30, halign: 'right' }
+      },
+      margin: { left: 15, right: 15 }
+    });
+    
+    yPos = doc.lastAutoTable.finalY + 10;
+    
+    // ===== TOTAL =====
+    doc.setFillColor(...bege);
+    doc.rect(pageWidth - 80, yPos - 5, 65, 12, 'F');
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...marromEscuro);
+    doc.text('TOTAL:', pageWidth - 75, yPos + 3);
+    doc.text(formatCurrency(pedido.valor_total), pageWidth - 20, yPos + 3, { align: 'right' });
+    
+    yPos += 15;
+    
+    // ===== OBSERVAÇÕES =====
+    if (pedido.observacoes) {
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...marromEscuro);
+      doc.text('OBSERVAÇÕES', 15, yPos);
+      yPos += 6;
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const splitObs = doc.splitTextToSize(pedido.observacoes, pageWidth - 30);
+      doc.text(splitObs, 15, yPos);
+      yPos += splitObs.length * 5 + 5;
+    }
+    
+    // ===== RODAPÉ =====
+    const pageHeight = doc.internal.pageSize.getHeight();
+    doc.setDrawColor(...marromMedio);
+    doc.setLineWidth(0.3);
+    doc.line(15, pageHeight - 20, pageWidth - 15, pageHeight - 20);
+    
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(...marromMedio);
+    doc.text('Obrigado pela preferência!', pageWidth / 2, pageHeight - 15, { align: 'center' });
+    doc.text(`${EMPRESA.nome} - Chocolates Artesanais`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+    
+    // Salvar o PDF
+    doc.save(`Pedido_${pedido.numero}_${pedido.cliente_nome.replace(/\s+/g, '_')}.pdf`);
+    toast.success('PDF gerado com sucesso!');
   };
 
   const resetForm = () => {
@@ -315,10 +502,20 @@ export default function PedidosPage() {
                     <td className="px-6 py-4 text-right">
                       <div className="flex gap-2 justify-end">
                         <Button
+                          onClick={() => generatePDF(pedido)}
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 border-red-600 hover:bg-red-50"
+                          title="Gerar PDF"
+                        >
+                          <FilePdf size={16} weight="bold" />
+                        </Button>
+                        <Button
                           onClick={() => handleView(pedido)}
                           size="sm"
                           variant="outline"
                           className="text-[#6B4423] border-[#6B4423] hover:bg-[#F5E6D3]"
+                          title="Visualizar"
                         >
                           <Eye size={16} weight="bold" />
                         </Button>
@@ -326,6 +523,7 @@ export default function PedidosPage() {
                           onClick={() => handleEdit(pedido)}
                           size="sm"
                           className="bg-[#8B5A3C] text-white hover:bg-[#6B4423]"
+                          title="Editar"
                         >
                           <PencilSimple size={16} weight="bold" />
                         </Button>
@@ -398,7 +596,15 @@ export default function PedidosPage() {
                 </div>
               )}
 
-              <div className="flex justify-end pt-4">
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  onClick={() => generatePDF(viewingPedido)}
+                  variant="outline"
+                  className="text-[#6B4423] border-[#6B4423] hover:bg-[#F5E6D3]"
+                >
+                  <FilePdf size={18} weight="bold" className="mr-2" />
+                  Gerar PDF
+                </Button>
                 <Button
                   onClick={() => {
                     setViewDialogOpen(false);
