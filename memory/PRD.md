@@ -5,10 +5,11 @@
 Criar um aplicativo/sistema de controle contendo: Cadastro Cliente, Pedido, Produção, Embalagem, Estoque, Venda, Emissão de Cupom Fiscal. Que possa gerar relatórios e controles. Trata-se de uma fábrica de chocolates artesanais chamada Sussu Chocolates.
 
 ### Tech Stack
-- **Frontend**: React.js, Tailwind CSS, Shadcn/UI, Recharts, jsPDF
-- **Backend**: FastAPI, Motor (Async MongoDB), Pydantic, BeautifulSoup4
+- **Frontend**: React.js, Tailwind CSS, Shadcn/UI, Recharts, jsPDF, xlsx
+- **Backend**: FastAPI, Motor (Async MongoDB), Pydantic, BeautifulSoup4, pynfe, cryptography
 - **Database**: MongoDB
 - **Authentication**: JWT
+- **PWA**: Service Workers, Web App Manifest
 
 ---
 
@@ -144,8 +145,16 @@ Criar um aplicativo/sistema de controle contendo: Cadastro Cliente, Pedido, Prod
 - `GET /api/nf-entrada` - List all
 - `POST /api/nf-entrada` - Create
 - `POST /api/nf-entrada/parse-html` - Parse SEFAZ HTML
+- `POST /api/nf-entrada/parse-xml` - Parse XML file
 - `POST /api/nf-entrada/parse-chave` - Parse access key
 - `DELETE /api/nf-entrada/{id}` - Delete
+
+### NFC-e (Cupom Fiscal)
+- `GET /api/nfce/configuracao` - Certificate status and config
+- `GET /api/nfce/status-sefaz` - SEFAZ service status
+- `POST /api/nfce/emitir` - Emit NFC-e
+- `GET /api/nfce/historico` - List emitted NFC-e
+- `POST /api/nfce/cancelar/{chave}` - Cancel NFC-e
 
 ---
 
@@ -178,17 +187,44 @@ Criar um aplicativo/sistema de controle contendo: Cadastro Cliente, Pedido, Prod
 ## Backlog / Future Tasks
 
 ### P1 (High Priority)
-- [ ] Implementar NFC-e real para Vendas (integração SEFAZ)
+- [ ] Mudar NFC-e de Homologação para Produção (quando pronto para emissão real)
 
 ### P2 (Medium Priority)
-- [ ] PWA para acesso mobile
+- [ ] Alertas automáticos de estoque baixo (insumos)
+- [ ] Refatorar server.py (~2300 linhas) em routers separados
 
 ### P3 (Low Priority)
-- [ ] Refatorar server.py (~2000 linhas) em routers separados
 - [ ] Otimizar componentes React grandes
 - [ ] Dashboard com métricas em tempo real
 
 ## Recently Completed (March 27, 2026)
+
+### NFC-e - Emissão de Cupom Fiscal (March 27, 2026) ✅
+- ✅ **Integração real com SEFAZ-PR** via biblioteca `pynfe`
+- ✅ **Certificado Digital A1** configurado e validado
+  - Titular: SUZETE CANDIDO XAVIER
+  - CNPJ: 09.328.682/0001-30
+  - Validade: 20/03/2027
+- ✅ **CSC (Código de Segurança do Contribuinte)** configurado
+  - ID: 000001
+- ✅ **Ambiente: Homologação** (testes) - pronto para produção quando necessário
+- ✅ **Endpoints implementados**:
+  - `GET /api/nfce/configuracao` - Status do certificado e ambiente
+  - `GET /api/nfce/status-sefaz` - Status do serviço SEFAZ (online/offline)
+  - `POST /api/nfce/emitir` - Emissão de NFC-e
+  - `GET /api/nfce/historico` - Histórico de NFC-e emitidas
+  - `POST /api/nfce/cancelar/{chave}` - Cancelamento de NFC-e
+- ✅ **Frontend VendasPage** com botão "Emitir NFC-e"
+- ✅ **Chave de Acesso** gerada automaticamente (44 dígitos)
+- ✅ **QR Code URL** gerado para consulta
+
+### PWA - Progressive Web App (March 27, 2026) ✅
+- ✅ Manifest.json configurado para instalação
+- ✅ Service Worker para cache e offline
+- ✅ Ícones em múltiplas resoluções
+- ✅ Instalável em dispositivos móveis
+
+### Outras Implementações Recentes ✅
 - ✅ Parser XML de NF-e com todos os campos (NCM, CST, CFOP)
 - ✅ Upload de arquivo XML com drag-and-drop
 - ✅ Exportação PDF/Excel para todos os relatórios
@@ -207,3 +243,4 @@ Criar um aplicativo/sistema de controle contendo: Cadastro Cliente, Pedido, Prod
 ---
 
 *Last updated: March 27, 2026*
+*NFC-e integration: Homologação mode (SEFAZ-PR)*
