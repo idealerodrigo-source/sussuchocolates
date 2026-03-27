@@ -142,15 +142,7 @@ export default function VendasPage() {
       
       if (response.data.success) {
         toast.success(`NFC-e ${response.data.numero_nfce} emitida com sucesso!`);
-        
-        // Atualizar venda com dados da NFC-e
-        await vendasAPI.atualizar(venda.id, {
-          nfce_emitida: true,
-          nfce_chave: response.data.chave_acesso,
-          nfce_numero: response.data.numero_nfce,
-          nfce_protocolo: response.data.protocolo
-        });
-        
+        // Backend already updates the venda with NFC-e data, just refresh
         fetchData();
       } else {
         toast.error(response.data.message || 'Erro ao emitir NFC-e');

@@ -85,23 +85,38 @@ def verificar_certificado():
         return {"valido": False, "mensagem": "Certificado não encontrado"}
     
     try:
-        from OpenSSL import crypto
+        from cryptography.hazmat.primitives.serialization import pkcs12
+        from cryptography import x509
+        
         with open(CERTIFICADO_PATH, 'rb') as f:
             pfx_data = f.read()
         
-        pfx = crypto.load_pkcs12(pfx_data, CERTIFICADO_SENHA.encode())
-        cert = pfx.get_certificate()
+        # Carregar o certificado PKCS12
+        private_key, certificate, additional_certs = pkcs12.load_key_and_certificates(
+            pfx_data, 
+            CERTIFICADO_SENHA.encode()
+        )
+        
+        if certificate is None:
+            return {"valido": False, "mensagem": "Certificado não encontrado no arquivo PFX"}
         
         # Extrair informações do certificado
-        subject = cert.get_subject()
-        not_after = datetime.strptime(cert.get_notAfter().decode('ascii'), '%Y%m%d%H%M%SZ')
+        subject = certificate.subject
+        not_after = certificate.not_valid_after_utc
+        
+        # Extrair CN do subject
+        cn = None
+        for attribute in subject:
+            if attribute.oid == x509.oid.NameOID.COMMON_NAME:
+                cn = attribute.value
+                break
         
         return {
             "valido": True,
-            "titular": subject.CN if subject.CN else "N/A",
+            "titular": cn if cn else "N/A",
             "cnpj": CNPJ_EMITENTE,
             "validade": not_after.strftime('%d/%m/%Y'),
-            "vencido": datetime.now() > not_after
+            "vencido": datetime.now(timezone.utc) > not_after
         }
     except Exception as e:
         return {"valido": False, "mensagem": str(e)}

@@ -990,44 +990,114 @@ async def listar_vendas(current_user: dict = Depends(get_current_user)):
             v['data_venda'] = datetime.fromisoformat(v['data_venda'])
     return vendas
 
-@api_router.post("/nfce/emitir")
-async def emitir_nfce(venda_id: str, current_user: dict = Depends(get_current_user)):
-    venda = await db.vendas.find_one({"id": venda_id}, {"_id": 0})
-    if not venda:
-        raise HTTPException(status_code=404, detail="Venda não encontrada")
-    
-    if venda.get('nfce_emitida'):
-        raise HTTPException(status_code=400, detail="NFC-e já emitida para esta venda")
-    
-    cliente = await db.clientes.find_one({"id": venda['cliente_id']}, {"_id": 0})
-    
-    count = await db.nfce.count_documents({})
-    numero_nfce = f"{count + 1:09d}"
-    chave_acesso = f"35{datetime.now().strftime('%y%m')}12345678000190650010000{numero_nfce}{uuid.uuid4().hex[:8]}"
-    
-    nfce = NFCe(
-        venda_id=venda_id,
-        chave_acesso=chave_acesso,
-        numero=numero_nfce,
-        serie="001",
-        cliente_cpf=cliente.get('cpf') if cliente else None,
-        cliente_nome=venda['cliente_nome'],
-        valor_total=venda['valor_total'],
-        protocolo=f"PRT{uuid.uuid4().hex[:12].upper()}",
-        qr_code=f"http://nfce.fazenda.gov.br/consulta?p={chave_acesso}"
-    )
-    
-    doc = nfce.model_dump()
-    doc['data_emissao'] = doc['data_emissao'].isoformat()
-    await db.nfce.insert_one(doc)
-    
-    await db.vendas.update_one(
-        {"id": venda_id},
-        {"$set": {"nfce_emitida": True, "nfce_chave": chave_acesso}}
-    )
-    
-    return nfce
+# NFC-e - Rotas específicas primeiro (antes das rotas com parâmetros dinâmicos)
+from nfce_service import (
+    verificar_certificado,
+    status_servico_sefaz,
+    emitir_nfce as nfce_emitir_real,
+    cancelar_nfce,
+    NFCeEmissao,
+    ItemNFCe,
+    DadosClienteNFCe,
+    HOMOLOGACAO
+)
 
+@api_router.get("/nfce/configuracao")
+async def nfce_configuracao(current_user: dict = Depends(get_current_user)):
+    """Retorna configuração e status do módulo NFC-e"""
+    cert_info = verificar_certificado()
+    return {
+        "certificado": cert_info,
+        "ambiente": "Homologação" if HOMOLOGACAO else "Produção",
+        "uf": "PR",
+        "configurado": cert_info.get("valido", False)
+    }
+
+@api_router.get("/nfce/status-sefaz")
+async def nfce_status_sefaz(current_user: dict = Depends(get_current_user)):
+    """Consulta status do serviço da SEFAZ"""
+    return status_servico_sefaz()
+
+@api_router.get("/nfce/historico")
+async def nfce_historico(
+    limit: int = 50,
+    skip: int = 0,
+    current_user: dict = Depends(get_current_user)
+):
+    """Lista histórico de NFC-e emitidas"""
+    nfces = await db.nfce.find({}, {"_id": 0}).sort("data_emissao", -1).skip(skip).limit(limit).to_list(limit)
+    total = await db.nfce.count_documents({})
+    return {"items": nfces, "total": total}
+
+@api_router.post("/nfce/emitir")
+async def nfce_emitir(dados: dict, current_user: dict = Depends(get_current_user)):
+    """Emite uma NFC-e via SEFAZ"""
+    try:
+        items = [ItemNFCe(**item) for item in dados.get('items', [])]
+        
+        cliente = None
+        if dados.get('cliente'):
+            cliente = DadosClienteNFCe(**dados['cliente'])
+        
+        emissao = NFCeEmissao(
+            venda_id=dados.get('venda_id'),
+            cliente=cliente,
+            items=items,
+            valor_produtos=dados.get('valor_produtos', 0),
+            valor_desconto=dados.get('valor_desconto', 0),
+            valor_total=dados.get('valor_total', 0),
+            forma_pagamento=dados.get('forma_pagamento', '01'),
+            valor_pago=dados.get('valor_pago', 0),
+            valor_troco=dados.get('valor_troco', 0)
+        )
+        
+        resultado = nfce_emitir_real(emissao)
+        
+        if resultado.success:
+            nfce_doc = {
+                "id": emissao.id,
+                "venda_id": emissao.venda_id,
+                "chave_acesso": resultado.chave_acesso,
+                "numero_nfce": resultado.numero_nfce,
+                "protocolo": resultado.protocolo,
+                "data_autorizacao": resultado.data_autorizacao,
+                "data_emissao": datetime.now(timezone.utc).isoformat(),
+                "valor_total": emissao.valor_total,
+                "status": "autorizada",
+                "ambiente": "homologacao" if HOMOLOGACAO else "producao",
+                "qrcode_url": resultado.qrcode_url
+            }
+            await db.nfce.insert_one(nfce_doc)
+            
+            # Atualizar venda com dados da NFC-e
+            if emissao.venda_id:
+                await db.vendas.update_one(
+                    {"id": emissao.venda_id},
+                    {"$set": {
+                        "nfce_emitida": True,
+                        "nfce_chave": resultado.chave_acesso,
+                        "nfce_numero": resultado.numero_nfce
+                    }}
+                )
+        
+        return resultado.model_dump()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@api_router.post("/nfce/cancelar/{chave_acesso}")
+async def nfce_cancelar_endpoint(chave_acesso: str, justificativa: str, current_user: dict = Depends(get_current_user)):
+    """Cancela uma NFC-e"""
+    resultado = cancelar_nfce(chave_acesso, justificativa)
+    
+    if resultado.get('success'):
+        await db.nfce.update_one(
+            {"chave_acesso": chave_acesso},
+            {"$set": {"status": "cancelada", "data_cancelamento": datetime.now(timezone.utc).isoformat()}}
+        )
+    
+    return resultado
+
+# Rotas com parâmetros dinâmicos - DEVEM VIR DEPOIS das rotas específicas
 @api_router.get("/nfce/{nfce_id}", response_model=NFCe)
 async def obter_nfce(nfce_id: str, current_user: dict = Depends(get_current_user)):
     nfce = await db.nfce.find_one({"id": nfce_id}, {"_id": 0})
@@ -2259,108 +2329,6 @@ async def deletar_nf_entrada(nf_id: str, current_user: dict = Depends(get_curren
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="NF-e não encontrada")
     return {"message": "NF-e removida com sucesso"}
-
-# ============ NFC-e (CUPOM FISCAL) ============
-from nfce_service import (
-    verificar_certificado, 
-    status_servico_sefaz, 
-    emitir_nfce,
-    cancelar_nfce,
-    NFCeEmissao,
-    ItemNFCe,
-    DadosClienteNFCe,
-    HOMOLOGACAO
-)
-
-@api_router.get("/nfce/configuracao")
-async def nfce_configuracao(current_user: dict = Depends(get_current_user)):
-    """Retorna configuração e status do módulo NFC-e"""
-    cert_info = verificar_certificado()
-    
-    return {
-        "certificado": cert_info,
-        "ambiente": "Homologação" if HOMOLOGACAO else "Produção",
-        "uf": "PR",
-        "configurado": cert_info.get("valido", False)
-    }
-
-@api_router.get("/nfce/status-sefaz")
-async def nfce_status_sefaz(current_user: dict = Depends(get_current_user)):
-    """Consulta status do serviço da SEFAZ"""
-    return status_servico_sefaz()
-
-@api_router.post("/nfce/emitir")
-async def nfce_emitir(dados: dict, current_user: dict = Depends(get_current_user)):
-    """Emite uma NFC-e"""
-    try:
-        # Converter itens
-        items = [ItemNFCe(**item) for item in dados.get('items', [])]
-        
-        # Dados do cliente (opcional)
-        cliente = None
-        if dados.get('cliente'):
-            cliente = DadosClienteNFCe(**dados['cliente'])
-        
-        # Criar objeto de emissão
-        emissao = NFCeEmissao(
-            venda_id=dados.get('venda_id'),
-            cliente=cliente,
-            items=items,
-            valor_produtos=dados.get('valor_produtos', 0),
-            valor_desconto=dados.get('valor_desconto', 0),
-            valor_total=dados.get('valor_total', 0),
-            forma_pagamento=dados.get('forma_pagamento', '01'),
-            valor_pago=dados.get('valor_pago', 0),
-            valor_troco=dados.get('valor_troco', 0)
-        )
-        
-        # Emitir NFC-e
-        resultado = emitir_nfce(emissao)
-        
-        # Se sucesso, salvar no banco
-        if resultado.success:
-            nfce_doc = {
-                "id": emissao.id,
-                "venda_id": emissao.venda_id,
-                "chave_acesso": resultado.chave_acesso,
-                "numero_nfce": resultado.numero_nfce,
-                "protocolo": resultado.protocolo,
-                "data_autorizacao": resultado.data_autorizacao,
-                "data_emissao": datetime.now(timezone.utc).isoformat(),
-                "valor_total": emissao.valor_total,
-                "status": "autorizada",
-                "ambiente": "homologacao" if HOMOLOGACAO else "producao",
-                "qrcode_url": resultado.qrcode_url
-            }
-            await db.nfce.insert_one(nfce_doc)
-        
-        return resultado.model_dump()
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@api_router.post("/nfce/cancelar/{chave_acesso}")
-async def nfce_cancelar(chave_acesso: str, justificativa: str, current_user: dict = Depends(get_current_user)):
-    """Cancela uma NFC-e"""
-    resultado = cancelar_nfce(chave_acesso, justificativa)
-    
-    if resultado.get('success'):
-        await db.nfce.update_one(
-            {"chave_acesso": chave_acesso},
-            {"$set": {"status": "cancelada", "data_cancelamento": datetime.now(timezone.utc).isoformat()}}
-        )
-    
-    return resultado
-
-@api_router.get("/nfce/historico")
-async def nfce_historico(
-    limit: int = 50,
-    skip: int = 0,
-    current_user: dict = Depends(get_current_user)
-):
-    """Lista histórico de NFC-e emitidas"""
-    nfces = await db.nfce.find({}, {"_id": 0}).sort("data_emissao", -1).skip(skip).limit(limit).to_list(limit)
-    total = await db.nfce.count_documents({})
-    return {"items": nfces, "total": total}
 
 app.include_router(api_router)
 

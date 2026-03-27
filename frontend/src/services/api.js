@@ -62,12 +62,7 @@ export const estoqueAPI = {
 export const vendasAPI = {
   listar: () => api.get('/vendas'),
   criar: (data) => api.post('/vendas', data),
-};
-
-export const nfceAPI = {
-  listar: () => api.get('/nfce'),
-  obter: (id) => api.get(`/nfce/${id}`),
-  emitir: (vendaId) => api.post('/nfce/emitir', null, { params: { venda_id: vendaId } }),
+  atualizar: (id, data) => api.put(`/vendas/${id}`, data),
 };
 
 export const relatoriosAPI = {
