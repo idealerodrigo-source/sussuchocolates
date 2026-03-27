@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { producaoAPI, pedidosAPI, produtosAPI } from '../services/api';
 import { formatDateTime } from '../utils/formatters';
-import { Plus, CheckCircle, Package, ShoppingCart, Trash, PlusCircle, ClipboardText, Factory, Printer } from '@phosphor-icons/react';
+import { Plus, CheckCircle, Package, ShoppingCart, Trash, PlusCircle, ClipboardText, Factory, Printer, Lightning } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -13,9 +13,11 @@ export default function ProducaoPage() {
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [todosDialogOpen, setTodosDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('producao'); // 'producao' ou 'relatorio'
   const [tipoProducao, setTipoProducao] = useState('estoque');
+  const [responsavelTodos, setResponsavelTodos] = useState('');
   const [formData, setFormData] = useState({
     pedido_id: '',
     responsavel: '',
@@ -156,6 +158,62 @@ export default function ProducaoPage() {
     setTipoProducao('estoque');
   };
 
+  // Função para iniciar produção de todos os pedidos pendentes
+  const handleIniciarTodosPedidos = async () => {
+    // Filtrar apenas pedidos pendentes (não em produção)
+    const pedidosPendentes = pedidos.filter(p => p.status === 'pendente');
+    
+    if (pedidosPendentes.length === 0) {
+      toast.error('Não há pedidos pendentes para iniciar produção');
+      return;
+    }
+
+    setSubmitting(true);
+    
+    try {
+      // Criar uma lista de todas as produções a serem criadas
+      const todasProducoes = [];
+      
+      pedidosPendentes.forEach(pedido => {
+        if (pedido.items && pedido.items.length > 0) {
+          pedido.items.forEach(item => {
+            todasProducoes.push({
+              pedido_id: pedido.id,
+              produto_id: item.produto_id,
+              quantidade: item.quantidade,
+              responsavel: responsavelTodos || null,
+              observacoes: `Produção em lote - ${pedido.numero}`,
+              tipo_producao: 'pedido',
+            });
+          });
+        }
+      });
+      
+      if (todasProducoes.length === 0) {
+        toast.error('Nenhum item encontrado nos pedidos pendentes');
+        setSubmitting(false);
+        return;
+      }
+      
+      // Criar todas as produções
+      const promises = todasProducoes.map(data => producaoAPI.criar(data));
+      await Promise.all(promises);
+      
+      toast.success(`Produção iniciada para ${pedidosPendentes.length} pedido(s) - ${todasProducoes.length} item(s) total`);
+      setTodosDialogOpen(false);
+      setResponsavelTodos('');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erro ao iniciar produções');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Obter pedidos apenas pendentes (não em produção)
+  const pedidosApenasNovos = pedidos.filter(p => p.status === 'pendente');
+  const totalItensPendentes = pedidosApenasNovos.reduce((acc, p) => acc + (p.items?.length || 0), 0);
+
   const getProdutoNome = (produtoId) => {
     const produto = produtos.find(p => p.id === produtoId);
     return produto?.nome || '';
@@ -217,13 +275,92 @@ export default function ProducaoPage() {
           <h1 className="text-4xl sm:text-5xl font-serif font-bold tracking-tight text-[#3E2723] mb-2">Produção</h1>
           <p className="text-base font-sans text-[#705A4D]">Controle a produção dos chocolates</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button data-testid="btn-add-producao" className="bg-[#6B4423] text-[#F5E6D3] hover:bg-[#8B5A3C]">
-              <Plus size={20} weight="bold" className="mr-2" />
-              Iniciar Produção
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-3">
+          {/* Botão para iniciar todos os pedidos */}
+          {pedidosApenasNovos.length > 0 && (
+            <Dialog open={todosDialogOpen} onOpenChange={setTodosDialogOpen}>
+              <DialogTrigger asChild>
+                <Button 
+                  data-testid="btn-iniciar-todos"
+                  variant="outline"
+                  className="border-[#D97706] text-[#D97706] hover:bg-[#FEF3C7]"
+                >
+                  <Lightning size={20} weight="bold" className="mr-2" />
+                  Iniciar Todos ({pedidosApenasNovos.length})
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-[#FFFDF8] max-w-lg">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-serif text-[#3E2723] flex items-center gap-2">
+                    <Lightning size={28} className="text-[#D97706]" weight="bold" />
+                    Iniciar Todos os Pedidos
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="bg-[#FEF3C7] border border-[#D97706]/30 rounded-lg p-4">
+                    <p className="text-sm text-[#92400E] font-sans">
+                      Isso irá iniciar a produção de <strong>{pedidosApenasNovos.length} pedido(s)</strong> pendente(s), 
+                      totalizando <strong>{totalItensPendentes} item(s)</strong> para produzir.
+                    </p>
+                  </div>
+                  
+                  <div className="bg-[#F5E6D3]/50 rounded-lg p-4 max-h-[200px] overflow-y-auto">
+                    <p className="text-xs font-medium text-[#6B4423] mb-2">Pedidos que serão iniciados:</p>
+                    <div className="space-y-2">
+                      {pedidosApenasNovos.map(pedido => (
+                        <div key={pedido.id} className="flex justify-between items-center text-sm">
+                          <span className="text-[#3E2723] font-medium">{pedido.numero}</span>
+                          <span className="text-[#705A4D]">{pedido.cliente_nome} - {pedido.items?.length || 0} itens</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-[#6B4423] mb-1">Responsável (opcional)</label>
+                    <input
+                      type="text"
+                      placeholder="Nome do responsável pela produção"
+                      value={responsavelTodos}
+                      onChange={(e) => setResponsavelTodos(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                    />
+                  </div>
+
+                  <div className="flex gap-3 justify-end pt-4">
+                    <Button 
+                      type="button" 
+                      onClick={() => { setTodosDialogOpen(false); setResponsavelTodos(''); }} 
+                      variant="outline"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      onClick={handleIniciarTodosPedidos}
+                      className="bg-[#D97706] text-white hover:bg-[#B45309]"
+                      disabled={submitting}
+                    >
+                      {submitting ? 'Iniciando...' : (
+                        <>
+                          <Lightning size={18} weight="bold" className="mr-2" />
+                          Iniciar {pedidosApenasNovos.length} Pedido(s)
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+
+          {/* Botão para nova produção individual */}
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+            <DialogTrigger asChild>
+              <Button data-testid="btn-add-producao" className="bg-[#6B4423] text-[#F5E6D3] hover:bg-[#8B5A3C]">
+                <Plus size={20} weight="bold" className="mr-2" />
+                Iniciar Produção
+              </Button>
+            </DialogTrigger>
           <DialogContent className="bg-[#FFFDF8] max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-2xl font-serif text-[#3E2723]">Iniciar Nova Produção</DialogTitle>
@@ -395,6 +532,7 @@ export default function ProducaoPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Tabs */}
