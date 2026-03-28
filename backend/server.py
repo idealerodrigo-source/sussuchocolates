@@ -1575,15 +1575,29 @@ async def deletar_compra(compra_id: str, current_user: dict = Depends(get_curren
 async def relatorio_producao_pendente(current_user: dict = Depends(get_current_user)):
     """
     Relatório de itens a serem produzidos com quantidade solicitada, produzida e faltante
+    Considera apenas pedidos que NÃO foram entregues, cancelados ou concluídos (vendidos)
     """
-    # Buscar pedidos ativos (não entregues e não cancelados)
+    # Buscar pedidos ativos (pendentes, em produção, em embalagem - NÃO concluídos/entregues/cancelados)
     pedidos = await db.pedidos.find(
-        {"status": {"$nin": ["entregue", "cancelado"]}},
+        {"status": {"$nin": ["entregue", "cancelado", "concluido"]}},
         {"_id": 0}
     ).to_list(1000)
     
-    # Buscar todas as produções
-    todas_producoes = await db.producao.find({}, {"_id": 0}).to_list(5000)
+    # Se não há pedidos pendentes, retornar vazio
+    if not pedidos:
+        return {
+            "total_itens": 0,
+            "quantidade_total_solicitada": 0,
+            "quantidade_total_produzida": 0,
+            "quantidade_total_faltante": 0,
+            "itens": []
+        }
+    
+    # Buscar todas as produções concluídas
+    todas_producoes = await db.producao.find(
+        {"data_conclusao": {"$ne": None}},
+        {"_id": 0}
+    ).to_list(5000)
     
     # Calcular quantidade já produzida por pedido e produto
     producao_por_pedido = {}  # {pedido_id: {produto_nome: quantidade_produzida}}
@@ -1595,15 +1609,13 @@ async def relatorio_producao_pendente(current_user: dict = Depends(get_current_u
         if pedido_id not in producao_por_pedido:
             producao_por_pedido[pedido_id] = {}
         
-        for item in prod.get('items', []):
-            produto_nome = item.get('produto_nome', 'Produto Desconhecido')
-            quantidade = item.get('quantidade', 0)
-            
-            # Só contar se a produção está concluída ou em andamento
-            if prod.get('status') in ['concluido', 'em_producao', 'em_embalagem']:
-                if produto_nome not in producao_por_pedido[pedido_id]:
-                    producao_por_pedido[pedido_id][produto_nome] = 0
-                producao_por_pedido[pedido_id][produto_nome] += quantidade
+        # Produção tem campos diretos, não dentro de 'items'
+        produto_nome = prod.get('produto_nome', 'Produto Desconhecido')
+        quantidade = prod.get('quantidade', 0)
+        
+        if produto_nome not in producao_por_pedido[pedido_id]:
+            producao_por_pedido[pedido_id][produto_nome] = 0
+        producao_por_pedido[pedido_id][produto_nome] += quantidade
     
     # Agrupar por produto com totais
     produtos_agrupados = {}
@@ -1665,35 +1677,32 @@ async def relatorio_producao_concluida(
     """
     Relatório de itens já produzidos (agrupados por produto)
     """
-    # Filtro de data
-    filtro = {"status": "concluido"}
+    # Filtro de data - produções com data_conclusao (concluídas)
+    filtro = {"data_conclusao": {"$ne": None}}
     
     if data_inicio:
-        filtro["data_conclusao"] = {"$gte": data_inicio}
+        filtro["data_conclusao"]["$gte"] = data_inicio
     if data_fim:
-        if "data_conclusao" in filtro:
-            filtro["data_conclusao"]["$lte"] = data_fim
-        else:
-            filtro["data_conclusao"] = {"$lte": data_fim}
+        filtro["data_conclusao"]["$lte"] = data_fim
     
     producoes = await db.producao.find(filtro, {"_id": 0}).to_list(5000)
     
     # Agrupar por produto
     produtos_agrupados = {}
     for prod in producoes:
-        for item in prod.get('items', []):
-            produto_nome = item.get('produto_nome', 'Produto Desconhecido')
-            quantidade = item.get('quantidade', 0)
-            
-            if produto_nome not in produtos_agrupados:
-                produtos_agrupados[produto_nome] = {
-                    'produto_nome': produto_nome,
-                    'quantidade_total': 0,
-                    'producoes_count': 0
-                }
-            
-            produtos_agrupados[produto_nome]['quantidade_total'] += quantidade
-            produtos_agrupados[produto_nome]['producoes_count'] += 1
+        # Produção tem campos diretos, não dentro de 'items'
+        produto_nome = prod.get('produto_nome', 'Produto Desconhecido')
+        quantidade = prod.get('quantidade', 0)
+        
+        if produto_nome not in produtos_agrupados:
+            produtos_agrupados[produto_nome] = {
+                'produto_nome': produto_nome,
+                'quantidade_total': 0,
+                'producoes_count': 0
+            }
+        
+        produtos_agrupados[produto_nome]['quantidade_total'] += quantidade
+        produtos_agrupados[produto_nome]['producoes_count'] += 1
     
     resultado = list(produtos_agrupados.values())
     resultado.sort(key=lambda x: x['quantidade_total'], reverse=True)
