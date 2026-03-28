@@ -1,9 +1,11 @@
 # Sussu Chocolates - Sistema de Gestão
 
 ## Changelog (2026-03-28)
+- **REFACTOR**: Criada estrutura modular para o backend (models.py, database.py, auth.py, routes/)
 - **NEW**: Cancelamento de vendas com devolução automática dos itens ao estoque
 - **NEW**: Campo de pesquisa em Vendas (filtra por cliente, pedido, produto, forma de pagamento)
 - **NEW**: Opção de parcelamento (1x a 12x) quando forma de pagamento é Cartão de Crédito
+- **FIXED**: Botão "Concluir Selecionados" na Embalagem não fica mais coberto pelo logo
 - **FIXED**: Relatórios de Vendas e Produção Geral agora carregam automaticamente ao acessar a aba (antes exigiam clique manual no botão "Gerar Relatório")
 ## Product Requirements Document (PRD)
 
