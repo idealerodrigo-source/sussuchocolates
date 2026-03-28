@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { vendasAPI, pedidosAPI, nfceAPI, clientesAPI, produtosAPI } from '../services/api';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
-import { Plus, Receipt, Trash } from '@phosphor-icons/react';
+import { Plus, Receipt, Trash, MagnifyingGlass } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -15,12 +15,37 @@ export default function VendasPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [tipoVenda, setTipoVenda] = useState('pedido');
-  const { sortedData, requestSort, sortConfig } = useSortableTable(vendas, { key: 'data_venda', direction: 'desc' });
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Filtrar vendas pelo termo de pesquisa
+  const filteredVendas = useMemo(() => {
+    if (!searchTerm.trim()) return vendas;
+    const term = searchTerm.toLowerCase();
+    return vendas.filter(venda => {
+      // Pesquisar por nome do cliente
+      if (venda.cliente_nome?.toLowerCase().includes(term)) return true;
+      // Pesquisar por forma de pagamento
+      if (venda.forma_pagamento?.toLowerCase().includes(term)) return true;
+      // Pesquisar por tipo de venda
+      if (venda.tipo_venda?.toLowerCase().includes(term)) return true;
+      // Pesquisar por número do pedido (se existir)
+      if (venda.pedido_numero?.toLowerCase().includes(term)) return true;
+      // Pesquisar por itens vendidos
+      if (venda.items?.some(item => item.produto_nome?.toLowerCase().includes(term))) return true;
+      // Pesquisar por status de pagamento
+      if (venda.status_pagamento === 'pendente' && 'a receber'.includes(term)) return true;
+      if (venda.status_pagamento === 'pago' && 'pago'.includes(term)) return true;
+      return false;
+    });
+  }, [vendas, searchTerm]);
+  
+  const { sortedData, requestSort, sortConfig } = useSortableTable(filteredVendas, { key: 'data_venda', direction: 'desc' });
   const [formData, setFormData] = useState({
     pedido_id: '',
     cliente_id: '',
     items: [],
     forma_pagamento: '',
+    parcelas: 1,
     entrega_posterior: false,
     data_previsao_pagamento: '',
     observacoes_pagamento: '',
@@ -90,10 +115,16 @@ export default function VendasPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const isCartaoCredito = formData.forma_pagamento === 'Cartão de Crédito';
+      const formaPagamentoFinal = isCartaoCredito && formData.parcelas > 1
+        ? `Cartão de Crédito (${formData.parcelas}x)`
+        : formData.forma_pagamento;
+      
       if (tipoVenda === 'pedido') {
         await vendasAPI.criar({
           pedido_id: formData.pedido_id,
-          forma_pagamento: formData.forma_pagamento,
+          forma_pagamento: formaPagamentoFinal,
+          parcelas: isCartaoCredito ? formData.parcelas : 1,
           tipo_venda: 'pedido',
           entrega_posterior: formData.entrega_posterior,
           status_pagamento: formData.entrega_posterior ? 'pendente' : 'pago',
@@ -108,7 +139,8 @@ export default function VendasPage() {
         await vendasAPI.criar({
           cliente_id: formData.cliente_id,
           items: formData.items,
-          forma_pagamento: formData.forma_pagamento,
+          forma_pagamento: formaPagamentoFinal,
+          parcelas: isCartaoCredito ? formData.parcelas : 1,
           tipo_venda: 'direta',
           entrega_posterior: formData.entrega_posterior,
           status_pagamento: formData.entrega_posterior ? 'pendente' : 'pago',
@@ -184,6 +216,7 @@ export default function VendasPage() {
       cliente_id: '',
       items: [],
       forma_pagamento: '',
+      parcelas: 1,
       entrega_posterior: false,
       data_previsao_pagamento: '',
       observacoes_pagamento: '',
@@ -349,7 +382,7 @@ export default function VendasPage() {
                 <select
                   required
                   value={formData.forma_pagamento}
-                  onChange={(e) => setFormData({ ...formData, forma_pagamento: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, forma_pagamento: e.target.value, parcelas: 1 })}
                   className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
                 >
                   <option value="">Selecione...</option>
@@ -361,6 +394,32 @@ export default function VendasPage() {
                   <option value="A Prazo">A Prazo (Fiado)</option>
                 </select>
               </div>
+
+              {/* Opção de parcelas para Cartão de Crédito */}
+              {formData.forma_pagamento === 'Cartão de Crédito' && (
+                <div className="bg-[#EDE0D4]/50 rounded-lg p-4">
+                  <label className="block text-sm font-medium text-[#6B4423] mb-2">Número de Parcelas</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, parcelas: num })}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          formData.parcelas === num
+                            ? 'bg-[#6B4423] text-[#F5E6D3]'
+                            : 'bg-[#FFFDF8] text-[#6B4423] border border-[#8B5A3C]/30 hover:bg-[#F5E6D3]'
+                        }`}
+                      >
+                        {num}x
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-[#705A4D] mt-2">
+                    Pagamento em {formData.parcelas}x {formData.parcelas === 1 ? '(à vista)' : ''}
+                  </p>
+                </div>
+              )}
 
               {/* Opção de entrega com pagamento posterior */}
               <div className="bg-[#F5E6D3]/50 rounded-lg p-4 space-y-3">
@@ -421,6 +480,37 @@ export default function VendasPage() {
             </form>
           </DialogContent>
         </Dialog>
+      </div>
+
+      {/* Campo de Pesquisa */}
+      <div className="mb-4">
+        <div className="relative max-w-md">
+          <MagnifyingGlass 
+            size={20} 
+            weight="bold" 
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#8B5A3C]" 
+          />
+          <input
+            type="text"
+            placeholder="Pesquisar por cliente, pedido, produto, forma de pagamento..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans placeholder:text-[#8B5A3C]/60"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#8B5A3C] hover:text-[#6B4423]"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        {searchTerm && (
+          <p className="text-xs text-[#705A4D] mt-1">
+            Encontrados: {filteredVendas.length} de {vendas.length} vendas
+          </p>
+        )}
       </div>
 
       <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl shadow-sm overflow-hidden">
