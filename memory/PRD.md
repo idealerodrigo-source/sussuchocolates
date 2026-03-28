@@ -1,7 +1,7 @@
 # Sussu Chocolates - Sistema de Gestão
 
 ## Changelog (2026-03-28)
-- **REFACTOR**: Criada estrutura modular para o backend (models.py, database.py, auth.py, routes/)
+- **REFACTOR**: Migração COMPLETA do backend para estrutura modular (2500 linhas → 17 arquivos menores)
 - **NEW**: Cancelamento de vendas com devolução automática dos itens ao estoque
 - **NEW**: Campo de pesquisa em Vendas (filtra por cliente, pedido, produto, forma de pagamento)
 - **NEW**: Opção de parcelamento (1x a 12x) quando forma de pagamento é Cartão de Crédito

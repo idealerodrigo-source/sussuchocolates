@@ -3,7 +3,7 @@ Clientes routes
 """
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timezone
 
 from database import db
 from auth import get_current_user
@@ -25,8 +25,10 @@ async def criar_cliente(cliente: ClienteCreate, current_user: dict = Depends(get
 async def listar_clientes(current_user: dict = Depends(get_current_user)):
     clientes = await db.clientes.find({}, {"_id": 0}).to_list(1000)
     for c in clientes:
-        if isinstance(c['data_cadastro'], str):
+        if c.get('data_cadastro') and isinstance(c['data_cadastro'], str):
             c['data_cadastro'] = datetime.fromisoformat(c['data_cadastro'])
+        elif not c.get('data_cadastro'):
+            c['data_cadastro'] = datetime.now(timezone.utc)
     return clientes
 
 
@@ -35,8 +37,10 @@ async def obter_cliente(cliente_id: str, current_user: dict = Depends(get_curren
     cliente = await db.clientes.find_one({"id": cliente_id}, {"_id": 0})
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
-    if isinstance(cliente['data_cadastro'], str):
+    if cliente.get('data_cadastro') and isinstance(cliente['data_cadastro'], str):
         cliente['data_cadastro'] = datetime.fromisoformat(cliente['data_cadastro'])
+    elif not cliente.get('data_cadastro'):
+        cliente['data_cadastro'] = datetime.now(timezone.utc)
     return cliente
 
 
@@ -52,8 +56,10 @@ async def atualizar_cliente(cliente_id: str, cliente_data: ClienteCreate, curren
         {"$set": update_data}
     )
     updated = await db.clientes.find_one({"id": cliente_id}, {"_id": 0})
-    if isinstance(updated['data_cadastro'], str):
+    if updated.get('data_cadastro') and isinstance(updated['data_cadastro'], str):
         updated['data_cadastro'] = datetime.fromisoformat(updated['data_cadastro'])
+    elif not updated.get('data_cadastro'):
+        updated['data_cadastro'] = datetime.now(timezone.utc)
     return updated
 
 
