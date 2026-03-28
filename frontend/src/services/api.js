@@ -63,6 +63,7 @@ export const vendasAPI = {
   listar: () => api.get('/vendas'),
   criar: (data) => api.post('/vendas', data),
   atualizar: (id, data) => api.put(`/vendas/${id}`, data),
+  confirmarPagamento: (id) => api.put(`/vendas/${id}/confirmar-pagamento`),
 };
 
 export const relatoriosAPI = {

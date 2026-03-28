@@ -21,6 +21,9 @@ export default function VendasPage() {
     cliente_id: '',
     items: [],
     forma_pagamento: '',
+    entrega_posterior: false,
+    data_previsao_pagamento: '',
+    observacoes_pagamento: '',
   });
   const [itemTemp, setItemTemp] = useState({
     produto_id: '',
@@ -91,7 +94,11 @@ export default function VendasPage() {
         await vendasAPI.criar({
           pedido_id: formData.pedido_id,
           forma_pagamento: formData.forma_pagamento,
-          tipo_venda: 'pedido'
+          tipo_venda: 'pedido',
+          entrega_posterior: formData.entrega_posterior,
+          status_pagamento: formData.entrega_posterior ? 'pendente' : 'pago',
+          data_previsao_pagamento: formData.entrega_posterior ? formData.data_previsao_pagamento : null,
+          observacoes_pagamento: formData.observacoes_pagamento || null,
         });
       } else {
         if (formData.items.length === 0) {
@@ -102,7 +109,11 @@ export default function VendasPage() {
           cliente_id: formData.cliente_id,
           items: formData.items,
           forma_pagamento: formData.forma_pagamento,
-          tipo_venda: 'direta'
+          tipo_venda: 'direta',
+          entrega_posterior: formData.entrega_posterior,
+          status_pagamento: formData.entrega_posterior ? 'pendente' : 'pago',
+          data_previsao_pagamento: formData.entrega_posterior ? formData.data_previsao_pagamento : null,
+          observacoes_pagamento: formData.observacoes_pagamento || null,
         });
       }
       toast.success('Venda registrada com sucesso');
@@ -154,12 +165,28 @@ export default function VendasPage() {
     }
   };
 
+  const handleConfirmarPagamento = async (vendaId) => {
+    const confirmar = window.confirm('Confirmar o recebimento do pagamento desta venda?');
+    if (!confirmar) return;
+    
+    try {
+      await vendasAPI.confirmarPagamento(vendaId);
+      toast.success('Pagamento confirmado com sucesso!');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erro ao confirmar pagamento');
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       pedido_id: '',
       cliente_id: '',
       items: [],
       forma_pagamento: '',
+      entrega_posterior: false,
+      data_previsao_pagamento: '',
+      observacoes_pagamento: '',
     });
     setItemTemp({ produto_id: '', quantidade: 1 });
     setTipoVenda('pedido');
@@ -331,7 +358,56 @@ export default function VendasPage() {
                   <option value="Cartão de Débito">Cartão de Débito</option>
                   <option value="PIX">PIX</option>
                   <option value="Boleto">Boleto</option>
+                  <option value="A Prazo">A Prazo (Fiado)</option>
                 </select>
+              </div>
+
+              {/* Opção de entrega com pagamento posterior */}
+              <div className="bg-[#F5E6D3]/50 rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="entrega_posterior"
+                    checked={formData.entrega_posterior}
+                    onChange={(e) => setFormData({ ...formData, entrega_posterior: e.target.checked })}
+                    className="w-5 h-5 text-[#6B4423] bg-[#FFFDF8] border-[#8B5A3C]/30 rounded focus:ring-[#6B4423]"
+                  />
+                  <label htmlFor="entrega_posterior" className="text-sm font-medium text-[#3E2723]">
+                    Entrega com pagamento posterior (a receber)
+                  </label>
+                </div>
+                
+                {formData.entrega_posterior && (
+                  <div className="ml-8 space-y-3 pt-2 border-t border-[#8B5A3C]/15">
+                    <div>
+                      <label className="block text-sm font-medium text-[#6B4423] mb-1">
+                        Previsão de Pagamento
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.data_previsao_pagamento}
+                        onChange={(e) => setFormData({ ...formData, data_previsao_pagamento: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[#6B4423] mb-1">
+                        Observações do Pagamento
+                      </label>
+                      <textarea
+                        value={formData.observacoes_pagamento}
+                        onChange={(e) => setFormData({ ...formData, observacoes_pagamento: e.target.value })}
+                        placeholder="Ex: Pagamento na próxima entrega, cliente pagará em 2x, etc."
+                        rows="2"
+                        className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans resize-none"
+                      />
+                    </div>
+                    <p className="text-xs text-[#D97706] flex items-center gap-1">
+                      <span>⚠️</span>
+                      Esta venda ficará com status "Pagamento Pendente" até ser confirmado
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 justify-end pt-4">
@@ -357,6 +433,7 @@ export default function VendasPage() {
                 <SortableHeader label="Data" sortKey="data_venda" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
                 <SortableHeader label="Pagamento" sortKey="forma_pagamento" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
                 <SortableHeader label="Valor" sortKey="valor_total" sortConfig={sortConfig} onSort={requestSort} className="text-right" />
+                <SortableHeader label="Status Pgto" sortKey="status_pagamento" sortConfig={sortConfig} onSort={requestSort} className="text-center" />
                 <SortableHeader label="NFC-e" sortKey="nfce_emitida" sortConfig={sortConfig} onSort={requestSort} className="text-center" />
                 <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Ações</th>
               </tr>
@@ -364,7 +441,7 @@ export default function VendasPage() {
             <tbody>
               {sortedData.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-12 text-[#705A4D] font-sans">
+                  <td colSpan="8" className="text-center py-12 text-[#705A4D] font-sans">
                     Nenhuma venda registrada
                   </td>
                 </tr>
@@ -397,22 +474,52 @@ export default function VendasPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      {!venda.nfce_emitida && (
-                        <Button
-                          onClick={() => handleEmitirNFCe(venda)}
-                          size="sm"
-                          className="bg-[#8B5A3C] text-[#F5E6D3] hover:bg-[#6B4423] text-xs"
-                        >
-                          <Receipt size={16} weight="bold" className="mr-1" />
-                          Emitir NFC-e
-                        </Button>
-                      )}
-                      {venda.nfce_emitida && venda.nfce_numero && (
-                        <span className="text-xs text-[#705A4D]">
-                          NFC-e: {venda.nfce_numero}
+                    <td className="px-6 py-4 text-center">
+                      {venda.status_pagamento === 'pendente' ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="px-3 py-1 rounded-full text-xs font-medium bg-[#FED7AA] text-[#C2410C]">
+                            A Receber
+                          </span>
+                          {venda.data_previsao_pagamento && (
+                            <span className="text-[10px] text-[#705A4D]">
+                              Prev: {new Date(venda.data_previsao_pagamento).toLocaleDateString('pt-BR')}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-[#C6F6D5] text-[#2F855A]">
+                          Pago
                         </span>
                       )}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex gap-2 justify-end">
+                        {venda.status_pagamento === 'pendente' && (
+                          <Button
+                            onClick={() => handleConfirmarPagamento(venda.id)}
+                            size="sm"
+                            className="bg-[#2F855A] text-white hover:bg-[#276749] text-xs"
+                            title="Confirmar Pagamento"
+                          >
+                            Receber
+                          </Button>
+                        )}
+                        {!venda.nfce_emitida && (
+                          <Button
+                            onClick={() => handleEmitirNFCe(venda)}
+                            size="sm"
+                            className="bg-[#8B5A3C] text-[#F5E6D3] hover:bg-[#6B4423] text-xs"
+                          >
+                            <Receipt size={16} weight="bold" className="mr-1" />
+                            NFC-e
+                          </Button>
+                        )}
+                        {venda.nfce_emitida && venda.nfce_numero && (
+                          <span className="text-xs text-[#705A4D]">
+                            NFC-e: {venda.nfce_numero}
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))

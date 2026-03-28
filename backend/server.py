@@ -388,7 +388,13 @@ class Venda(BaseModel):
     data_venda: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     nfce_emitida: bool = False
     nfce_chave: Optional[str] = None
+    nfce_numero: Optional[str] = None
     tipo_venda: str = "pedido"  # "pedido" ou "direta"
+    entrega_posterior: bool = False
+    status_pagamento: str = "pago"  # "pago" ou "pendente"
+    data_previsao_pagamento: Optional[str] = None
+    observacoes_pagamento: Optional[str] = None
+    data_pagamento: Optional[datetime] = None
 
 class VendaCreate(BaseModel):
     pedido_id: Optional[str] = None
@@ -396,6 +402,10 @@ class VendaCreate(BaseModel):
     items: Optional[List[ItemPedido]] = None
     forma_pagamento: str
     tipo_venda: str = "pedido"
+    entrega_posterior: bool = False
+    status_pagamento: str = "pago"
+    data_previsao_pagamento: Optional[str] = None
+    observacoes_pagamento: Optional[str] = None
 
 class NFCe(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -934,7 +944,11 @@ async def criar_venda(venda_data: VendaCreate, current_user: dict = Depends(get_
             items=pedido['items'],
             valor_total=pedido['valor_total'],
             forma_pagamento=venda_data.forma_pagamento,
-            tipo_venda="pedido"
+            tipo_venda="pedido",
+            entrega_posterior=venda_data.entrega_posterior,
+            status_pagamento=venda_data.status_pagamento,
+            data_previsao_pagamento=venda_data.data_previsao_pagamento,
+            observacoes_pagamento=venda_data.observacoes_pagamento
         )
         
         # Atualizar status do pedido
@@ -960,11 +974,17 @@ async def criar_venda(venda_data: VendaCreate, current_user: dict = Depends(get_
             items=venda_data.items,
             valor_total=valor_total,
             forma_pagamento=venda_data.forma_pagamento,
-            tipo_venda="direta"
+            tipo_venda="direta",
+            entrega_posterior=venda_data.entrega_posterior,
+            status_pagamento=venda_data.status_pagamento,
+            data_previsao_pagamento=venda_data.data_previsao_pagamento,
+            observacoes_pagamento=venda_data.observacoes_pagamento
         )
     
     doc = venda.model_dump()
     doc['data_venda'] = doc['data_venda'].isoformat()
+    if doc.get('data_pagamento'):
+        doc['data_pagamento'] = doc['data_pagamento'].isoformat()
     await db.vendas.insert_one(doc)
     
     # Dar baixa no estoque
@@ -988,7 +1008,30 @@ async def listar_vendas(current_user: dict = Depends(get_current_user)):
     for v in vendas:
         if isinstance(v['data_venda'], str):
             v['data_venda'] = datetime.fromisoformat(v['data_venda'])
+        if isinstance(v.get('data_pagamento'), str):
+            v['data_pagamento'] = datetime.fromisoformat(v['data_pagamento'])
     return vendas
+
+@api_router.put("/vendas/{venda_id}/confirmar-pagamento")
+async def confirmar_pagamento_venda(venda_id: str, current_user: dict = Depends(get_current_user)):
+    """Confirma o pagamento de uma venda com status pendente"""
+    venda = await db.vendas.find_one({"id": venda_id}, {"_id": 0})
+    if not venda:
+        raise HTTPException(status_code=404, detail="Venda não encontrada")
+    
+    if venda.get('status_pagamento') == 'pago':
+        raise HTTPException(status_code=400, detail="Esta venda já está paga")
+    
+    await db.vendas.update_one(
+        {"id": venda_id},
+        {"$set": {
+            "status_pagamento": "pago",
+            "data_pagamento": datetime.now(timezone.utc).isoformat(),
+            "entrega_posterior": False
+        }}
+    )
+    
+    return {"message": "Pagamento confirmado com sucesso"}
 
 # NFC-e - Rotas específicas primeiro (antes das rotas com parâmetros dinâmicos)
 from nfce_service import (
