@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '../components/ui/button';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useSortableTable, SortableHeader } from '../hooks/useSortableTable';
 
 // Dados da empresa Sussu Chocolates
 const EMPRESA = {
@@ -28,6 +29,7 @@ export default function PedidosPage() {
   const [editingPedidoId, setEditingPedidoId] = useState(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingPedido, setViewingPedido] = useState(null);
+  const { sortedData, requestSort, sortConfig } = useSortableTable(pedidos, { key: 'data_pedido', direction: 'desc' });
   const [formData, setFormData] = useState({
     cliente_id: '',
     items: [],
@@ -500,24 +502,24 @@ export default function PedidosPage() {
           <table className="w-full">
             <thead className="bg-[#E8D5C4]">
               <tr>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Número</th>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Cliente</th>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Data Pedido</th>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Data Entrega</th>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Status</th>
-                <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Valor</th>
+                <SortableHeader label="Número" sortKey="numero" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                <SortableHeader label="Cliente" sortKey="cliente_nome" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                <SortableHeader label="Data Pedido" sortKey="data_pedido" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                <SortableHeader label="Data Entrega" sortKey="data_entrega" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                <SortableHeader label="Status" sortKey="status" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                <SortableHeader label="Valor" sortKey="valor_total" sortConfig={sortConfig} onSort={requestSort} className="text-right" />
                 <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Ações</th>
               </tr>
             </thead>
             <tbody>
-              {pedidos.length === 0 ? (
+              {sortedData.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="text-center py-12 text-[#705A4D] font-sans">
                     Nenhum pedido cadastrado
                   </td>
                 </tr>
               ) : (
-                pedidos.map((pedido) => (
+                sortedData.map((pedido) => (
                   <tr key={pedido.id} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">{pedido.numero}</td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{pedido.cliente_nome}</td>

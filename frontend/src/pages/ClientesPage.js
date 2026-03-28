@@ -5,12 +5,14 @@ import { Plus, Pencil, Trash } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
+import { useSortableTable, SortableHeader } from '../hooks/useSortableTable';
 
 export default function ClientesPage() {
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCliente, setEditingCliente] = useState(null);
+  const { sortedData, requestSort, sortConfig } = useSortableTable(clientes, { key: 'nome', direction: 'asc' });
   const [formData, setFormData] = useState({
     nome: '',
     cpf: '',
@@ -227,23 +229,23 @@ export default function ClientesPage() {
           <table className="w-full">
             <thead className="bg-[#E8D5C4]">
               <tr>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Nome</th>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">CPF/CNPJ</th>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Telefone</th>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Email</th>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Cidade</th>
+                <SortableHeader label="Nome" sortKey="nome" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                <SortableHeader label="CPF/CNPJ" sortKey="cpf" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                <SortableHeader label="Telefone" sortKey="telefone" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                <SortableHeader label="Email" sortKey="email" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                <SortableHeader label="Cidade" sortKey="cidade" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
                 <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Ações</th>
               </tr>
             </thead>
             <tbody>
-              {clientes.length === 0 ? (
+              {sortedData.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="text-center py-12 text-[#705A4D] font-sans">
                     Nenhum cliente cadastrado
                   </td>
                 </tr>
               ) : (
-                clientes.map((cliente) => (
+                sortedData.map((cliente) => (
                   <tr key={cliente.id} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">{cliente.nome}</td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">

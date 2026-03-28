@@ -5,6 +5,7 @@ import { Plus, CheckCircle, Package, ShoppingCart, Trash, PlusCircle, ClipboardT
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
+import { useSortableTable, SortableHeader } from '../hooks/useSortableTable';
 
 export default function ProducaoPage() {
   const [producoes, setProducoes] = useState([]);
@@ -18,6 +19,7 @@ export default function ProducaoPage() {
   const [activeTab, setActiveTab] = useState('producao'); // 'producao' ou 'relatorio'
   const [tipoProducao, setTipoProducao] = useState('estoque');
   const [responsavelTodos, setResponsavelTodos] = useState('');
+  const { sortedData, requestSort, sortConfig } = useSortableTable(producoes, { key: 'data_criacao', direction: 'desc' });
   const [formData, setFormData] = useState({
     pedido_id: '',
     responsavel: '',
@@ -570,26 +572,26 @@ export default function ProducaoPage() {
             <table className="w-full">
               <thead className="bg-[#E8D5C4]">
                 <tr>
-                  <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Referência</th>
-                  <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Tipo</th>
-                  <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Produto</th>
-                  <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Quantidade</th>
-                  <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Responsável</th>
-                  <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Início</th>
-                  <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Conclusão</th>
-                  <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Status</th>
+                  <SortableHeader label="Referência" sortKey="pedido_numero" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                  <SortableHeader label="Tipo" sortKey="tipo_producao" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                  <SortableHeader label="Produto" sortKey="produto_nome" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                  <SortableHeader label="Quantidade" sortKey="quantidade" sortConfig={sortConfig} onSort={requestSort} className="text-right" />
+                  <SortableHeader label="Responsável" sortKey="responsavel" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                  <SortableHeader label="Início" sortKey="data_inicio" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                  <SortableHeader label="Conclusão" sortKey="data_conclusao" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                  <SortableHeader label="Status" sortKey="data_conclusao" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
                   <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {producoes.length === 0 ? (
+                {sortedData.length === 0 ? (
                   <tr>
                     <td colSpan="9" className="text-center py-12 text-[#705A4D] font-sans">
                       Nenhuma produção registrada
                     </td>
                   </tr>
                 ) : (
-                  producoes.map((producao) => (
+                  sortedData.map((producao) => (
                     <tr key={producao.id} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
                       <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">{producao.pedido_numero || '-'}</td>
                       <td className="px-6 py-4">

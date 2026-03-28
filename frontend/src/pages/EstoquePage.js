@@ -5,6 +5,7 @@ import { Plus, TrendUp, TrendDown, ArrowsClockwise, MapPin } from '@phosphor-ico
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
+import { useSortableTable, SortableHeader } from '../hooks/useSortableTable';
 
 export default function EstoquePage() {
   const [movimentos, setMovimentos] = useState([]);
@@ -13,6 +14,8 @@ export default function EstoquePage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('saldo');
+  const { sortedData: sortedSaldos, requestSort: requestSortSaldos, sortConfig: sortConfigSaldos } = useSortableTable(saldos, { key: 'produto_nome', direction: 'asc' });
+  const { sortedData: sortedMovimentos, requestSort: requestSortMovimentos, sortConfig: sortConfigMovimentos } = useSortableTable(movimentos, { key: 'data_movimento', direction: 'desc' });
   const [formData, setFormData] = useState({
     produto_id: '',
     quantidade: '',
@@ -213,20 +216,20 @@ export default function EstoquePage() {
             <table className="w-full">
               <thead className="bg-[#E8D5C4]">
                 <tr>
-                  <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Produto</th>
-                  <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Localização</th>
-                  <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Quantidade em Estoque</th>
+                  <SortableHeader label="Produto" sortKey="produto_nome" sortConfig={sortConfigSaldos} onSort={requestSortSaldos} className="text-left" />
+                  <SortableHeader label="Localização" sortKey="localizacao" sortConfig={sortConfigSaldos} onSort={requestSortSaldos} className="text-left" />
+                  <SortableHeader label="Quantidade em Estoque" sortKey="quantidade" sortConfig={sortConfigSaldos} onSort={requestSortSaldos} className="text-right" />
                 </tr>
               </thead>
               <tbody>
-                {saldos.length === 0 ? (
+                {sortedSaldos.length === 0 ? (
                   <tr>
                     <td colSpan="3" className="text-center py-12 text-[#705A4D] font-sans">
                       Nenhum produto em estoque
                     </td>
                   </tr>
                 ) : (
-                  saldos.map((saldo) => (
+                  sortedSaldos.map((saldo) => (
                     <tr key={saldo.produto_id} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
                       <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">{saldo.produto_nome}</td>
                       <td className="px-6 py-4">
@@ -261,24 +264,24 @@ export default function EstoquePage() {
             <table className="w-full">
               <thead className="bg-[#E8D5C4]">
                 <tr>
-                  <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Data</th>
-                  <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Produto</th>
-                  <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Tipo</th>
-                  <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Quantidade</th>
-                  <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Localização</th>
-                  <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Responsável</th>
+                  <SortableHeader label="Data" sortKey="data_movimento" sortConfig={sortConfigMovimentos} onSort={requestSortMovimentos} className="text-left" />
+                  <SortableHeader label="Produto" sortKey="produto_nome" sortConfig={sortConfigMovimentos} onSort={requestSortMovimentos} className="text-left" />
+                  <SortableHeader label="Tipo" sortKey="tipo_movimento" sortConfig={sortConfigMovimentos} onSort={requestSortMovimentos} className="text-left" />
+                  <SortableHeader label="Quantidade" sortKey="quantidade" sortConfig={sortConfigMovimentos} onSort={requestSortMovimentos} className="text-right" />
+                  <SortableHeader label="Localização" sortKey="localizacao" sortConfig={sortConfigMovimentos} onSort={requestSortMovimentos} className="text-left" />
+                  <SortableHeader label="Responsável" sortKey="responsavel" sortConfig={sortConfigMovimentos} onSort={requestSortMovimentos} className="text-left" />
                   <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Observações</th>
                 </tr>
               </thead>
               <tbody>
-                {movimentos.length === 0 ? (
+                {sortedMovimentos.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="text-center py-12 text-[#705A4D] font-sans">
                       Nenhuma movimentação registrada
                     </td>
                   </tr>
                 ) : (
-                  movimentos.map((mov) => (
+                  sortedMovimentos.map((mov) => (
                     <tr key={mov.id} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
                       <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{formatDateTime(mov.data_movimento)}</td>
                       <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">{mov.produto_nome}</td>

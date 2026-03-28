@@ -5,6 +5,7 @@ import { Plus, Receipt, Trash } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
+import { useSortableTable, SortableHeader } from '../hooks/useSortableTable';
 
 export default function VendasPage() {
   const [vendas, setVendas] = useState([]);
@@ -14,6 +15,7 @@ export default function VendasPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [tipoVenda, setTipoVenda] = useState('pedido');
+  const { sortedData, requestSort, sortConfig } = useSortableTable(vendas, { key: 'data_venda', direction: 'desc' });
   const [formData, setFormData] = useState({
     pedido_id: '',
     cliente_id: '',
@@ -350,24 +352,24 @@ export default function VendasPage() {
           <table className="w-full">
             <thead className="bg-[#E8D5C4]">
               <tr>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Tipo</th>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Cliente</th>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Data</th>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Pagamento</th>
-                <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Valor</th>
-                <th className="text-center px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">NFC-e</th>
+                <SortableHeader label="Tipo" sortKey="tipo_venda" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                <SortableHeader label="Cliente" sortKey="cliente_nome" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                <SortableHeader label="Data" sortKey="data_venda" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                <SortableHeader label="Pagamento" sortKey="forma_pagamento" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                <SortableHeader label="Valor" sortKey="valor_total" sortConfig={sortConfig} onSort={requestSort} className="text-right" />
+                <SortableHeader label="NFC-e" sortKey="nfce_emitida" sortConfig={sortConfig} onSort={requestSort} className="text-center" />
                 <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Ações</th>
               </tr>
             </thead>
             <tbody>
-              {vendas.length === 0 ? (
+              {sortedData.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="text-center py-12 text-[#705A4D] font-sans">
                     Nenhuma venda registrada
                   </td>
                 </tr>
               ) : (
-                vendas.map((venda) => (
+                sortedData.map((venda) => (
                   <tr key={venda.id} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${

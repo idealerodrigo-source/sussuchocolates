@@ -5,12 +5,14 @@ import { Plus, Pencil, Trash } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
+import { useSortableTable, SortableHeader } from '../hooks/useSortableTable';
 
 export default function ProdutosPage() {
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduto, setEditingProduto] = useState(null);
+  const { sortedData, requestSort, sortConfig } = useSortableTable(produtos, { key: 'nome', direction: 'asc' });
   const [formData, setFormData] = useState({
     nome: '',
     descricao: '',
@@ -219,23 +221,23 @@ export default function ProdutosPage() {
           <table className="w-full">
             <thead className="bg-[#E8D5C4]">
               <tr>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Nome</th>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Categoria</th>
-                <th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Descrição</th>
-                <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Preço</th>
-                <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Custo</th>
+                <SortableHeader label="Nome" sortKey="nome" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                <SortableHeader label="Categoria" sortKey="categoria" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                <SortableHeader label="Descrição" sortKey="descricao" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                <SortableHeader label="Preço" sortKey="preco" sortConfig={sortConfig} onSort={requestSort} className="text-right" />
+                <SortableHeader label="Custo" sortKey="custo_producao" sortConfig={sortConfig} onSort={requestSort} className="text-right" />
                 <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Ações</th>
               </tr>
             </thead>
             <tbody>
-              {produtos.length === 0 ? (
+              {sortedData.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="text-center py-12 text-[#705A4D] font-sans">
                     Nenhum produto cadastrado
                   </td>
                 </tr>
               ) : (
-                produtos.map((produto) => (
+                sortedData.map((produto) => (
                   <tr key={produto.id} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">{produto.nome}</td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{produto.categoria}</td>
