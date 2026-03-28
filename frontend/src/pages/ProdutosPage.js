@@ -38,6 +38,15 @@ export default function ProdutosPage() {
     }
   };
 
+  // Verifica se já existe produto com mesmo nome
+  const verificarDuplicata = (dados) => {
+    return produtos.filter(p => {
+      if (editingProduto && p.id === editingProduto.id) return false;
+      return p.nome && dados.nome && 
+        p.nome.toLowerCase().trim() === dados.nome.toLowerCase().trim();
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -46,6 +55,20 @@ export default function ProdutosPage() {
         preco: parseFloat(formData.preco),
         custo_producao: parseFloat(formData.custo_producao || 0),
       };
+
+      // Verificar duplicatas apenas em novos cadastros
+      if (!editingProduto) {
+        const duplicatas = verificarDuplicata(data);
+        if (duplicatas.length > 0) {
+          const confirmar = window.confirm(
+            `Já existe um produto com nome igual ou similar:\n\n` +
+            duplicatas.map(d => `• ${d.nome} (${d.categoria || 'Sem categoria'})`).join('\n') +
+            `\n\nDeseja cadastrar mesmo assim?`
+          );
+          
+          if (!confirmar) return;
+        }
+      }
 
       if (editingProduto) {
         await produtosAPI.atualizar(editingProduto.id, data);

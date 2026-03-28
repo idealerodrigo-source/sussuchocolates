@@ -459,6 +459,26 @@ export default function ComprasPage() {
   const handleFornecedorSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Verificar duplicatas apenas em novos cadastros
+      if (!editMode) {
+        const duplicatas = fornecedores.filter(f => {
+          const nomeIgual = f.nome && fornecedorForm.nome && 
+            f.nome.toLowerCase().trim() === fornecedorForm.nome.toLowerCase().trim();
+          const cnpjIgual = f.cnpj && fornecedorForm.cnpj && 
+            f.cnpj.replace(/\D/g, '') === fornecedorForm.cnpj.replace(/\D/g, '');
+          return nomeIgual || cnpjIgual;
+        });
+        
+        if (duplicatas.length > 0) {
+          const confirmar = window.confirm(
+            `Já existe um fornecedor com nome ou CNPJ igual:\n\n` +
+            duplicatas.map(d => `• ${d.nome}${d.cnpj ? ` (CNPJ: ${d.cnpj})` : ''}`).join('\n') +
+            `\n\nDeseja cadastrar mesmo assim?`
+          );
+          if (!confirmar) return;
+        }
+      }
+      
       if (editMode) {
         await fornecedoresAPI.atualizar(editingId, fornecedorForm);
         toast.success('Fornecedor atualizado com sucesso');
@@ -521,6 +541,23 @@ export default function ComprasPage() {
         estoque_minimo: parseFloat(insumoForm.estoque_minimo) || 0,
         estoque_atual: parseFloat(insumoForm.estoque_atual) || 0
       };
+      
+      // Verificar duplicatas apenas em novos cadastros
+      if (!editMode) {
+        const duplicatas = insumos.filter(i => 
+          i.nome && data.nome && 
+          i.nome.toLowerCase().trim() === data.nome.toLowerCase().trim()
+        );
+        
+        if (duplicatas.length > 0) {
+          const confirmar = window.confirm(
+            `Já existe um insumo com nome igual:\n\n` +
+            duplicatas.map(d => `• ${d.nome} (${d.categoria || 'Sem categoria'})`).join('\n') +
+            `\n\nDeseja cadastrar mesmo assim?`
+          );
+          if (!confirmar) return;
+        }
+      }
       
       if (editMode) {
         await insumosAPI.atualizar(editingId, data);

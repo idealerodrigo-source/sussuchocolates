@@ -40,6 +40,24 @@ export default function ClientesPage() {
     }
   };
 
+  // Verifica se já existe cliente com mesmo nome, CPF ou CNPJ
+  const verificarDuplicata = (dados) => {
+    const duplicatas = clientes.filter(c => {
+      if (editingCliente && c.id === editingCliente.id) return false;
+      
+      const nomeIgual = dados.nome && c.nome && 
+        c.nome.toLowerCase().trim() === dados.nome.toLowerCase().trim();
+      const cpfIgual = dados.cpf && c.cpf && 
+        c.cpf.replace(/\D/g, '') === dados.cpf.replace(/\D/g, '');
+      const cnpjIgual = dados.cnpj && c.cnpj && 
+        c.cnpj.replace(/\D/g, '') === dados.cnpj.replace(/\D/g, '');
+      
+      return nomeIgual || cpfIgual || cnpjIgual;
+    });
+    
+    return duplicatas;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -47,6 +65,28 @@ export default function ClientesPage() {
       const cleanData = Object.fromEntries(
         Object.entries(formData).filter(([_, v]) => v !== '' && v !== null)
       );
+      
+      // Verificar duplicatas apenas em novos cadastros
+      if (!editingCliente) {
+        const duplicatas = verificarDuplicata(cleanData);
+        if (duplicatas.length > 0) {
+          const campos = [];
+          duplicatas.forEach(d => {
+            if (d.nome.toLowerCase() === cleanData.nome?.toLowerCase()) campos.push('Nome');
+            if (d.cpf && cleanData.cpf && d.cpf.replace(/\D/g, '') === cleanData.cpf.replace(/\D/g, '')) campos.push('CPF');
+            if (d.cnpj && cleanData.cnpj && d.cnpj.replace(/\D/g, '') === cleanData.cnpj.replace(/\D/g, '')) campos.push('CNPJ');
+          });
+          const camposUnicos = [...new Set(campos)].join(', ');
+          
+          const confirmar = window.confirm(
+            `Já existe um cliente com ${camposUnicos} igual ou similar:\n\n` +
+            duplicatas.map(d => `• ${d.nome}${d.cpf ? ` (CPF: ${d.cpf})` : ''}${d.cnpj ? ` (CNPJ: ${d.cnpj})` : ''}`).join('\n') +
+            `\n\nDeseja cadastrar mesmo assim?`
+          );
+          
+          if (!confirmar) return;
+        }
+      }
       
       if (editingCliente) {
         await clientesAPI.atualizar(editingCliente.id, cleanData);
