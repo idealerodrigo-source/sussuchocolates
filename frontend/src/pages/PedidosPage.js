@@ -38,6 +38,7 @@ export default function PedidosPage() {
   });
   const [itemTemp, setItemTemp] = useState({
     produto_id: '',
+    produto_busca: '',
     quantidade: 1,
   });
 
@@ -62,13 +63,46 @@ export default function PedidosPage() {
     }
   };
 
+  // Buscar produto pelo texto digitado
+  const handleProdutoBuscaChange = (e) => {
+    const busca = e.target.value;
+    setItemTemp({ ...itemTemp, produto_busca: busca, produto_id: '' });
+    
+    // Tentar encontrar o produto pelo nome exato
+    const produtoEncontrado = produtos.find(
+      p => p.nome.toLowerCase() === busca.toLowerCase() ||
+           `${p.nome} - R$ ${p.preco.toFixed(2)}`.toLowerCase() === busca.toLowerCase()
+    );
+    
+    if (produtoEncontrado) {
+      setItemTemp({ ...itemTemp, produto_busca: busca, produto_id: produtoEncontrado.id });
+    }
+  };
+
   const handleAddItem = () => {
-    if (!itemTemp.produto_id || itemTemp.quantidade <= 0) {
-      toast.error('Selecione um produto e quantidade válida');
+    // Se não tem produto_id, tentar buscar pelo texto
+    let produtoId = itemTemp.produto_id;
+    if (!produtoId && itemTemp.produto_busca) {
+      const produtoEncontrado = produtos.find(
+        p => p.nome.toLowerCase() === itemTemp.produto_busca.toLowerCase() ||
+             p.nome.toLowerCase().includes(itemTemp.produto_busca.toLowerCase())
+      );
+      if (produtoEncontrado) {
+        produtoId = produtoEncontrado.id;
+      }
+    }
+    
+    if (!produtoId || itemTemp.quantidade <= 0) {
+      toast.error('Selecione um produto válido e quantidade');
       return;
     }
 
-    const produto = produtos.find((p) => p.id === itemTemp.produto_id);
+    const produto = produtos.find((p) => p.id === produtoId);
+    if (!produto) {
+      toast.error('Produto não encontrado');
+      return;
+    }
+    
     const subtotal = produto.preco * itemTemp.quantidade;
 
     const newItem = {
@@ -84,7 +118,7 @@ export default function PedidosPage() {
       items: [...formData.items, newItem],
     });
 
-    setItemTemp({ produto_id: '', quantidade: 1 });
+    setItemTemp({ produto_id: '', produto_busca: '', quantidade: 1 });
   };
 
   const handleRemoveItem = (index) => {
@@ -354,7 +388,7 @@ export default function PedidosPage() {
       observacoes: '',
       data_entrega: '',
     });
-    setItemTemp({ produto_id: '', quantidade: 1 });
+    setItemTemp({ produto_id: '', produto_busca: '', quantidade: 1 });
     setEditMode(false);
     setEditingPedidoId(null);
   };
@@ -406,18 +440,21 @@ export default function PedidosPage() {
                 
                 <div className="grid grid-cols-12 gap-3 mb-3">
                   <div className="col-span-7">
-                    <select
-                      value={itemTemp.produto_id}
-                      onChange={(e) => setItemTemp({ ...itemTemp, produto_id: e.target.value })}
+                    <input
+                      type="text"
+                      list="produtos-lista"
+                      value={itemTemp.produto_busca}
+                      onChange={handleProdutoBuscaChange}
+                      placeholder="Digite para buscar produto..."
                       className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
-                    >
-                      <option value="">Selecione um produto...</option>
+                    />
+                    <datalist id="produtos-lista">
                       {produtos.map((produto) => (
-                        <option key={produto.id} value={produto.id}>
-                          {produto.nome} - {formatCurrency(produto.preco)}
+                        <option key={produto.id} value={produto.nome}>
+                          {formatCurrency(produto.preco)}
                         </option>
                       ))}
-                    </select>
+                    </datalist>
                   </div>
                   <div className="col-span-3">
                     <input

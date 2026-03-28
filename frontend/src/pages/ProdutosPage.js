@@ -202,15 +202,24 @@ export default function ProdutosPage() {
                     placeholder="Digite ou selecione uma categoria"
                   />
                   <datalist id="categorias-sugestoes">
-                    <option value="Trufas" />
-                    <option value="Bombons" />
-                    <option value="Barras" />
-                    <option value="Ovos de Páscoa" />
-                    <option value="Tabletes" />
-                    <option value="Palitos" />
-                    <option value="Coberturas" />
-                    <option value="Recheios" />
-                    <option value="Outros" />
+                    {/* Categorias dos produtos existentes */}
+                    {[...new Set(produtos.map(p => p.categoria).filter(Boolean))].sort().map((cat) => (
+                      <option key={cat} value={cat} />
+                    ))}
+                    {/* Categorias padrão caso não existam produtos */}
+                    {produtos.length === 0 && (
+                      <>
+                        <option value="Trufas" />
+                        <option value="Bombons" />
+                        <option value="Barras" />
+                        <option value="Ovos de Páscoa" />
+                        <option value="Tabletes" />
+                        <option value="Palitos" />
+                        <option value="Coberturas" />
+                        <option value="Recheios" />
+                        <option value="Outros" />
+                      </>
+                    )}
                   </datalist>
                   <p className="text-xs text-[#705A4D] mt-1">
                     Você pode escolher uma sugestão ou digitar uma nova categoria
