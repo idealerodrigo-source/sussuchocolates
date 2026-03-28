@@ -40,6 +40,8 @@ export default function PedidosPage() {
     produto_id: '',
     produto_busca: '',
     quantidade: 1,
+    desconto: 0,
+    tipo_desconto: 'percentual', // 'percentual' ou 'valor'
   });
 
   useEffect(() => {
@@ -103,14 +105,28 @@ export default function PedidosPage() {
       return;
     }
     
-    const subtotal = produto.preco * itemTemp.quantidade;
+    const valorBruto = produto.preco * itemTemp.quantidade;
+    let valorDesconto = 0;
+    
+    if (itemTemp.desconto > 0) {
+      if (itemTemp.tipo_desconto === 'percentual') {
+        valorDesconto = valorBruto * (itemTemp.desconto / 100);
+      } else {
+        valorDesconto = itemTemp.desconto;
+      }
+    }
+    
+    const subtotal = valorBruto - valorDesconto;
 
     const newItem = {
       produto_id: produto.id,
       produto_nome: produto.nome,
       quantidade: itemTemp.quantidade,
       preco_unitario: produto.preco,
-      subtotal: subtotal,
+      desconto: itemTemp.desconto,
+      tipo_desconto: itemTemp.tipo_desconto,
+      valor_desconto: valorDesconto,
+      subtotal: subtotal > 0 ? subtotal : 0,
     };
 
     setFormData({
@@ -118,7 +134,7 @@ export default function PedidosPage() {
       items: [...formData.items, newItem],
     });
 
-    setItemTemp({ produto_id: '', produto_busca: '', quantidade: 1 });
+    setItemTemp({ produto_id: '', produto_busca: '', quantidade: 1, desconto: 0, tipo_desconto: 'percentual' });
   };
 
   const handleRemoveItem = (index) => {
@@ -388,7 +404,7 @@ export default function PedidosPage() {
       observacoes: '',
       data_entrega: '',
     });
-    setItemTemp({ produto_id: '', produto_busca: '', quantidade: 1 });
+    setItemTemp({ produto_id: '', produto_busca: '', quantidade: 1, desconto: 0, tipo_desconto: 'percentual' });
     setEditMode(false);
     setEditingPedidoId(null);
   };
@@ -472,6 +488,55 @@ export default function PedidosPage() {
                     </Button>
                   </div>
                 </div>
+                
+                {/* Campo de desconto */}
+                <div className="grid grid-cols-12 gap-3 items-end">
+                  <div className="col-span-4">
+                    <label className="block text-xs font-medium text-[#6B4423] mb-1">Desconto</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={itemTemp.desconto}
+                      onChange={(e) => setItemTemp({ ...itemTemp, desconto: parseFloat(e.target.value) || 0 })}
+                      placeholder="0"
+                      className="w-full px-3 py-2 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans text-sm"
+                    />
+                  </div>
+                  <div className="col-span-4">
+                    <div className="flex rounded-lg overflow-hidden border border-[#8B5A3C]/30">
+                      <button
+                        type="button"
+                        onClick={() => setItemTemp({ ...itemTemp, tipo_desconto: 'percentual' })}
+                        className={`flex-1 py-2 text-xs font-medium transition-colors ${
+                          itemTemp.tipo_desconto === 'percentual' 
+                            ? 'bg-[#8B5A3C] text-white' 
+                            : 'bg-[#FFFDF8] text-[#6B4423] hover:bg-[#F5E6D3]'
+                        }`}
+                      >
+                        %
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setItemTemp({ ...itemTemp, tipo_desconto: 'valor' })}
+                        className={`flex-1 py-2 text-xs font-medium transition-colors ${
+                          itemTemp.tipo_desconto === 'valor' 
+                            ? 'bg-[#8B5A3C] text-white' 
+                            : 'bg-[#FFFDF8] text-[#6B4423] hover:bg-[#F5E6D3]'
+                        }`}
+                      >
+                        R$
+                      </button>
+                    </div>
+                  </div>
+                  <div className="col-span-4 text-xs text-[#705A4D]">
+                    {itemTemp.desconto > 0 && itemTemp.produto_busca && (
+                      <span className="text-[#D97706]">
+                        -{itemTemp.tipo_desconto === 'percentual' ? `${itemTemp.desconto}%` : formatCurrency(itemTemp.desconto)}
+                      </span>
+                    )}
+                  </div>
+                </div>
 
                 {formData.items.length > 0 && (
                   <div className="bg-[#F5E6D3]/30 rounded-lg p-4 space-y-2">
@@ -480,7 +545,13 @@ export default function PedidosPage() {
                         <div className="flex-1">
                           <p className="text-sm font-medium text-[#3E2723]">{item.produto_nome}</p>
                           <p className="text-xs text-[#705A4D]">
-                            {item.quantidade}x {formatCurrency(item.preco_unitario)} = {formatCurrency(item.subtotal)}
+                            {item.quantidade}x {formatCurrency(item.preco_unitario)}
+                            {item.valor_desconto > 0 && (
+                              <span className="text-[#D97706] ml-1">
+                                (-{item.tipo_desconto === 'percentual' ? `${item.desconto}%` : formatCurrency(item.desconto)})
+                              </span>
+                            )}
+                            <span className="ml-1">= {formatCurrency(item.subtotal)}</span>
                           </p>
                         </div>
                         <button
@@ -492,8 +563,13 @@ export default function PedidosPage() {
                         </button>
                       </div>
                     ))}
-                    <div className="pt-2 border-t border-[#8B5A3C]/15 text-right">
-                      <p className="text-lg font-serif font-bold text-[#3E2723]">
+                    <div className="pt-2 border-t border-[#8B5A3C]/15">
+                      {formData.items.some(item => item.valor_desconto > 0) && (
+                        <p className="text-sm text-[#D97706] text-right mb-1">
+                          Descontos: -{formatCurrency(formData.items.reduce((sum, item) => sum + (item.valor_desconto || 0), 0))}
+                        </p>
+                      )}
+                      <p className="text-lg font-serif font-bold text-[#3E2723] text-right">
                         Total: {formatCurrency(totalPedido)}
                       </p>
                     </div>

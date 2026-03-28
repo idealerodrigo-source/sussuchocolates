@@ -292,6 +292,9 @@ class ItemPedido(BaseModel):
     produto_nome: str
     quantidade: float
     preco_unitario: float
+    desconto: Optional[float] = 0
+    tipo_desconto: Optional[str] = "percentual"  # "percentual" ou "valor"
+    valor_desconto: Optional[float] = 0
     subtotal: float
 
 class Pedido(BaseModel):
