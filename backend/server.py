@@ -395,9 +395,12 @@ class Venda(BaseModel):
     tipo_venda: str = "pedido"  # "pedido" ou "direta"
     entrega_posterior: bool = False
     status_pagamento: str = "pago"  # "pago" ou "pendente"
+    status_venda: str = "ativa"  # "ativa" ou "cancelada"
     data_previsao_pagamento: Optional[str] = None
     observacoes_pagamento: Optional[str] = None
     data_pagamento: Optional[datetime] = None
+    data_cancelamento: Optional[datetime] = None
+    motivo_cancelamento: Optional[str] = None
 
 class VendaCreate(BaseModel):
     pedido_id: Optional[str] = None
@@ -1035,6 +1038,62 @@ async def confirmar_pagamento_venda(venda_id: str, current_user: dict = Depends(
     )
     
     return {"message": "Pagamento confirmado com sucesso"}
+
+class CancelarVendaRequest(BaseModel):
+    motivo: Optional[str] = None
+
+@api_router.put("/vendas/{venda_id}/cancelar")
+async def cancelar_venda(venda_id: str, request: CancelarVendaRequest = None, current_user: dict = Depends(get_current_user)):
+    """Cancela uma venda e devolve os itens ao estoque"""
+    venda = await db.vendas.find_one({"id": venda_id}, {"_id": 0})
+    if not venda:
+        raise HTTPException(status_code=404, detail="Venda não encontrada")
+    
+    if venda.get('status_venda') == 'cancelada':
+        raise HTTPException(status_code=400, detail="Esta venda já está cancelada")
+    
+    if venda.get('nfce_emitida'):
+        raise HTTPException(status_code=400, detail="Não é possível cancelar uma venda com NFC-e emitida. Cancele a NFC-e primeiro.")
+    
+    motivo = request.motivo if request else None
+    
+    # Atualizar status da venda para cancelada
+    await db.vendas.update_one(
+        {"id": venda_id},
+        {"$set": {
+            "status_venda": "cancelada",
+            "data_cancelamento": datetime.now(timezone.utc).isoformat(),
+            "motivo_cancelamento": motivo
+        }}
+    )
+    
+    # Devolver itens ao estoque (criar movimento de entrada)
+    for item in venda.get('items', []):
+        # Verificar se item tem as informações necessárias
+        produto_id = item.get('produto_id')
+        produto_nome = item.get('produto_nome', 'Produto')
+        quantidade = item.get('quantidade', 0)
+        
+        if produto_id and quantidade > 0:
+            await db.estoque.insert_one({
+                "id": str(uuid.uuid4()),
+                "produto_id": produto_id,
+                "produto_nome": produto_nome,
+                "quantidade": quantidade,
+                "tipo_movimento": MovimentoEstoque.ENTRADA,
+                "data_movimento": datetime.now(timezone.utc).isoformat(),
+                "responsavel": current_user['nome'],
+                "observacoes": f"Devolução por cancelamento de venda - ID: {venda_id}"
+            })
+    
+    # Se a venda era de um pedido, atualizar o status do pedido para "concluido" (pode ser revendido)
+    if venda.get('pedido_id'):
+        await db.pedidos.update_one(
+            {"id": venda['pedido_id']},
+            {"$set": {"status": PedidoStatus.CONCLUIDO}}
+        )
+    
+    return {"message": "Venda cancelada com sucesso. Itens devolvidos ao estoque."}
 
 # NFC-e - Rotas específicas primeiro (antes das rotas com parâmetros dinâmicos)
 from nfce_service import (

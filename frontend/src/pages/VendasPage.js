@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { vendasAPI, pedidosAPI, nfceAPI, clientesAPI, produtosAPI } from '../services/api';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
-import { Plus, Receipt, Trash, MagnifyingGlass } from '@phosphor-icons/react';
+import { Plus, Receipt, Trash, MagnifyingGlass, X } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -35,6 +35,9 @@ export default function VendasPage() {
       // Pesquisar por status de pagamento
       if (venda.status_pagamento === 'pendente' && 'a receber'.includes(term)) return true;
       if (venda.status_pagamento === 'pago' && 'pago'.includes(term)) return true;
+      // Pesquisar por status de venda
+      if (venda.status_venda === 'cancelada' && 'cancelada'.includes(term)) return true;
+      if (venda.status_venda !== 'cancelada' && 'ativa'.includes(term)) return true;
       return false;
     });
   }, [vendas, searchTerm]);
@@ -207,6 +210,23 @@ export default function VendasPage() {
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Erro ao confirmar pagamento');
+    }
+  };
+
+  const handleCancelarVenda = async (venda) => {
+    const motivo = window.prompt(
+      `Cancelar venda de ${venda.cliente_nome}?\n\nOs itens serão devolvidos ao estoque.\n\nDigite o motivo do cancelamento (opcional):`
+    );
+    
+    // Se o usuário clicou em "Cancelar" no prompt
+    if (motivo === null) return;
+    
+    try {
+      await vendasAPI.cancelar(venda.id, motivo || 'Cancelamento solicitado pelo cliente');
+      toast.success('Venda cancelada! Itens devolvidos ao estoque.');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erro ao cancelar venda');
     }
   };
 
@@ -523,7 +543,7 @@ export default function VendasPage() {
                 <SortableHeader label="Data" sortKey="data_venda" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
                 <SortableHeader label="Pagamento" sortKey="forma_pagamento" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
                 <SortableHeader label="Valor" sortKey="valor_total" sortConfig={sortConfig} onSort={requestSort} className="text-right" />
-                <SortableHeader label="Status Pgto" sortKey="status_pagamento" sortConfig={sortConfig} onSort={requestSort} className="text-center" />
+                <SortableHeader label="Status" sortKey="status_venda" sortConfig={sortConfig} onSort={requestSort} className="text-center" />
                 <SortableHeader label="NFC-e" sortKey="nfce_emitida" sortConfig={sortConfig} onSort={requestSort} className="text-center" />
                 <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Ações</th>
               </tr>
@@ -537,7 +557,7 @@ export default function VendasPage() {
                 </tr>
               ) : (
                 sortedData.map((venda) => (
-                  <tr key={venda.id} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
+                  <tr key={venda.id} className={`border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50 ${venda.status_venda === 'cancelada' ? 'bg-red-50/50 opacity-75' : ''}`}>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${
                         venda.tipo_venda === 'direta' 
@@ -554,18 +574,18 @@ export default function VendasPage() {
                       {formatCurrency(venda.valor_total)}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      {venda.nfce_emitida ? (
-                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-[#C6F6D5] text-[#2F855A]">
-                          Emitida
-                        </span>
-                      ) : (
-                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-[#FEFCBF] text-[#D97706]">
-                          Pendente
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      {venda.status_pagamento === 'pendente' ? (
+                      {venda.status_venda === 'cancelada' ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                            Cancelada
+                          </span>
+                          {venda.motivo_cancelamento && (
+                            <span className="text-[10px] text-red-600 max-w-[120px] truncate" title={venda.motivo_cancelamento}>
+                              {venda.motivo_cancelamento}
+                            </span>
+                          )}
+                        </div>
+                      ) : venda.status_pagamento === 'pendente' ? (
                         <div className="flex flex-col items-center gap-1">
                           <span className="px-3 py-1 rounded-full text-xs font-medium bg-[#FED7AA] text-[#C2410C]">
                             A Receber
@@ -582,31 +602,67 @@ export default function VendasPage() {
                         </span>
                       )}
                     </td>
+                    <td className="px-6 py-4 text-center">
+                      {venda.nfce_emitida ? (
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-[#C6F6D5] text-[#2F855A]">
+                          Emitida
+                        </span>
+                      ) : venda.status_venda === 'cancelada' ? (
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                          -
+                        </span>
+                      ) : (
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-[#FEFCBF] text-[#D97706]">
+                          Pendente
+                        </span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex gap-2 justify-end">
-                        {venda.status_pagamento === 'pendente' && (
-                          <Button
-                            onClick={() => handleConfirmarPagamento(venda.id)}
-                            size="sm"
-                            className="bg-[#2F855A] text-white hover:bg-[#276749] text-xs"
-                            title="Confirmar Pagamento"
-                          >
-                            Receber
-                          </Button>
+                        {venda.status_venda !== 'cancelada' && (
+                          <>
+                            {venda.status_pagamento === 'pendente' && (
+                              <Button
+                                onClick={() => handleConfirmarPagamento(venda.id)}
+                                size="sm"
+                                className="bg-[#2F855A] text-white hover:bg-[#276749] text-xs"
+                                title="Confirmar Pagamento"
+                              >
+                                Receber
+                              </Button>
+                            )}
+                            {!venda.nfce_emitida && (
+                              <Button
+                                onClick={() => handleEmitirNFCe(venda)}
+                                size="sm"
+                                className="bg-[#8B5A3C] text-[#F5E6D3] hover:bg-[#6B4423] text-xs"
+                              >
+                                <Receipt size={16} weight="bold" className="mr-1" />
+                                NFC-e
+                              </Button>
+                            )}
+                            {venda.nfce_emitida && venda.nfce_numero && (
+                              <span className="text-xs text-[#705A4D]">
+                                NFC-e: {venda.nfce_numero}
+                              </span>
+                            )}
+                            {!venda.nfce_emitida && (
+                              <Button
+                                onClick={() => handleCancelarVenda(venda)}
+                                size="sm"
+                                variant="outline"
+                                className="text-red-600 border-red-300 hover:bg-red-50 text-xs"
+                                title="Cancelar Venda"
+                              >
+                                <X size={16} weight="bold" className="mr-1" />
+                                Cancelar
+                              </Button>
+                            )}
+                          </>
                         )}
-                        {!venda.nfce_emitida && (
-                          <Button
-                            onClick={() => handleEmitirNFCe(venda)}
-                            size="sm"
-                            className="bg-[#8B5A3C] text-[#F5E6D3] hover:bg-[#6B4423] text-xs"
-                          >
-                            <Receipt size={16} weight="bold" className="mr-1" />
-                            NFC-e
-                          </Button>
-                        )}
-                        {venda.nfce_emitida && venda.nfce_numero && (
-                          <span className="text-xs text-[#705A4D]">
-                            NFC-e: {venda.nfce_numero}
+                        {venda.status_venda === 'cancelada' && (
+                          <span className="text-xs text-gray-500 italic">
+                            Venda cancelada
                           </span>
                         )}
                       </div>
