@@ -111,12 +111,12 @@ export default function DashboardPage() {
             <div>
               <h3 className="text-xl font-serif font-medium text-[#6B4423]">Vendas do Mês</h3>
               <p className="text-sm text-[#705A4D] font-sans">
-                {stats?.vendas_mes?.quantidade || 0} vendas realizadas
+                {stats?.vendas_mes || 0} vendas realizadas
               </p>
             </div>
           </div>
           <p className="text-4xl font-serif font-bold text-[#3E2723]">
-            {formatCurrency(stats?.vendas_mes?.valor_total || 0)}
+            {formatCurrency(stats?.valor_vendas_mes || 0)}
           </p>
         </div>
 
@@ -131,12 +131,12 @@ export default function DashboardPage() {
             <div>
               <h3 className="text-xl font-serif font-medium text-[#6B4423]">Vendas Hoje</h3>
               <p className="text-sm text-[#705A4D] font-sans">
-                {stats?.vendas_hoje?.quantidade || 0} vendas realizadas
+                {stats?.vendas_hoje || 0} vendas realizadas
               </p>
             </div>
           </div>
           <p className="text-4xl font-serif font-bold text-[#3E2723]">
-            {formatCurrency(stats?.vendas_hoje?.valor_total || 0)}
+            {formatCurrency(stats?.valor_vendas_hoje || 0)}
           </p>
         </div>
       </div>
