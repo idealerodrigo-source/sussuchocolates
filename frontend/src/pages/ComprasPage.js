@@ -461,7 +461,16 @@ export default function ComprasPage() {
     try {
       // Verificar duplicatas apenas em novos cadastros
       if (!editMode) {
-        const duplicatas = fornecedores.filter(f => {
+        // Recarregar fornecedores para garantir lista atualizada
+        let fornecedoresAtuais = fornecedores;
+        try {
+          const response = await fornecedoresAPI.listar();
+          fornecedoresAtuais = response.data;
+        } catch (e) {
+          console.error('Erro ao buscar fornecedores para verificação:', e);
+        }
+        
+        const duplicatas = fornecedoresAtuais.filter(f => {
           const nomeIgual = f.nome && fornecedorForm.nome && 
             f.nome.toLowerCase().trim() === fornecedorForm.nome.toLowerCase().trim();
           const cnpjIgual = f.cnpj && fornecedorForm.cnpj && 
@@ -544,7 +553,16 @@ export default function ComprasPage() {
       
       // Verificar duplicatas apenas em novos cadastros
       if (!editMode) {
-        const duplicatas = insumos.filter(i => 
+        // Recarregar insumos para garantir lista atualizada
+        let insumosAtuais = insumos;
+        try {
+          const response = await insumosAPI.listar();
+          insumosAtuais = response.data;
+        } catch (e) {
+          console.error('Erro ao buscar insumos para verificação:', e);
+        }
+        
+        const duplicatas = insumosAtuais.filter(i => 
           i.nome && data.nome && 
           i.nome.toLowerCase().trim() === data.nome.toLowerCase().trim()
         );

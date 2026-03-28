@@ -41,8 +41,8 @@ export default function ClientesPage() {
   };
 
   // Verifica se já existe cliente com mesmo nome, CPF ou CNPJ
-  const verificarDuplicata = (dados) => {
-    const duplicatas = clientes.filter(c => {
+  const verificarDuplicata = (dados, listaClientes) => {
+    return listaClientes.filter(c => {
       if (editingCliente && c.id === editingCliente.id) return false;
       
       const nomeIgual = dados.nome && c.nome && 
@@ -54,8 +54,6 @@ export default function ClientesPage() {
       
       return nomeIgual || cpfIgual || cnpjIgual;
     });
-    
-    return duplicatas;
   };
 
   const handleSubmit = async (e) => {
@@ -68,11 +66,20 @@ export default function ClientesPage() {
       
       // Verificar duplicatas apenas em novos cadastros
       if (!editingCliente) {
-        const duplicatas = verificarDuplicata(cleanData);
+        // Recarregar clientes para garantir lista atualizada
+        let clientesAtuais = clientes;
+        try {
+          const response = await clientesAPI.listar();
+          clientesAtuais = response.data;
+        } catch (e) {
+          console.error('Erro ao buscar clientes para verificação:', e);
+        }
+        
+        const duplicatas = verificarDuplicata(cleanData, clientesAtuais);
         if (duplicatas.length > 0) {
           const campos = [];
           duplicatas.forEach(d => {
-            if (d.nome.toLowerCase() === cleanData.nome?.toLowerCase()) campos.push('Nome');
+            if (d.nome?.toLowerCase() === cleanData.nome?.toLowerCase()) campos.push('Nome');
             if (d.cpf && cleanData.cpf && d.cpf.replace(/\D/g, '') === cleanData.cpf.replace(/\D/g, '')) campos.push('CPF');
             if (d.cnpj && cleanData.cnpj && d.cnpj.replace(/\D/g, '') === cleanData.cnpj.replace(/\D/g, '')) campos.push('CNPJ');
           });

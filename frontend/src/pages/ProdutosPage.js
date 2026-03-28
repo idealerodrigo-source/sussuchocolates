@@ -40,11 +40,19 @@ export default function ProdutosPage() {
 
   // Verifica se já existe produto com mesmo nome
   const verificarDuplicata = (dados) => {
-    return produtos.filter(p => {
+    console.log('Verificando duplicatas. Produtos carregados:', produtos.length);
+    console.log('Dados do novo produto:', dados);
+    
+    const duplicatas = produtos.filter(p => {
       if (editingProduto && p.id === editingProduto.id) return false;
-      return p.nome && dados.nome && 
+      const nomeIgual = p.nome && dados.nome && 
         p.nome.toLowerCase().trim() === dados.nome.toLowerCase().trim();
+      console.log(`Comparando "${p.nome}" com "${dados.nome}": ${nomeIgual}`);
+      return nomeIgual;
     });
+    
+    console.log('Duplicatas encontradas:', duplicatas);
+    return duplicatas;
   };
 
   const handleSubmit = async (e) => {
@@ -58,7 +66,20 @@ export default function ProdutosPage() {
 
       // Verificar duplicatas apenas em novos cadastros
       if (!editingProduto) {
-        const duplicatas = verificarDuplicata(data);
+        // Recarregar produtos para garantir lista atualizada
+        let produtosAtuais = produtos;
+        try {
+          const response = await produtosAPI.listar();
+          produtosAtuais = response.data;
+        } catch (e) {
+          console.error('Erro ao buscar produtos para verificação:', e);
+        }
+        
+        const duplicatas = produtosAtuais.filter(p => 
+          p.nome && data.nome && 
+          p.nome.toLowerCase().trim() === data.nome.toLowerCase().trim()
+        );
+        
         if (duplicatas.length > 0) {
           const confirmar = window.confirm(
             `Já existe um produto com nome igual ou similar:\n\n` +
