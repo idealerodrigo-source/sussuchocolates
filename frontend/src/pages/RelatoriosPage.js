@@ -34,7 +34,7 @@ export default function RelatoriosPage() {
     data_fim: '',
   });
 
-  // Carregar relatórios de produção automaticamente
+  // Carregar relatórios automaticamente ao acessar cada aba
   useEffect(() => {
     if (activeTab === 'a-produzir') {
       buscarProducaoPendente();
@@ -42,6 +42,12 @@ export default function RelatoriosPage() {
       buscarProducaoConcluida();
     } else if (activeTab === 'pedidos-resumo') {
       buscarPedidosResumo();
+    } else if (activeTab === 'vendas') {
+      buscarRelatorioVendas();
+    } else if (activeTab === 'producao') {
+      buscarRelatorioProducao();
+    } else if (activeTab === 'clientes') {
+      buscarRelatorioClientes();
     }
   }, [activeTab]);
 

@@ -1,4 +1,7 @@
 # Sussu Chocolates - Sistema de Gestão
+
+## Changelog (2026-03-28)
+- **FIXED**: Relatórios de Vendas e Produção Geral agora carregam automaticamente ao acessar a aba (antes exigiam clique manual no botão "Gerar Relatório")
 ## Product Requirements Document (PRD)
 
 ### Original Problem Statement
