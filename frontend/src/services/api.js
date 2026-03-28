@@ -65,6 +65,7 @@ export const vendasAPI = {
   atualizar: (id, data) => api.put(`/vendas/${id}`, data),
   confirmarPagamento: (id) => api.put(`/vendas/${id}/confirmar-pagamento`),
   cancelar: (id, motivo) => api.put(`/vendas/${id}/cancelar`, { motivo }),
+  restaurar: (id) => api.put(`/vendas/${id}/restaurar`),
 };
 
 export const relatoriosAPI = {

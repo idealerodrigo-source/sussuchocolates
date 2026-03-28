@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { vendasAPI, pedidosAPI, nfceAPI, clientesAPI, produtosAPI } from '../services/api';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
-import { Plus, Receipt, Trash, MagnifyingGlass, X } from '@phosphor-icons/react';
+import { Plus, Receipt, Trash, MagnifyingGlass, X, ArrowCounterClockwise } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -227,6 +227,22 @@ export default function VendasPage() {
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Erro ao cancelar venda');
+    }
+  };
+
+  const handleRestaurarVenda = async (venda) => {
+    const confirmar = window.confirm(
+      `Restaurar venda de ${venda.cliente_nome}?\n\nOs itens serão removidos do estoque novamente.`
+    );
+    
+    if (!confirmar) return;
+    
+    try {
+      await vendasAPI.restaurar(venda.id);
+      toast.success('Venda restaurada com sucesso!');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erro ao restaurar venda');
     }
   };
 
@@ -661,9 +677,16 @@ export default function VendasPage() {
                           </>
                         )}
                         {venda.status_venda === 'cancelada' && (
-                          <span className="text-xs text-gray-500 italic">
-                            Venda cancelada
-                          </span>
+                          <Button
+                            onClick={() => handleRestaurarVenda(venda)}
+                            size="sm"
+                            variant="outline"
+                            className="text-blue-600 border-blue-300 hover:bg-blue-50 text-xs"
+                            title="Restaurar Venda"
+                          >
+                            <ArrowCounterClockwise size={16} weight="bold" className="mr-1" />
+                            Restaurar
+                          </Button>
                         )}
                       </div>
                     </td>

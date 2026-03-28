@@ -119,8 +119,50 @@ async def confirmar_pagamento_venda(venda_id: str, current_user: dict = Depends(
     return {"message": "Pagamento confirmado com sucesso"}
 
 
+@router.put("/{venda_id}/restaurar")
+async def restaurar_venda(venda_id: str, current_user: dict = Depends(get_current_user)):
+    """Restaura uma venda cancelada"""
+    venda = await db.vendas.find_one({"id": venda_id}, {"_id": 0})
+    if not venda:
+        raise HTTPException(status_code=404, detail="Venda não encontrada")
+    
+    if venda.get('status_venda') != 'cancelada':
+        raise HTTPException(status_code=400, detail="Esta venda não está cancelada")
+    
+    # Restaurar a venda
+    await db.vendas.update_one(
+        {"id": venda_id},
+        {"$set": {
+            "status_venda": "ativa",
+            "data_cancelamento": None,
+            "motivo_cancelamento": None
+        }}
+    )
+    
+    # Remover os itens do estoque novamente (saída)
+    for item in venda.get('items', []):
+        produto_id = item.get('produto_id')
+        produto_nome = item.get('produto_nome', 'Produto')
+        quantidade = item.get('quantidade', 0)
+        
+        if produto_id and quantidade > 0:
+            await db.estoque.insert_one({
+                "id": str(uuid.uuid4()),
+                "produto_id": produto_id,
+                "produto_nome": produto_nome,
+                "quantidade": quantidade,
+                "tipo_movimento": MovimentoEstoque.SAIDA,
+                "data_movimento": datetime.now(timezone.utc).isoformat(),
+                "responsavel": current_user['nome'],
+                "observacoes": f"Saída por restauração de venda - ID: {venda_id}"
+            })
+    
+    return {"message": "Venda restaurada com sucesso."}
+
+
 @router.put("/{venda_id}/cancelar")
 async def cancelar_venda(venda_id: str, request: CancelarVendaRequest = None, current_user: dict = Depends(get_current_user)):
+    """Cancela uma venda e devolve os itens ao estoque"""
     venda = await db.vendas.find_one({"id": venda_id}, {"_id": 0})
     if not venda:
         raise HTTPException(status_code=404, detail="Venda não encontrada")
