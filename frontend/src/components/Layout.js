@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEmpresa } from '../contexts/EmpresaContext';
+import { PWAInstallPrompt, useOnlineStatus } from './PWAInstallPrompt';
 import {
   House,
   Users,
@@ -15,6 +16,7 @@ import {
   List,
   Truck,
   Gear,
+  WifiSlash,
 } from '@phosphor-icons/react';
 
 export default function Layout() {
@@ -23,6 +25,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { logo } = useEmpresa();
+  const isOnline = useOnlineStatus();
 
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: House },
@@ -108,6 +111,14 @@ export default function Layout() {
       </aside>
 
       <main className="flex-1 overflow-auto">
+        {/* Banner de offline */}
+        {!isOnline && (
+          <div className="bg-amber-500 text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-medium">
+            <WifiSlash size={18} weight="bold" />
+            Você está offline. Algumas funcionalidades podem estar indisponíveis.
+          </div>
+        )}
+        
         <div className="sticky top-0 z-40 bg-[#F5E6D3]/80 backdrop-blur-xl border-b border-[#8B5A3C]/15 px-6 py-4">
           <div className="flex items-center justify-between">
             <button
@@ -133,6 +144,9 @@ export default function Layout() {
           <Outlet />
         </div>
       </main>
+      
+      {/* Banner de instalação PWA */}
+      <PWAInstallPrompt />
     </div>
   );
 }

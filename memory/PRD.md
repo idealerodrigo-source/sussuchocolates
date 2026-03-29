@@ -5,6 +5,14 @@
 - **NEW**: RBAC (Controle de Acesso) implementado - apenas admin acessa Configurações
 - **NEW**: Logo dinâmico no sidebar usando EmpresaContext
 - **NEW**: Botões "Novo Cliente" e "Novo Produto" nos formulários de Pedidos e Vendas (criação rápida sem sair do modal)
+- **NEW**: PWA completo para instalação em dispositivos móveis
+  - Ícones em múltiplos tamanhos (72x72 até 512x512)
+  - Manifest.json com shortcuts (Novo Pedido, Nova Venda, Dashboard)
+  - Service Worker com cache offline
+  - Página offline dedicada
+  - Banner de instalação PWA
+  - Suporte iOS (instruções de instalação)
+  - Indicador de status offline na UI
 - **FIXED**: Bug de serialização ObjectId no POST de usuários
 
 ## Changelog (2026-03-28)
@@ -239,10 +247,7 @@ Criar um aplicativo/sistema de controle contendo: Cadastro Cliente, Pedido, Prod
 
 ### P2 (Medium Priority)
 - [ ] Alertas automáticos de estoque baixo (insumos)
-
-### P3 (Low Priority)
-- [ ] Completar implementação PWA para instalação mobile
-- [ ] Dashboard com métricas em tempo real
+- [ ] Push notifications para novos pedidos
 
 ## Recently Completed (March 27, 2026)
 
