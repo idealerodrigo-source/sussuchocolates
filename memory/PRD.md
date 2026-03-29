@@ -1,5 +1,12 @@
 # Sussu Chocolates - Sistema de Gestão
 
+## Changelog (2026-03-29)
+- **NEW**: Módulo de Configurações completo (Usuários, Dados da Empresa, Logo)
+- **NEW**: RBAC (Controle de Acesso) implementado - apenas admin acessa Configurações
+- **NEW**: Logo dinâmico no sidebar usando EmpresaContext
+- **FIXED**: Bug de serialização ObjectId no POST de usuários
+- **REFACTOR**: Senha do admin resetada para testes
+
 ## Changelog (2026-03-28)
 - **REFACTOR**: Migração COMPLETA do backend para estrutura modular (2500 linhas → 17 arquivos menores)
 - **NEW**: Cancelamento de vendas com devolução automática dos itens ao estoque
@@ -39,6 +46,28 @@ Criar um aplicativo/sistema de controle contendo: Cadastro Cliente, Pedido, Prod
 | **Lucratividade** | ✅ Done | Profitability analysis |
 | **Compras** | ✅ Done | Complete purchasing module |
 | **Relatórios** | ✅ Done | Basic reports |
+| **Configurações** | ✅ Done | Usuários, Dados Empresa, Logo |
+
+### Configurações Module (March 29, 2026) ✅
+- ✅ **Aba Usuários**: CRUD completo de usuários do sistema
+  - Criar usuário com nome, email, senha, role (admin/vendedor/produção)
+  - Editar dados do usuário (opcional alterar senha)
+  - Excluir usuário (admin não pode excluir a si mesmo)
+  - Status ativo/inativo
+  - Badges coloridos por permissão
+- ✅ **Aba Dados da Empresa**: Visualização e edição
+  - Nome fantasia, Razão social, CNPJ, IE
+  - Endereço completo (rua, número, complemento, bairro, cidade, estado, CEP)
+  - Contato (telefone, email, website)
+- ✅ **Aba Logo**: Upload e remoção do logo
+  - Preview do logo atual
+  - Upload de imagem (JPEG, PNG, GIF, WebP - máx 2MB)
+  - Remoção do logo
+  - Logo atualiza dinamicamente no sidebar
+- ✅ **RBAC (Role-Based Access Control)**:
+  - Apenas usuários admin podem acessar Configurações
+  - Vendedores veem mensagem "Acesso Restrito"
+  - Endpoints protegidos por verificação de role
 
 ### Pedidos - PDF Generation (March 27, 2026)
 - ✅ Geração de PDF do pedido com dados completos
@@ -157,6 +186,16 @@ Criar um aplicativo/sistema de controle contendo: Cadastro Cliente, Pedido, Prod
 - `POST /api/nf-entrada/parse-chave` - Parse access key
 - `DELETE /api/nf-entrada/{id}` - Delete
 
+### Configurações
+- `GET /api/configuracoes/usuarios` - List all users (admin only)
+- `POST /api/configuracoes/usuarios` - Create user (admin only)
+- `PUT /api/configuracoes/usuarios/{id}` - Update user (admin only)
+- `DELETE /api/configuracoes/usuarios/{id}` - Delete user (admin only)
+- `GET /api/configuracoes/empresa` - Get company data
+- `PUT /api/configuracoes/empresa` - Update company data (admin only)
+- `POST /api/configuracoes/empresa/logo` - Upload logo (admin only)
+- `DELETE /api/configuracoes/empresa/logo` - Remove logo (admin only)
+
 ### NFC-e (Cupom Fiscal)
 - `GET /api/nfce/configuracao` - Certificate status and config
 - `GET /api/nfce/status-sefaz` - SEFAZ service status
@@ -195,14 +234,14 @@ Criar um aplicativo/sistema de controle contendo: Cadastro Cliente, Pedido, Prod
 ## Backlog / Future Tasks
 
 ### P1 (High Priority)
+- [ ] Criação automática de pedidos via WhatsApp
 - [ ] Mudar NFC-e de Homologação para Produção (quando pronto para emissão real)
 
 ### P2 (Medium Priority)
 - [ ] Alertas automáticos de estoque baixo (insumos)
-- [ ] Refatorar server.py (~2300 linhas) em routers separados
 
 ### P3 (Low Priority)
-- [ ] Otimizar componentes React grandes
+- [ ] Completar implementação PWA para instalação mobile
 - [ ] Dashboard com métricas em tempo real
 
 ## Recently Completed (March 27, 2026)
@@ -242,7 +281,7 @@ Criar um aplicativo/sistema de controle contendo: Cadastro Cliente, Pedido, Prod
 ---
 
 ## Test Credentials
-- **Admin**: admin@sussu.com / admin123
+- **Admin**: rodrigo_busatta@hotmail.com / admin123
 
 ## URLs
 - **Preview**: https://sussu-manage.preview.emergentagent.com
@@ -250,5 +289,5 @@ Criar um aplicativo/sistema de controle contendo: Cadastro Cliente, Pedido, Prod
 
 ---
 
-*Last updated: March 27, 2026*
+*Last updated: March 29, 2026*
 *NFC-e integration: Homologação mode (SEFAZ-PR)*
