@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { vendasAPI, pedidosAPI, nfceAPI, clientesAPI, produtosAPI } from '../services/api';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
-import { Plus, Receipt, Trash, MagnifyingGlass, X, ArrowCounterClockwise } from '@phosphor-icons/react';
+import { Plus, Receipt, Trash, MagnifyingGlass, X, ArrowCounterClockwise, Eye, Printer, XCircle, QrCode } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -57,6 +57,12 @@ export default function VendasPage() {
     produto_id: '',
     quantidade: 1,
   });
+  
+  // Estados para modais de NFC-e
+  const [previewNFCeOpen, setPreviewNFCeOpen] = useState(false);
+  const [viewNFCeOpen, setViewNFCeOpen] = useState(false);
+  const [selectedVendaForNFCe, setSelectedVendaForNFCe] = useState(null);
+  const [emitindoNFCe, setEmitindoNFCe] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -161,7 +167,17 @@ export default function VendasPage() {
   };
 
   const handleEmitirNFCe = async (venda) => {
+    // Abrir modal de pré-visualização
+    setSelectedVendaForNFCe(venda);
+    setPreviewNFCeOpen(true);
+  };
+
+  const handleConfirmarEmissaoNFCe = async () => {
+    if (!selectedVendaForNFCe) return;
+    
+    setEmitindoNFCe(true);
     try {
+      const venda = selectedVendaForNFCe;
       // Preparar dados para NFC-e
       const dadosNFCe = {
         venda_id: venda.id,
@@ -178,10 +194,10 @@ export default function VendasPage() {
         valor_produtos: venda.valor_total,
         valor_desconto: 0,
         valor_total: venda.valor_total,
-        forma_pagamento: venda.forma_pagamento === 'dinheiro' ? '01' : 
-                         venda.forma_pagamento === 'cartao_credito' ? '03' :
-                         venda.forma_pagamento === 'cartao_debito' ? '04' : 
-                         venda.forma_pagamento === 'pix' ? '17' : '01',
+        forma_pagamento: venda.forma_pagamento?.toLowerCase().includes('dinheiro') ? '01' : 
+                         venda.forma_pagamento?.toLowerCase().includes('crédito') ? '03' :
+                         venda.forma_pagamento?.toLowerCase().includes('débito') ? '04' : 
+                         venda.forma_pagamento?.toLowerCase().includes('pix') ? '17' : '01',
         valor_pago: venda.valor_total,
         valor_troco: 0
       };
@@ -190,14 +206,141 @@ export default function VendasPage() {
       
       if (response.data.success) {
         toast.success(`NFC-e ${response.data.numero_nfce} emitida com sucesso!`);
-        // Backend already updates the venda with NFC-e data, just refresh
+        setPreviewNFCeOpen(false);
+        setSelectedVendaForNFCe(null);
         fetchData();
       } else {
         toast.error(response.data.message || 'Erro ao emitir NFC-e');
       }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Erro ao emitir NFC-e');
+    } finally {
+      setEmitindoNFCe(false);
     }
+  };
+
+  const handleVisualizarNFCe = (venda) => {
+    setSelectedVendaForNFCe(venda);
+    setViewNFCeOpen(true);
+  };
+
+  const handleCancelarNFCe = async (venda) => {
+    const justificativa = window.prompt(
+      `Cancelar NFC-e da venda de ${venda.cliente_nome}?\n\nDigite a justificativa do cancelamento (mínimo 15 caracteres):`
+    );
+    
+    if (justificativa === null) return;
+    
+    if (justificativa.length < 15) {
+      toast.error('A justificativa deve ter no mínimo 15 caracteres');
+      return;
+    }
+    
+    try {
+      const response = await nfceAPI.cancelar(venda.nfce_chave, justificativa);
+      if (response.data.success) {
+        toast.success('NFC-e cancelada com sucesso!');
+        fetchData();
+      } else {
+        toast.error(response.data.message || 'Erro ao cancelar NFC-e');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erro ao cancelar NFC-e');
+    }
+  };
+
+  const imprimirCupom = (venda) => {
+    const printWindow = window.open('', '_blank');
+    const cupomHTML = gerarCupomHTML(venda);
+    printWindow.document.write(cupomHTML);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  const gerarCupomHTML = (venda) => {
+    const dataVenda = new Date(venda.data_venda).toLocaleString('pt-BR');
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Cupom Fiscal - Sussu Chocolates</title>
+        <style>
+          body { font-family: 'Courier New', monospace; font-size: 12px; width: 280px; margin: 0 auto; padding: 10px; }
+          .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+          .header h1 { font-size: 16px; margin: 0; }
+          .header p { margin: 2px 0; font-size: 10px; }
+          .items { border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+          .item { margin: 5px 0; }
+          .item-name { font-weight: bold; }
+          .item-details { display: flex; justify-content: space-between; }
+          .totals { margin-top: 10px; }
+          .total-line { display: flex; justify-content: space-between; margin: 3px 0; }
+          .total-final { font-size: 14px; font-weight: bold; border-top: 1px solid #000; padding-top: 5px; margin-top: 5px; }
+          .footer { text-align: center; margin-top: 15px; font-size: 10px; border-top: 1px dashed #000; padding-top: 10px; }
+          .nfce-info { background: #f5f5f5; padding: 8px; margin-top: 10px; font-size: 10px; }
+          @media print { body { width: 100%; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>SUSSU CHOCOLATES</h1>
+          <p>CNPJ: 09.328.682/0001-30</p>
+          <p>Jacarezinho - PR</p>
+          <p>CUPOM FISCAL${venda.nfce_emitida ? ' - NFC-e' : ' (NÃO É DOCUMENTO FISCAL)'}</p>
+        </div>
+        
+        <div class="items">
+          <p><strong>Cliente:</strong> ${venda.cliente_nome}</p>
+          <p><strong>Data:</strong> ${dataVenda}</p>
+          <hr style="border: none; border-top: 1px dashed #000;">
+          ${venda.items.map(item => `
+            <div class="item">
+              <div class="item-name">${item.produto_nome}</div>
+              <div class="item-details">
+                <span>${item.quantidade} x ${formatCurrency(item.preco_unitario)}</span>
+                <span>${formatCurrency(item.subtotal)}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        
+        <div class="totals">
+          <div class="total-line">
+            <span>Subtotal:</span>
+            <span>${formatCurrency(venda.valor_total)}</span>
+          </div>
+          <div class="total-line">
+            <span>Desconto:</span>
+            <span>R$ 0,00</span>
+          </div>
+          <div class="total-line total-final">
+            <span>TOTAL:</span>
+            <span>${formatCurrency(venda.valor_total)}</span>
+          </div>
+          <div class="total-line">
+            <span>Pagamento:</span>
+            <span>${venda.forma_pagamento}</span>
+          </div>
+        </div>
+        
+        ${venda.nfce_emitida ? `
+          <div class="nfce-info">
+            <p><strong>NFC-e Autorizada</strong></p>
+            <p>Número: ${venda.nfce_numero || 'N/A'}</p>
+            <p>Chave: ${venda.nfce_chave ? venda.nfce_chave.substring(0, 22) + '...' : 'N/A'}</p>
+            <p>Consulte pelo QR Code ou em:</p>
+            <p>www.sefaz.pr.gov.br/nfce</p>
+          </div>
+        ` : ''}
+        
+        <div class="footer">
+          <p>Obrigado pela preferência!</p>
+          <p>Sussu Chocolates - Doces momentos</p>
+        </div>
+      </body>
+      </html>
+    `;
   };
 
   const handleConfirmarPagamento = async (vendaId) => {
@@ -652,15 +795,42 @@ export default function VendasPage() {
                                 onClick={() => handleEmitirNFCe(venda)}
                                 size="sm"
                                 className="bg-[#8B5A3C] text-[#F5E6D3] hover:bg-[#6B4423] text-xs"
+                                title="Pré-visualizar e Emitir NFC-e"
                               >
                                 <Receipt size={16} weight="bold" className="mr-1" />
                                 NFC-e
                               </Button>
                             )}
-                            {venda.nfce_emitida && venda.nfce_numero && (
-                              <span className="text-xs text-[#705A4D]">
-                                NFC-e: {venda.nfce_numero}
-                              </span>
+                            {venda.nfce_emitida && (
+                              <div className="flex gap-1">
+                                <Button
+                                  onClick={() => handleVisualizarNFCe(venda)}
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-[#6B4423] border-[#8B5A3C]/30 hover:bg-[#F5E6D3] text-xs"
+                                  title="Visualizar NFC-e"
+                                >
+                                  <Eye size={16} weight="bold" />
+                                </Button>
+                                <Button
+                                  onClick={() => imprimirCupom(venda)}
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-blue-600 border-blue-300 hover:bg-blue-50 text-xs"
+                                  title="Imprimir Cupom"
+                                >
+                                  <Printer size={16} weight="bold" />
+                                </Button>
+                                <Button
+                                  onClick={() => handleCancelarNFCe(venda)}
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-red-600 border-red-300 hover:bg-red-50 text-xs"
+                                  title="Cancelar NFC-e"
+                                >
+                                  <XCircle size={16} weight="bold" />
+                                </Button>
+                              </div>
                             )}
                             {!venda.nfce_emitida && (
                               <Button
@@ -697,6 +867,210 @@ export default function VendasPage() {
           </table>
         </div>
       </div>
+
+      {/* Modal de Pré-visualização NFC-e */}
+      <Dialog open={previewNFCeOpen} onOpenChange={setPreviewNFCeOpen}>
+        <DialogContent className="max-w-lg bg-[#FFFDF8]">
+          <DialogHeader>
+            <DialogTitle className="text-[#6B4423] font-serif flex items-center gap-2">
+              <Receipt size={24} weight="bold" />
+              Pré-visualização da NFC-e
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedVendaForNFCe && (
+            <div className="space-y-4">
+              {/* Cabeçalho do Cupom */}
+              <div className="bg-[#F5E6D3] rounded-lg p-4 text-center">
+                <h3 className="font-serif font-bold text-[#6B4423]">SUSSU CHOCOLATES</h3>
+                <p className="text-xs text-[#705A4D]">CNPJ: 09.328.682/0001-30</p>
+                <p className="text-xs text-[#705A4D]">Jacarezinho - PR</p>
+                <div className="mt-2 px-3 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">
+                  NFC-e - HOMOLOGAÇÃO (Ambiente de Testes)
+                </div>
+              </div>
+
+              {/* Dados do Cliente */}
+              <div className="border-t border-[#8B5A3C]/20 pt-3">
+                <p className="text-sm text-[#705A4D]">
+                  <strong>Cliente:</strong> {selectedVendaForNFCe.cliente_nome}
+                </p>
+                <p className="text-sm text-[#705A4D]">
+                  <strong>Data:</strong> {formatDateTime(selectedVendaForNFCe.data_venda)}
+                </p>
+              </div>
+
+              {/* Itens */}
+              <div className="border-t border-[#8B5A3C]/20 pt-3">
+                <h4 className="text-sm font-semibold text-[#6B4423] mb-2">Itens:</h4>
+                <div className="max-h-40 overflow-y-auto space-y-2">
+                  {selectedVendaForNFCe.items.map((item, idx) => (
+                    <div key={idx} className="flex justify-between text-sm bg-white rounded p-2">
+                      <div>
+                        <p className="font-medium text-[#3E2723]">{item.produto_nome}</p>
+                        <p className="text-xs text-[#705A4D]">
+                          {item.quantidade} x {formatCurrency(item.preco_unitario)}
+                        </p>
+                      </div>
+                      <p className="font-medium text-[#3E2723]">{formatCurrency(item.subtotal)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Totais */}
+              <div className="border-t border-[#8B5A3C]/20 pt-3 space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#705A4D]">Subtotal:</span>
+                  <span className="text-[#3E2723]">{formatCurrency(selectedVendaForNFCe.valor_total)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#705A4D]">Desconto:</span>
+                  <span className="text-[#3E2723]">R$ 0,00</span>
+                </div>
+                <div className="flex justify-between text-lg font-bold border-t border-[#8B5A3C]/30 pt-2 mt-2">
+                  <span className="text-[#6B4423]">TOTAL:</span>
+                  <span className="text-[#3E2723]">{formatCurrency(selectedVendaForNFCe.valor_total)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#705A4D]">Pagamento:</span>
+                  <span className="text-[#3E2723]">{selectedVendaForNFCe.forma_pagamento}</span>
+                </div>
+              </div>
+
+              {/* Aviso */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+                <strong>Atenção:</strong> Ao confirmar, a NFC-e será enviada para autorização na SEFAZ. 
+                Esta operação não pode ser desfeita facilmente.
+              </div>
+
+              {/* Botões */}
+              <div className="flex gap-3 pt-2">
+                <Button
+                  onClick={() => setPreviewNFCeOpen(false)}
+                  variant="outline"
+                  className="flex-1"
+                  disabled={emitindoNFCe}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleConfirmarEmissaoNFCe}
+                  className="flex-1 bg-[#2F855A] text-white hover:bg-[#276749]"
+                  disabled={emitindoNFCe}
+                >
+                  {emitindoNFCe ? (
+                    <>Emitindo...</>
+                  ) : (
+                    <>
+                      <Receipt size={18} weight="bold" className="mr-2" />
+                      Confirmar e Emitir
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Visualização NFC-e Emitida */}
+      <Dialog open={viewNFCeOpen} onOpenChange={setViewNFCeOpen}>
+        <DialogContent className="max-w-lg bg-[#FFFDF8]">
+          <DialogHeader>
+            <DialogTitle className="text-[#6B4423] font-serif flex items-center gap-2">
+              <QrCode size={24} weight="bold" />
+              NFC-e Emitida
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedVendaForNFCe && selectedVendaForNFCe.nfce_emitida && (
+            <div className="space-y-4">
+              {/* Status */}
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                <div className="flex items-center justify-center gap-2 text-green-700 font-semibold">
+                  <Receipt size={20} weight="bold" />
+                  NFC-e AUTORIZADA
+                </div>
+                <p className="text-xs text-green-600 mt-1">
+                  Documento fiscal válido
+                </p>
+              </div>
+
+              {/* Dados da NFC-e */}
+              <div className="bg-white rounded-lg p-4 space-y-3 border border-[#8B5A3C]/20">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-[#705A4D] text-xs">Número:</p>
+                    <p className="font-semibold text-[#3E2723]">{selectedVendaForNFCe.nfce_numero || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[#705A4D] text-xs">Série:</p>
+                    <p className="font-semibold text-[#3E2723]">001</p>
+                  </div>
+                </div>
+                
+                <div>
+                  <p className="text-[#705A4D] text-xs">Chave de Acesso:</p>
+                  <p className="font-mono text-xs text-[#3E2723] break-all bg-gray-50 p-2 rounded">
+                    {selectedVendaForNFCe.nfce_chave || 'N/A'}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-[#705A4D] text-xs">Cliente:</p>
+                    <p className="font-medium text-[#3E2723]">{selectedVendaForNFCe.cliente_nome}</p>
+                  </div>
+                  <div>
+                    <p className="text-[#705A4D] text-xs">Valor Total:</p>
+                    <p className="font-bold text-[#3E2723] text-lg">{formatCurrency(selectedVendaForNFCe.valor_total)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Itens Resumidos */}
+              <div className="bg-[#F5E6D3]/50 rounded-lg p-3">
+                <p className="text-xs text-[#705A4D] mb-2 font-medium">Itens ({selectedVendaForNFCe.items.length}):</p>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {selectedVendaForNFCe.items.map((item, idx) => (
+                    <div key={idx} className="flex justify-between text-xs">
+                      <span className="text-[#3E2723]">{item.produto_nome} x{item.quantidade}</span>
+                      <span className="text-[#705A4D]">{formatCurrency(item.subtotal)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Consulta */}
+              <div className="text-center text-xs text-[#705A4D] border-t border-[#8B5A3C]/20 pt-3">
+                <p>Consulte a autenticidade em:</p>
+                <p className="font-semibold text-[#6B4423]">www.sefaz.pr.gov.br/nfce</p>
+              </div>
+
+              {/* Botões */}
+              <div className="flex gap-3 pt-2">
+                <Button
+                  onClick={() => imprimirCupom(selectedVendaForNFCe)}
+                  variant="outline"
+                  className="flex-1 text-blue-600 border-blue-300 hover:bg-blue-50"
+                >
+                  <Printer size={18} weight="bold" className="mr-2" />
+                  Imprimir
+                </Button>
+                <Button
+                  onClick={() => handleCancelarNFCe(selectedVendaForNFCe)}
+                  variant="outline"
+                  className="flex-1 text-red-600 border-red-300 hover:bg-red-50"
+                >
+                  <XCircle size={18} weight="bold" className="mr-2" />
+                  Cancelar NFC-e
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
