@@ -122,8 +122,10 @@ class Pedido(BaseModel):
     numero: str
     cliente_id: str
     cliente_nome: str
+    cliente_telefone: Optional[str] = None
     items: List[ItemPedido]
     valor_total: float
+    forma_pagamento: Optional[str] = None
     status: PedidoStatus = PedidoStatus.PENDENTE
     data_pedido: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     data_entrega: Optional[datetime] = None
@@ -133,6 +135,7 @@ class Pedido(BaseModel):
 class PedidoCreate(BaseModel):
     cliente_id: str
     items: List[ItemPedido]
+    forma_pagamento: Optional[str] = None
     data_entrega: Optional[str] = None
     observacoes: Optional[str] = None
 
@@ -140,6 +143,7 @@ class PedidoCreate(BaseModel):
 class PedidoUpdate(BaseModel):
     cliente_id: Optional[str] = None
     items: Optional[List[ItemPedido]] = None
+    forma_pagamento: Optional[str] = None
     data_entrega: Optional[str] = None
     observacoes: Optional[str] = None
     status: Optional[PedidoStatus] = None

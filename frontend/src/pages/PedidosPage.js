@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { pedidosAPI, clientesAPI, produtosAPI } from '../services/api';
 import { formatCurrency, formatDateTime, getStatusColor, getStatusLabel } from '../utils/formatters';
-import { Plus, ShoppingCart, Trash, PencilSimple, Eye, FilePdf } from '@phosphor-icons/react';
+import { Plus, ShoppingCart, Trash, PencilSimple, Eye, FilePdf, WhatsappLogo } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -35,6 +35,7 @@ export default function PedidosPage() {
     items: [],
     observacoes: '',
     data_entrega: '',
+    forma_pagamento: '',
   });
   const [itemTemp, setItemTemp] = useState({
     produto_id: '',
@@ -179,6 +180,7 @@ export default function PedidosPage() {
       })),
       observacoes: pedido.observacoes || '',
       data_entrega: pedido.data_entrega ? pedido.data_entrega.split('T')[0] : '',
+      forma_pagamento: pedido.forma_pagamento || '',
     });
     setDialogOpen(true);
   };
@@ -186,6 +188,63 @@ export default function PedidosPage() {
   const handleView = (pedido) => {
     setViewingPedido(pedido);
     setViewDialogOpen(true);
+  };
+
+  const enviarWhatsApp = (pedido) => {
+    // Buscar telefone do cliente
+    const cliente = clientes.find(c => c.id === pedido.cliente_id);
+    let telefone = cliente?.telefone || pedido.cliente_telefone;
+    
+    if (!telefone) {
+      telefone = window.prompt('Informe o número de WhatsApp do cliente (com DDD):');
+      if (!telefone) return;
+    }
+    
+    // Formatar telefone (remover caracteres especiais)
+    telefone = telefone.replace(/\D/g, '');
+    if (!telefone.startsWith('55')) {
+      telefone = '55' + telefone;
+    }
+    
+    // Formatar data de entrega
+    const dataEntrega = pedido.data_entrega 
+      ? new Date(pedido.data_entrega).toLocaleDateString('pt-BR')
+      : 'A combinar';
+    
+    // Montar mensagem
+    const itensTexto = pedido.items.map(item => 
+      `  • ${item.produto_nome} - ${item.quantidade}x ${formatCurrency(item.preco_unitario)} = ${formatCurrency(item.subtotal)}`
+    ).join('\n');
+    
+    const mensagem = `🍫 *SUSSU CHOCOLATES*
+━━━━━━━━━━━━━━━━━
+
+📋 *CONFIRMAÇÃO DE PEDIDO*
+Nº: *${pedido.numero}*
+
+👤 *Cliente:* ${pedido.cliente_nome}
+📅 *Data:* ${new Date(pedido.data_pedido).toLocaleDateString('pt-BR')}
+🚚 *Entrega:* ${dataEntrega}
+${pedido.forma_pagamento ? `💳 *Pagamento:* ${pedido.forma_pagamento}` : ''}
+
+━━━━━━━━━━━━━━━━━
+📦 *ITENS DO PEDIDO:*
+${itensTexto}
+━━━━━━━━━━━━━━━━━
+
+💰 *TOTAL: ${formatCurrency(pedido.valor_total)}*
+
+${pedido.observacoes ? `📝 *Obs:* ${pedido.observacoes}` : ''}
+
+✅ Pedido confirmado!
+Obrigado pela preferência! 🙏
+
+📍 Sussu Chocolates
+📞 ${EMPRESA.telefone}`;
+
+    // Abrir WhatsApp
+    const url = `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`;
+    window.open(url, '_blank');
   };
 
   const generatePDF = async (pedido) => {
@@ -403,10 +462,18 @@ export default function PedidosPage() {
       items: [],
       observacoes: '',
       data_entrega: '',
+      forma_pagamento: '',
     });
     setItemTemp({ produto_id: '', produto_busca: '', quantidade: 1, desconto: 0, tipo_desconto: 'percentual' });
     setEditMode(false);
     setEditingPedidoId(null);
+  };
+
+  // Dados da empresa para WhatsApp
+  const EMPRESA = {
+    nome: 'Sussu Chocolates',
+    telefone: '(43) 99999-9999',
+    endereco: 'Jacarezinho - PR'
   };
 
   if (loading) {
@@ -578,6 +645,23 @@ export default function PedidosPage() {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-[#6B4423] mb-1">Forma de Pagamento</label>
+                <select
+                  value={formData.forma_pagamento}
+                  onChange={(e) => setFormData({ ...formData, forma_pagamento: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                >
+                  <option value="">Selecione (opcional)...</option>
+                  <option value="Dinheiro">Dinheiro</option>
+                  <option value="PIX">PIX</option>
+                  <option value="Cartão de Crédito">Cartão de Crédito</option>
+                  <option value="Cartão de Débito">Cartão de Débito</option>
+                  <option value="Boleto">Boleto</option>
+                  <option value="A Combinar">A Combinar</option>
+                </select>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-[#6B4423] mb-1">Observações</label>
                 <textarea
                   value={formData.observacoes}
@@ -618,7 +702,8 @@ export default function PedidosPage() {
                 <SortableHeader label="Número" sortKey="numero" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
                 <SortableHeader label="Cliente" sortKey="cliente_nome" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
                 <SortableHeader label="Data Pedido" sortKey="data_pedido" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
-                <SortableHeader label="Data Entrega" sortKey="data_entrega" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                <SortableHeader label="Entrega" sortKey="data_entrega" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
+                <SortableHeader label="Pagamento" sortKey="forma_pagamento" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
                 <SortableHeader label="Status" sortKey="status" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
                 <SortableHeader label="Valor" sortKey="valor_total" sortConfig={sortConfig} onSort={requestSort} className="text-right" />
                 <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Ações</th>
@@ -627,7 +712,7 @@ export default function PedidosPage() {
             <tbody>
               {sortedData.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-12 text-[#705A4D] font-sans">
+                  <td colSpan="8" className="text-center py-12 text-[#705A4D] font-sans">
                     Nenhum pedido cadastrado
                   </td>
                 </tr>
@@ -640,6 +725,9 @@ export default function PedidosPage() {
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">
                       {pedido.data_entrega ? formatDateTime(pedido.data_entrega) : '-'}
                     </td>
+                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">
+                      {pedido.forma_pagamento || '-'}
+                    </td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(pedido.status)}`}>
                         {getStatusLabel(pedido.status)}
@@ -650,6 +738,15 @@ export default function PedidosPage() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex gap-2 justify-end">
+                        <Button
+                          onClick={() => enviarWhatsApp(pedido)}
+                          size="sm"
+                          variant="outline"
+                          className="text-green-600 border-green-600 hover:bg-green-50"
+                          title="Enviar via WhatsApp"
+                        >
+                          <WhatsappLogo size={16} weight="bold" />
+                        </Button>
                         <Button
                           onClick={() => generatePDF(pedido)}
                           size="sm"
@@ -746,6 +843,14 @@ export default function PedidosPage() {
               )}
 
               <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  onClick={() => enviarWhatsApp(viewingPedido)}
+                  variant="outline"
+                  className="text-green-600 border-green-600 hover:bg-green-50"
+                >
+                  <WhatsappLogo size={18} weight="bold" className="mr-2" />
+                  Enviar WhatsApp
+                </Button>
                 <Button
                   onClick={() => generatePDF(viewingPedido)}
                   variant="outline"

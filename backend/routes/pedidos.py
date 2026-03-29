@@ -28,8 +28,10 @@ async def criar_pedido(pedido_data: PedidoCreate, current_user: dict = Depends(g
         numero=numero_pedido,
         cliente_id=pedido_data.cliente_id,
         cliente_nome=cliente['nome'],
+        cliente_telefone=cliente.get('telefone'),
         items=pedido_data.items,
         valor_total=valor_total,
+        forma_pagamento=pedido_data.forma_pagamento,
         observacoes=pedido_data.observacoes,
         data_entrega=datetime.fromisoformat(pedido_data.data_entrega) if pedido_data.data_entrega else None
     )
