@@ -9,9 +9,11 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
+import { useEmpresa } from '../contexts/EmpresaContext';
 
 export default function ConfiguracoesPage() {
   const { user } = useAuth();
+  const { atualizarLogo, DEFAULT_LOGO } = useEmpresa();
   const [activeTab, setActiveTab] = useState('usuarios');
   
   // Estados para Usuários
@@ -38,7 +40,7 @@ export default function ConfiguracoesPage() {
   useEffect(() => {
     if (activeTab === 'usuarios') {
       fetchUsuarios();
-    } else if (activeTab === 'empresa') {
+    } else if (activeTab === 'empresa' || activeTab === 'logo') {
       fetchEmpresa();
     }
   }, [activeTab]);
@@ -151,6 +153,8 @@ export default function ConfiguracoesPage() {
       const response = await empresaAPI.uploadLogo(file);
       toast.success('Logo atualizado com sucesso!');
       setEmpresa({ ...empresa, logo: response.data.logo });
+      // Atualiza o logo globalmente no contexto
+      atualizarLogo(response.data.logo);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Erro ao fazer upload do logo');
     } finally {
@@ -165,6 +169,8 @@ export default function ConfiguracoesPage() {
       await empresaAPI.removerLogo();
       toast.success('Logo removido com sucesso!');
       setEmpresa({ ...empresa, logo: null });
+      // Atualiza o logo globalmente no contexto (volta ao padrão)
+      atualizarLogo(null);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Erro ao remover logo');
     }

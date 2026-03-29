@@ -90,8 +90,10 @@ async def criar_usuario(usuario: UsuarioCreate, current_user: dict = Depends(get
     
     await db.usuarios.insert_one(novo_usuario)
     
-    # Retornar sem a senha
+    # Retornar sem a senha e sem _id do MongoDB
     del novo_usuario["senha"]
+    if "_id" in novo_usuario:
+        del novo_usuario["_id"]
     return {"message": "Usuário criado com sucesso", "usuario": novo_usuario}
 
 

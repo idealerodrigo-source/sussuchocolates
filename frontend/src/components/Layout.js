@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useEmpresa } from '../contexts/EmpresaContext';
 import {
   House,
   Users,
@@ -21,6 +22,7 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { logo } = useEmpresa();
 
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: House },
@@ -55,9 +57,9 @@ export default function Layout() {
           <div className="flex items-center justify-between">
             {sidebarOpen && (
               <img
-                src="https://customer-assets.emergentagent.com/job_sussu-manage/artifacts/kgl5rby1_Logo_Sussu_Chocolates-01.png"
+                src={logo}
                 alt="Sussu Chocolates"
-                className="h-16"
+                className="h-16 max-w-[180px] object-contain"
               />
             )}
           </div>

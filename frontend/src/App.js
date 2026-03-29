@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from './contexts/AuthContext';
+import { EmpresaProvider } from './contexts/EmpresaContext';
 import { Toaster } from './components/ui/sonner';
 import { PrivateRoute } from './components/PrivateRoute';
 import Layout from './components/Layout';
@@ -41,34 +42,36 @@ function App() {
 
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route
-            path="/"
-            element={
-              <PrivateRoute>
-                <Layout />
-              </PrivateRoute>
-            }
-          >
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="clientes" element={<ClientesPage />} />
-            <Route path="produtos" element={<ProdutosPage />} />
-            <Route path="pedidos" element={<PedidosPage />} />
-            <Route path="producao" element={<ProducaoPage />} />
-            <Route path="embalagem" element={<EmbalagemPage />} />
-            <Route path="estoque" element={<EstoquePage />} />
-            <Route path="vendas" element={<VendasPage />} />
-            <Route path="compras" element={<ComprasPage />} />
-            <Route path="lucratividade" element={<LucratividadePage />} />
-            <Route path="relatorios" element={<RelatoriosPage />} />
-            <Route path="configuracoes" element={<ConfiguracoesPage />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-      <Toaster position="top-right" />
+      <EmpresaProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route
+              path="/"
+              element={
+                <PrivateRoute>
+                  <Layout />
+                </PrivateRoute>
+              }
+            >
+              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="clientes" element={<ClientesPage />} />
+              <Route path="produtos" element={<ProdutosPage />} />
+              <Route path="pedidos" element={<PedidosPage />} />
+              <Route path="producao" element={<ProducaoPage />} />
+              <Route path="embalagem" element={<EmbalagemPage />} />
+              <Route path="estoque" element={<EstoquePage />} />
+              <Route path="vendas" element={<VendasPage />} />
+              <Route path="compras" element={<ComprasPage />} />
+              <Route path="lucratividade" element={<LucratividadePage />} />
+              <Route path="relatorios" element={<RelatoriosPage />} />
+              <Route path="configuracoes" element={<ConfiguracoesPage />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+        <Toaster position="top-right" />
+      </EmpresaProvider>
     </AuthProvider>
   );
 }
