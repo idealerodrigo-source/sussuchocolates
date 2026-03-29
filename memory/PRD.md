@@ -4,8 +4,8 @@
 - **NEW**: Módulo de Configurações completo (Usuários, Dados da Empresa, Logo)
 - **NEW**: RBAC (Controle de Acesso) implementado - apenas admin acessa Configurações
 - **NEW**: Logo dinâmico no sidebar usando EmpresaContext
+- **NEW**: Botões "Novo Cliente" e "Novo Produto" nos formulários de Pedidos e Vendas (criação rápida sem sair do modal)
 - **FIXED**: Bug de serialização ObjectId no POST de usuários
-- **REFACTOR**: Senha do admin resetada para testes
 
 ## Changelog (2026-03-28)
 - **REFACTOR**: Migração COMPLETA do backend para estrutura modular (2500 linhas → 17 arquivos menores)

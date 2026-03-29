@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { pedidosAPI, clientesAPI, produtosAPI } from '../services/api';
 import { formatCurrency, formatDateTime, getStatusColor, getStatusLabel } from '../utils/formatters';
-import { Plus, ShoppingCart, Trash, PencilSimple, Eye, FilePdf, WhatsappLogo } from '@phosphor-icons/react';
+import { Plus, ShoppingCart, Trash, PencilSimple, Eye, FilePdf, WhatsappLogo, UserPlus, Package } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
+import { QuickCreateClienteModal, QuickCreateProdutoModal } from '../components/QuickCreateModals';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useSortableTable, SortableHeader } from '../hooks/useSortableTable';
@@ -505,21 +506,36 @@ Obrigado pela preferência! 🙏
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-[#6B4423] mb-1">Cliente *</label>
-                <select
-                  required
-                  value={formData.cliente_id}
-                  onChange={(e) => setFormData({ ...formData, cliente_id: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
-                >
-                  <option value="">Selecione um cliente...</option>
-                  {clientes.map((cliente) => (
-                    <option key={cliente.id} value={cliente.id}>{cliente.nome}</option>
-                  ))}
-                </select>
+                <div className="flex gap-2">
+                  <select
+                    required
+                    value={formData.cliente_id}
+                    onChange={(e) => setFormData({ ...formData, cliente_id: e.target.value })}
+                    className="flex-1 px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                  >
+                    <option value="">Selecione um cliente...</option>
+                    {clientes.map((cliente) => (
+                      <option key={cliente.id} value={cliente.id}>{cliente.nome}</option>
+                    ))}
+                  </select>
+                  <QuickCreateClienteModal
+                    onClienteCreated={(novoCliente) => {
+                      setClientes([...clientes, novoCliente]);
+                      setFormData({ ...formData, cliente_id: novoCliente.id });
+                    }}
+                  />
+                </div>
               </div>
 
               <div className="border-t border-[#8B5A3C]/15 pt-4">
-                <h3 className="text-lg font-serif font-semibold text-[#3E2723] mb-3">Itens do Pedido</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-serif font-semibold text-[#3E2723]">Itens do Pedido</h3>
+                  <QuickCreateProdutoModal
+                    onProdutoCreated={(novoProduto) => {
+                      setProdutos([...produtos, novoProduto]);
+                    }}
+                  />
+                </div>
                 
                 <div className="grid grid-cols-12 gap-3 mb-3">
                   <div className="col-span-7">
