@@ -17,6 +17,7 @@ import VendasPage from './pages/VendasPage';
 import ComprasPage from './pages/ComprasPage';
 import LucratividadePage from './pages/LucratividadePage';
 import RelatoriosPage from './pages/RelatoriosPage';
+import ConfiguracoesPage from './pages/ConfiguracoesPage';
 
 // Registrar Service Worker para PWA
 const registerServiceWorker = () => {
@@ -63,6 +64,7 @@ function App() {
             <Route path="compras" element={<ComprasPage />} />
             <Route path="lucratividade" element={<LucratividadePage />} />
             <Route path="relatorios" element={<RelatoriosPage />} />
+            <Route path="configuracoes" element={<ConfiguracoesPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -132,4 +132,26 @@ export const nfceAPI = {
   obter: (id) => api.get(`/nfce/${id}`),
 };
 
+// Configurações - Usuários
+export const usuariosAPI = {
+  listar: () => api.get('/configuracoes/usuarios'),
+  criar: (data) => api.post('/configuracoes/usuarios', data),
+  atualizar: (id, data) => api.put(`/configuracoes/usuarios/${id}`, data),
+  deletar: (id) => api.delete(`/configuracoes/usuarios/${id}`),
+};
+
+// Configurações - Empresa
+export const empresaAPI = {
+  obter: () => api.get('/configuracoes/empresa'),
+  atualizar: (data) => api.put('/configuracoes/empresa', data),
+  uploadLogo: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/configuracoes/empresa/logo', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  removerLogo: () => api.delete('/configuracoes/empresa/logo'),
+};
+
 export default api;

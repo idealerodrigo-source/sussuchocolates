@@ -13,6 +13,7 @@ import {
   SignOut,
   List,
   Truck,
+  Gear,
 } from '@phosphor-icons/react';
 
 export default function Layout() {
@@ -33,6 +34,7 @@ export default function Layout() {
     { path: '/compras', label: 'Compras', icon: Truck },
     { path: '/lucratividade', label: 'Lucratividade', icon: ChartBar },
     { path: '/relatorios', label: 'Relatórios', icon: ChartBar },
+    { path: '/configuracoes', label: 'Configurações', icon: Gear },
   ];
 
   const handleLogout = () => {
