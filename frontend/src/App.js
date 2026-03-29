@@ -19,6 +19,7 @@ import ComprasPage from './pages/ComprasPage';
 import LucratividadePage from './pages/LucratividadePage';
 import RelatoriosPage from './pages/RelatoriosPage';
 import ConfiguracoesPage from './pages/ConfiguracoesPage';
+import CatalogoPage from './pages/CatalogoPage';
 
 // Registrar Service Worker para PWA
 const registerServiceWorker = () => {
@@ -45,6 +46,10 @@ function App() {
       <EmpresaProvider>
         <BrowserRouter>
           <Routes>
+            {/* Rota pública - Catálogo para clientes */}
+            <Route path="/catalogo" element={<CatalogoPage />} />
+            
+            {/* Rotas de autenticação */}
             <Route path="/login" element={<LoginPage />} />
             <Route
               path="/"

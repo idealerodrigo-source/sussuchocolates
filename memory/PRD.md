@@ -13,6 +13,14 @@
   - Banner de instalação PWA
   - Suporte iOS (instruções de instalação)
   - Indicador de status offline na UI
+- **NEW**: Catálogo Público com Pedido via WhatsApp (/catalogo)
+  - Página pública sem necessidade de login
+  - Grid de produtos com busca e filtro por categoria
+  - Carrinho de compras com controle de quantidade
+  - Formulário com nome do cliente, telefone e observações
+  - Botão "Enviar Pedido via WhatsApp" que formata mensagem e abre WhatsApp
+  - Layout responsivo para mobile
+  - API pública: /api/catalogo/produtos, /api/catalogo/categorias, /api/catalogo/empresa
 - **FIXED**: Bug de serialização ObjectId no POST de usuários
 
 ## Changelog (2026-03-28)
@@ -242,12 +250,12 @@ Criar um aplicativo/sistema de controle contendo: Cadastro Cliente, Pedido, Prod
 ## Backlog / Future Tasks
 
 ### P1 (High Priority)
-- [ ] Criação automática de pedidos via WhatsApp
 - [ ] Mudar NFC-e de Homologação para Produção (quando pronto para emissão real)
 
 ### P2 (Medium Priority)
 - [ ] Alertas automáticos de estoque baixo (insumos)
 - [ ] Push notifications para novos pedidos
+- [ ] Adicionar imagens aos produtos no catálogo
 
 ## Recently Completed (March 27, 2026)
 

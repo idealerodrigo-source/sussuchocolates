@@ -19,6 +19,7 @@ from .compras import router as compras_router
 from .dashboard import router as dashboard_router
 from .nf_entrada import router as nf_entrada_router
 from .configuracoes import router as configuracoes_router
+from .catalogo import router as catalogo_router
 
 # Create main API router
 api_router = APIRouter(prefix="/api")
@@ -40,3 +41,4 @@ api_router.include_router(compras_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(nf_entrada_router)
 api_router.include_router(configuracoes_router)
+api_router.include_router(catalogo_router)
