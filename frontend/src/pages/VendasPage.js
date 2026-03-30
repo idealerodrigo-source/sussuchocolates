@@ -1145,8 +1145,8 @@ export default function VendasPage() {
                 </>
               )}
 
-              {/* Desconto - só mostra na etapa 2 para venda direta */}
-              {tipoVenda === 'direta' && etapaVendaDireta === 2 && (
+              {/* Desconto - mostra na etapa 2 para venda direta OU para venda de pedido */}
+              {((tipoVenda === 'direta' && etapaVendaDireta === 2) || (tipoVenda === 'pedido' && formData.pedido_id)) && (
                 <div className="bg-[#FEF3C7] border border-[#F59E0B]/30 rounded-lg p-4 space-y-3">
                   <label className="block text-sm font-medium text-[#92400E]">Aplicar Desconto</label>
                   <div className="flex gap-3 items-center">

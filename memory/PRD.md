@@ -87,6 +87,10 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
   - Problema: função `calcularSubtotalItens()` usava variável `pedidos` (undefined) em vez de `pedidosConcluidos`
   - Correção: alterada linha 556 de `VendasPage.js` para usar `pedidosConcluidos.find()`
   - Resultado: Venda de Pedido agora calcula corretamente o valor total e permite múltiplas formas de pagamento
+- **Melhoria**: Habilitado desconto também para Venda de Pedido
+  - Antes: desconto só aparecia em Venda Direta (etapa 2)
+  - Agora: desconto disponível para ambos os tipos de venda
+  - Mostra subtotal, valor do desconto e total a pagar
 
 ### 2025-12-30 (Sessão 8)
 - Correção de múltiplas formas de pagamento
