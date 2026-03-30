@@ -700,13 +700,69 @@ Obrigado pela preferência! 🙏
                             <span className="ml-1">= {formatCurrency(item.subtotal)}</span>
                           </p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(index)}
-                          className="p-2 text-[#C53030] hover:bg-[#FED7D7] rounded-lg transition-colors"
-                        >
-                          <Trash size={18} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {/* Controles de quantidade */}
+                          <div className="flex items-center gap-1 bg-[#F5E6D3] rounded-lg p-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (item.quantidade > 1) {
+                                  const newItems = [...formData.items];
+                                  newItems[index] = {
+                                    ...item,
+                                    quantidade: item.quantidade - 1,
+                                    subtotal: (item.quantidade - 1) * item.preco_unitario - (item.valor_desconto || 0)
+                                  };
+                                  setFormData({ ...formData, items: newItems });
+                                }
+                              }}
+                              disabled={item.quantidade <= 1}
+                              className="w-7 h-7 flex items-center justify-center rounded bg-[#FFFDF8] hover:bg-[#E8D5C4] disabled:opacity-50 disabled:cursor-not-allowed text-[#6B4423] font-bold"
+                            >
+                              -
+                            </button>
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.quantidade}
+                              onChange={(e) => {
+                                const novaQtd = parseInt(e.target.value) || 1;
+                                if (novaQtd >= 1) {
+                                  const newItems = [...formData.items];
+                                  newItems[index] = {
+                                    ...item,
+                                    quantidade: novaQtd,
+                                    subtotal: novaQtd * item.preco_unitario - (item.valor_desconto || 0)
+                                  };
+                                  setFormData({ ...formData, items: newItems });
+                                }
+                              }}
+                              className="w-12 text-center bg-[#FFFDF8] border-0 text-[#3E2723] font-semibold text-sm rounded focus:ring-1 focus:ring-[#6B4423]"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newItems = [...formData.items];
+                                newItems[index] = {
+                                  ...item,
+                                  quantidade: item.quantidade + 1,
+                                  subtotal: (item.quantidade + 1) * item.preco_unitario - (item.valor_desconto || 0)
+                                };
+                                setFormData({ ...formData, items: newItems });
+                              }}
+                              className="w-7 h-7 flex items-center justify-center rounded bg-[#6B4423] hover:bg-[#8B5A3C] text-white font-bold"
+                            >
+                              +
+                            </button>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(index)}
+                            className="p-2 text-[#C53030] hover:bg-[#FED7D7] rounded-lg transition-colors"
+                          >
+                            <Trash size={18} />
+                          </button>
+                        </div>
                       </div>
                     ))}
                     <div className="pt-2 border-t border-[#8B5A3C]/15">
