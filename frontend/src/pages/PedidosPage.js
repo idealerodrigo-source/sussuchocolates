@@ -612,6 +612,7 @@ Obrigado pela preferência! 🙏
                   onOpenChange={setSaboresModalOpen}
                   produto={produtoPendenteSabores}
                   quantidade={quantidadePendenteSabores}
+                  todosProdutos={produtos}
                   onConfirm={(sabores) => {
                     if (produtoPendenteSabores) {
                       const newItem = {

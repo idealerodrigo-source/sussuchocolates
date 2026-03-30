@@ -730,6 +730,7 @@ export default function VendasPage() {
                       onOpenChange={setSaboresModalOpen}
                       produto={produtoPendenteSabores}
                       quantidade={quantidadePendenteSabores}
+                      todosProdutos={produtos}
                       onConfirm={(sabores) => {
                         if (produtoPendenteSabores) {
                           const newItem = {

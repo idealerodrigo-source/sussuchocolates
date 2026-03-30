@@ -82,6 +82,12 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 
 ## Changelog
 
+### 2025-12-30 (Sessão 4)
+- Modal de Sabores atualizado para usar produtos correspondentes
+  - Ao selecionar "Ovo 03 recheado 2 SABORES 325g", busca automaticamente produtos como "Ovo 03 recheado BRIGADEIRO 325g"
+  - Exibe nome completo do produto + sabor extraído
+  - Facilita identificação na produção e embalagem
+
 ### 2025-12-30 (Sessão 3)
 - **P0 COMPLETO**: Venda Mista implementada
   - Backend: tipo_entrega em ItemPedido, tem_itens_a_produzir em Venda
