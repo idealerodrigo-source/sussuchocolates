@@ -115,3 +115,60 @@ async def concluir_producao(producao_id: str, current_user: dict = Depends(get_c
         )
     
     return {"message": "Produção concluída e enviada para embalagem"}
+
+
+@router.get("/relatorio/pendente")
+async def relatorio_producao_pendente(current_user: dict = Depends(get_current_user)):
+    """
+    Retorna relatório de produção pendente agrupado por produto.
+    Exemplo de uso: "Faltam 10.5 ovos sabor Prestígio"
+    """
+    # Buscar todas as produções pendentes (sem data_conclusao)
+    producoes_pendentes = await db.producao.find(
+        {"data_conclusao": None},
+        {"_id": 0}
+    ).to_list(10000)
+    
+    # Agrupar por produto
+    resumo_por_produto = {}
+    
+    for p in producoes_pendentes:
+        produto_id = p['produto_id']
+        produto_nome = p['produto_nome']
+        quantidade = p['quantidade']
+        observacoes = p.get('observacoes', '')
+        
+        # Extrair sabor das observações se existir
+        sabor_info = None
+        if observacoes and 'Sabor:' in observacoes:
+            try:
+                sabor_info = observacoes.split('Sabor:')[1].split('|')[0].strip()
+            except:
+                pass
+        
+        # Chave única para agrupamento
+        chave = f"{produto_id}_{sabor_info}" if sabor_info else produto_id
+        
+        if chave not in resumo_por_produto:
+            resumo_por_produto[chave] = {
+                "produto_id": produto_id,
+                "produto_nome": produto_nome,
+                "sabor": sabor_info,
+                "quantidade_total": 0,
+                "quantidade_itens": 0
+            }
+        
+        resumo_por_produto[chave]["quantidade_total"] += quantidade
+        resumo_por_produto[chave]["quantidade_itens"] += 1
+    
+    # Converter para lista ordenada
+    resultado = sorted(
+        resumo_por_produto.values(),
+        key=lambda x: (x['produto_nome'], x['sabor'] or '')
+    )
+    
+    return {
+        "total_itens_pendentes": len(producoes_pendentes),
+        "produtos_agrupados": resultado
+    }
+

@@ -82,6 +82,13 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 
 ## Changelog
 
+### 2025-12-30 (Sessão 5)
+- Produção com sabores separados implementada
+  - Itens "2 SABORES" são desmembrados em produções individuais por sabor
+  - Novo endpoint `/api/producao/relatorio/pendente` para relatório
+  - Card de resumo amarelo na página de Produção mostrando quantidades pendentes por produto/sabor
+  - Permite gerar relatórios como "Faltam 10.5 ovos sabor Prestígio"
+
 ### 2025-12-30 (Sessão 4)
 - Modal de Sabores atualizado para usar produtos correspondentes
   - Ao selecionar "Ovo 03 recheado 2 SABORES 325g", busca automaticamente produtos como "Ovo 03 recheado BRIGADEIRO 325g"

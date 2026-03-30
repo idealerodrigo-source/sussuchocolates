@@ -20,6 +20,7 @@ export default function ProducaoPage() {
   const [activeTab, setActiveTab] = useState('producao'); // 'producao' ou 'relatorio'
   const [tipoProducao, setTipoProducao] = useState('estoque');
   const [responsavelTodos, setResponsavelTodos] = useState('');
+  const [relatorioPendente, setRelatorioPendente] = useState(null);
   const { sortedData, requestSort, sortConfig } = useSortableTable(producoes, { key: 'data_criacao', direction: 'desc' });
   const [formData, setFormData] = useState({
     pedido_id: '',
@@ -37,13 +38,15 @@ export default function ProducaoPage() {
 
   const fetchData = async () => {
     try {
-      const [producoesRes, pedidosRes, produtosRes] = await Promise.all([
+      const [producoesRes, pedidosRes, produtosRes, relatorioRes] = await Promise.all([
         producaoAPI.listar(),
         pedidosAPI.listar(),
         produtosAPI.listar(),
+        producaoAPI.relatorioPendente(),
       ]);
       setProducoes(producoesRes.data);
       setAllPedidos(pedidosRes.data);
+      setRelatorioPendente(relatorioRes.data);
       
       const pedidosPendentes = pedidosRes.data.filter(
         (p) => p.status === 'pendente' || p.status === 'em_producao'
@@ -58,20 +61,50 @@ export default function ProducaoPage() {
   };
 
   // Função para carregar itens do pedido selecionado
+  // Desmembra itens com múltiplos sabores em itens separados para produção
   const handlePedidoChange = (pedidoId) => {
     setFormData({ ...formData, pedido_id: pedidoId });
     
     if (pedidoId) {
       const pedido = allPedidos.find(p => p.id === pedidoId);
       if (pedido && pedido.items && pedido.items.length > 0) {
-        // Converter itens do pedido para formato de produção (incluindo sabores)
-        const itensFromPedido = pedido.items.map(item => ({
-          produto_id: item.produto_id,
-          quantidade: item.quantidade.toString(),
-          sabores: item.sabores || null  // Manter sabores do pedido
-        }));
+        // Converter itens do pedido para formato de produção
+        // Se tem sabores, desmembra em itens separados por sabor
+        const itensFromPedido = [];
+        
+        pedido.items.forEach(item => {
+          if (item.sabores && item.sabores.length > 0) {
+            // Desmembrar por sabor - cada sabor vira um item de produção separado
+            item.sabores.forEach(sabor => {
+              // Buscar o produto correspondente ao sabor pelo nome
+              const produtoCorrespondente = produtos.find(p => {
+                const nomeNormalizado = p.nome.toLowerCase();
+                const saborNormalizado = sabor.sabor.toLowerCase();
+                return nomeNormalizado.includes(saborNormalizado) && 
+                       !nomeNormalizado.includes('sabores');
+              });
+              
+              itensFromPedido.push({
+                produto_id: produtoCorrespondente?.id || item.produto_id,
+                produto_nome_original: item.produto_nome,
+                quantidade: sabor.quantidade.toString(),
+                sabor_info: sabor.sabor,
+                sabores: null, // Já está desmembrado
+                produto_nome_completo: sabor.produto_nome_completo || `${item.produto_nome} - ${sabor.sabor}`
+              });
+            });
+          } else {
+            // Item sem sabores múltiplos - manter como está
+            itensFromPedido.push({
+              produto_id: item.produto_id,
+              quantidade: item.quantidade.toString(),
+              sabores: null
+            });
+          }
+        });
+        
         setItensProducao(itensFromPedido);
-        toast.success(`${itensFromPedido.length} item(s) carregado(s) do pedido`);
+        toast.success(`${itensFromPedido.length} item(s) carregado(s) do pedido (sabores desmembrados)`);
       }
     } else {
       // Limpar itens se nenhum pedido selecionado
@@ -112,9 +145,11 @@ export default function ProducaoPage() {
         const data = {
           produto_id: item.produto_id,
           quantidade: parseFloat(item.quantidade),
-          sabores: item.sabores || null,  // Incluir sabores na produção
+          sabores: item.sabores || null,
           responsavel: formData.responsavel || null,
-          observacoes: formData.observacoes || null,
+          observacoes: item.sabor_info 
+            ? `Sabor: ${item.sabor_info}${formData.observacoes ? ` | ${formData.observacoes}` : ''}`
+            : (formData.observacoes || null),
           tipo_producao: tipoProducao,
         };
         
@@ -129,7 +164,8 @@ export default function ProducaoPage() {
       
       const produtosNomes = itensValidos.map(item => {
         const produto = produtos.find(p => p.id === item.produto_id);
-        return `${item.quantidade}x ${produto?.nome || 'Produto'}`;
+        const saborInfo = item.sabor_info ? ` (${item.sabor_info})` : '';
+        return `${item.quantidade}x ${produto?.nome || 'Produto'}${saborInfo}`;
       }).join(', ');
       
       toast.success(`Produção iniciada: ${produtosNomes}`);
@@ -495,6 +531,11 @@ export default function ProducaoPage() {
                           <span className="text-xs text-[#3E2723] font-medium">
                             {item.quantidade}x {getProdutoNome(item.produto_id)}
                           </span>
+                          {item.sabor_info && (
+                            <span className="text-xs text-[#6B4423] ml-1">
+                              (Sabor: {item.sabor_info})
+                            </span>
+                          )}
                           {item.sabores && item.sabores.length > 0 && (
                             <p className="text-xs text-[#8B5A3C] mt-1 ml-2">
                               → Sabores: {formatarSabores(item.sabores)}
@@ -577,6 +618,42 @@ export default function ProducaoPage() {
 
       {/* Tab: Produções */}
       {activeTab === 'producao' && (
+        <>
+          {/* Card de Resumo - Produção Pendente por Produto/Sabor */}
+          {relatorioPendente && relatorioPendente.produtos_agrupados && relatorioPendente.produtos_agrupados.length > 0 && (
+            <div className="mb-6 bg-gradient-to-r from-[#FEF3C7] to-[#FDE68A] border border-[#F59E0B]/30 rounded-xl p-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <ClipboardText size={20} className="text-[#D97706]" weight="fill" />
+                <h3 className="text-sm font-semibold text-[#92400E]">
+                  Resumo: Produção Pendente por Produto ({relatorioPendente.total_itens_pendentes} itens)
+                </h3>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                {relatorioPendente.produtos_agrupados.map((item, index) => (
+                  <div 
+                    key={index} 
+                    className="bg-white/80 rounded-lg p-2 border border-[#F59E0B]/20"
+                  >
+                    <p className="text-lg font-bold text-[#D97706]">
+                      {item.quantidade_total.toFixed(1)}
+                    </p>
+                    <p className="text-xs text-[#92400E] font-medium truncate" title={item.produto_nome}>
+                      {item.produto_nome}
+                    </p>
+                    {item.sabor && (
+                      <p className="text-[10px] text-[#B45309] truncate">
+                        Sabor: {item.sabor}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-[#92400E] mt-2 italic">
+                * Use este resumo para planejar a produção. Ex: "Faltam 10.5 ovos sabor Prestígio"
+              </p>
+            </div>
+          )}
+
         <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -661,6 +738,7 @@ export default function ProducaoPage() {
             </table>
           </div>
         </div>
+        </>
       )}
 
       {/* Tab: Relatório de Produção */}
