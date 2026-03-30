@@ -78,19 +78,24 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 
 ### P2 - Backlog
 - [ ] Migrar NFC-e para Produção (requer CSC de produção)
-- [ ] Refatorar VendasPage.js (1500+ linhas) em componentes menores
+- [x] ~~Refatorar VendasPage.js~~ ✅ Completo (1812 → 831 linhas)
 
 ## Changelog
 
 ### 2025-03-30 (Sessão 9)
 - **Bug Fix**: Corrigido erro "o total da forma de pagamento não pode exceder 0,00" em Venda de Pedido
   - Problema: função `calcularSubtotalItens()` usava variável `pedidos` (undefined) em vez de `pedidosConcluidos`
-  - Correção: alterada linha 556 de `VendasPage.js` para usar `pedidosConcluidos.find()`
-  - Resultado: Venda de Pedido agora calcula corretamente o valor total e permite múltiplas formas de pagamento
+  - Correção aplicada para usar `pedidosConcluidos.find()`
 - **Melhoria**: Habilitado desconto também para Venda de Pedido
-  - Antes: desconto só aparecia em Venda Direta (etapa 2)
-  - Agora: desconto disponível para ambos os tipos de venda
-  - Mostra subtotal, valor do desconto e total a pagar
+  - Desconto disponível para ambos os tipos de venda
+- **Refatoração P3 Completa**: VendasPage.js de 1812 → 831 linhas (redução de 54%)
+  - Criados componentes em `/app/frontend/src/components/vendas/`:
+    - `DescontoSection.js` - Seção de aplicar desconto
+    - `FormasPagamentoSection.js` - Múltiplas formas de pagamento
+    - `VendasTable.js` - Tabela de listagem de vendas
+    - `NFCeModals.js` - Modais de pré-visualização e visualização de NFC-e
+    - `index.js` - Barrel export para importação facilitada
+  - Código mais limpo, testável e manutenível
 
 ### 2025-12-30 (Sessão 8)
 - Correção de múltiplas formas de pagamento
