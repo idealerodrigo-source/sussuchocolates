@@ -18,6 +18,7 @@ export function QuickCreateClienteModal({ onClienteCreated, trigger }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setLoading(true);
     try {
       const cleanData = Object.fromEntries(
@@ -26,13 +27,14 @@ export function QuickCreateClienteModal({ onClienteCreated, trigger }) {
       
       const response = await clientesAPI.criar(cleanData);
       toast.success('Cliente criado com sucesso!');
-      setOpen(false);
       setFormData({ nome: '', telefone: '', email: '', endereco: '' });
       
       // Callback para atualizar a lista e selecionar o novo cliente
       if (onClienteCreated) {
         onClienteCreated(response.data);
       }
+      
+      setOpen(false);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Erro ao criar cliente');
     } finally {
@@ -40,22 +42,36 @@ export function QuickCreateClienteModal({ onClienteCreated, trigger }) {
     }
   };
 
+  const handleOpenChange = (newOpen) => {
+    if (!loading) {
+      setOpen(newOpen);
+      if (!newOpen) {
+        setFormData({ nome: '', telefone: '', email: '', endereco: '' });
+      }
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <Dialog open={open} onOpenChange={handleOpenChange} modal={true}>
+      <DialogTrigger asChild onClick={(e) => e.stopPropagation()}>
         {trigger || (
           <Button
             type="button"
             variant="outline"
             size="sm"
             className="text-[#6B4423] border-[#6B4423] hover:bg-[#F5E6D3]"
+            onClick={(e) => e.stopPropagation()}
           >
             <UserPlus size={16} weight="bold" className="mr-1" />
             Novo
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="bg-[#FFFDF8] max-w-md">
+      <DialogContent 
+        className="bg-[#FFFDF8] max-w-md z-[100]"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="text-xl font-serif text-[#3E2723] flex items-center gap-2">
             <UserPlus size={24} className="text-[#6B4423]" />
@@ -132,6 +148,7 @@ export function QuickCreateProdutoModal({ onProdutoCreated, trigger }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setLoading(true);
     try {
       const dataToSend = {
@@ -147,13 +164,14 @@ export function QuickCreateProdutoModal({ onProdutoCreated, trigger }) {
       
       const response = await produtosAPI.criar(cleanData);
       toast.success('Produto criado com sucesso!');
-      setOpen(false);
       setFormData({ nome: '', preco: '', descricao: '', categoria: '' });
       
       // Callback para atualizar a lista
       if (onProdutoCreated) {
         onProdutoCreated(response.data);
       }
+      
+      setOpen(false);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Erro ao criar produto');
     } finally {
@@ -161,22 +179,36 @@ export function QuickCreateProdutoModal({ onProdutoCreated, trigger }) {
     }
   };
 
+  const handleOpenChange = (newOpen) => {
+    if (!loading) {
+      setOpen(newOpen);
+      if (!newOpen) {
+        setFormData({ nome: '', preco: '', descricao: '', categoria: '' });
+      }
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <Dialog open={open} onOpenChange={handleOpenChange} modal={true}>
+      <DialogTrigger asChild onClick={(e) => e.stopPropagation()}>
         {trigger || (
           <Button
             type="button"
             variant="outline"
             size="sm"
             className="text-[#6B4423] border-[#6B4423] hover:bg-[#F5E6D3]"
+            onClick={(e) => e.stopPropagation()}
           >
             <Package size={16} weight="bold" className="mr-1" />
             Novo
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="bg-[#FFFDF8] max-w-md">
+      <DialogContent 
+        className="bg-[#FFFDF8] max-w-md z-[100]"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="text-xl font-serif text-[#3E2723] flex items-center gap-2">
             <Package size={24} className="text-[#6B4423]" />
