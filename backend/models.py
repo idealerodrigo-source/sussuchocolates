@@ -21,6 +21,7 @@ class PedidoStatus(str, Enum):
     EM_EMBALAGEM = "em_embalagem"
     CONCLUIDO = "concluido"
     ENTREGUE = "entregue"
+    CANCELADO = "cancelado"
 
 
 class MovimentoEstoque(str, Enum):
@@ -140,6 +141,8 @@ class Pedido(BaseModel):
     observacoes: Optional[str] = None
     venda_vinculada_id: Optional[str] = None  # ID da venda que gerou este pedido (venda mista)
     origem: Optional[str] = "manual"  # 'manual', 'venda_mista', etc.
+    data_cancelamento: Optional[datetime] = None
+    motivo_cancelamento: Optional[str] = None
 
 
 class PedidoCreate(BaseModel):

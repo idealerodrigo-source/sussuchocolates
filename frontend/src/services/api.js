@@ -39,6 +39,8 @@ export const pedidosAPI = {
   criar: (data) => api.post('/pedidos', data),
   atualizar: (id, data) => api.put(`/pedidos/${id}`, data),
   atualizarStatus: (id, status) => api.patch(`/pedidos/${id}/status?status=${status}`),
+  cancelar: (id) => api.delete(`/pedidos/${id}/cancelar`),
+  excluir: (id) => api.delete(`/pedidos/${id}`),
 };
 
 export const producaoAPI = {

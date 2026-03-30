@@ -46,6 +46,7 @@ export const getStatusColor = (status) => {
     concluido: 'bg-[#C6F6D5] text-[#2F855A]',
     entregue: 'bg-[#C6F6D5] text-[#2F855A]',
     autorizada: 'bg-[#C6F6D5] text-[#2F855A]',
+    cancelado: 'bg-red-100 text-red-700',
   };
   return colors[status] || 'bg-gray-100 text-gray-700';
 };
@@ -61,6 +62,7 @@ export const getStatusLabel = (status) => {
     saida: 'Saída',
     ajuste: 'Ajuste',
     autorizada: 'Autorizada',
+    cancelado: 'Cancelado',
   };
   return labels[status] || status;
 };

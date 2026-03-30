@@ -118,3 +118,124 @@ async def atualizar_pedido(pedido_id: str, pedido_data: PedidoUpdate, current_us
     if updated.get('data_entrega') and isinstance(updated['data_entrega'], str):
         updated['data_entrega'] = datetime.fromisoformat(updated['data_entrega'])
     return updated
+
+
+@router.delete("/{pedido_id}/cancelar")
+async def cancelar_pedido(pedido_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Cancela um pedido e reverte todas as operações relacionadas:
+    - Se em produção: cancela a produção e retorna para pendente ou cancela
+    - Se já produzido: retorna produtos ao estoque
+    - Não gera venda se já concluído
+    """
+    from models import MovimentoEstoque
+    
+    pedido = await db.pedidos.find_one({"id": pedido_id}, {"_id": 0})
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    
+    status_atual = pedido.get('status', 'pendente')
+    acoes_realizadas = []
+    
+    # 1. Verificar se há produções vinculadas a este pedido
+    producoes = await db.producao.find({"pedido_id": pedido_id}, {"_id": 0}).to_list(1000)
+    
+    if producoes:
+        for producao in producoes:
+            producao_id = producao['id']
+            producao_concluida = producao.get('data_conclusao') is not None
+            
+            if producao_concluida:
+                # Produção já concluída - devolver ao estoque
+                await db.estoque.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "produto_id": producao['produto_id'],
+                    "produto_nome": producao['produto_nome'],
+                    "quantidade": producao['quantidade'],
+                    "tipo_movimento": MovimentoEstoque.ENTRADA,
+                    "data_movimento": datetime.now(timezone.utc).isoformat(),
+                    "responsavel": current_user['nome'],
+                    "observacoes": f"Devolução por cancelamento do pedido {pedido.get('numero', pedido_id)}"
+                })
+                acoes_realizadas.append(f"Devolvido ao estoque: {producao['quantidade']}x {producao['produto_nome']}")
+            
+            # Marcar produção como cancelada (deletar ou marcar)
+            await db.producao.delete_one({"id": producao_id})
+            acoes_realizadas.append(f"Produção cancelada: {producao['produto_nome']}")
+    
+    # 2. Verificar se há embalagens vinculadas
+    embalagens = await db.embalagem.find({"pedido_id": pedido_id}, {"_id": 0}).to_list(1000)
+    
+    if embalagens:
+        for embalagem in embalagens:
+            embalagem_id = embalagem['id']
+            embalagem_concluida = embalagem.get('data_conclusao') is not None
+            
+            if embalagem_concluida:
+                # Embalagem concluída - também devolver ao estoque
+                await db.estoque.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "produto_id": embalagem.get('produto_id', ''),
+                    "produto_nome": embalagem['produto_nome'],
+                    "quantidade": embalagem['quantidade'],
+                    "tipo_movimento": MovimentoEstoque.ENTRADA,
+                    "data_movimento": datetime.now(timezone.utc).isoformat(),
+                    "responsavel": current_user['nome'],
+                    "observacoes": f"Devolução embalagem por cancelamento do pedido {pedido.get('numero', pedido_id)}"
+                })
+                acoes_realizadas.append(f"Devolvido ao estoque (embalagem): {embalagem['quantidade']}x {embalagem['produto_nome']}")
+            
+            # Remover embalagem
+            await db.embalagem.delete_one({"id": embalagem_id})
+            acoes_realizadas.append(f"Embalagem cancelada: {embalagem['produto_nome']}")
+    
+    # 3. Verificar se há venda vinculada e cancelar se existir
+    venda = await db.vendas.find_one({"pedido_id": pedido_id}, {"_id": 0})
+    if venda:
+        # Marcar venda como cancelada
+        await db.vendas.update_one(
+            {"pedido_id": pedido_id},
+            {"$set": {
+                "status_venda": "cancelada",
+                "data_cancelamento": datetime.now(timezone.utc).isoformat(),
+                "motivo_cancelamento": f"Cancelamento do pedido {pedido.get('numero', pedido_id)}"
+            }}
+        )
+        acoes_realizadas.append(f"Venda cancelada")
+    
+    # 4. Atualizar status do pedido para CANCELADO
+    await db.pedidos.update_one(
+        {"id": pedido_id},
+        {"$set": {
+            "status": PedidoStatus.CANCELADO,
+            "data_cancelamento": datetime.now(timezone.utc).isoformat(),
+            "motivo_cancelamento": "Cancelado pelo usuário"
+        }}
+    )
+    
+    return {
+        "message": f"Pedido {pedido.get('numero', pedido_id)} cancelado com sucesso",
+        "status_anterior": status_atual,
+        "acoes_realizadas": acoes_realizadas
+    }
+
+
+@router.delete("/{pedido_id}")
+async def excluir_pedido(pedido_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Exclui um pedido completamente (apenas se pendente)
+    Para outros status, use /cancelar
+    """
+    pedido = await db.pedidos.find_one({"id": pedido_id}, {"_id": 0})
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    
+    if pedido.get('status') != 'pendente':
+        raise HTTPException(
+            status_code=400, 
+            detail="Apenas pedidos pendentes podem ser excluídos. Use a opção 'Cancelar' para outros status."
+        )
+    
+    await db.pedidos.delete_one({"id": pedido_id})
+    return {"message": f"Pedido {pedido.get('numero', pedido_id)} excluído com sucesso"}
+

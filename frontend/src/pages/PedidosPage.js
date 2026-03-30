@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { pedidosAPI, clientesAPI, produtosAPI } from '../services/api';
 import { formatCurrency, formatDateTime, getStatusColor, getStatusLabel } from '../utils/formatters';
-import { Plus, ShoppingCart, Trash, PencilSimple, Eye, FilePdf, WhatsappLogo, UserPlus, Package } from '@phosphor-icons/react';
+import { Plus, ShoppingCart, Trash, PencilSimple, Eye, FilePdf, WhatsappLogo, UserPlus, Package, XCircle } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -254,6 +254,58 @@ Obrigado pela preferência! 🙏
     // Abrir WhatsApp
     const url = `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`;
     window.open(url, '_blank');
+  };
+
+  const handleCancelarPedido = async (pedido) => {
+    const statusLabel = getStatusLabel(pedido.status);
+    
+    let mensagemConfirmacao = `Deseja realmente cancelar o pedido ${pedido.numero}?`;
+    
+    if (pedido.status === 'em_producao') {
+      mensagemConfirmacao += '\n\n⚠️ Este pedido está em produção. A produção será cancelada e o pedido voltará para pendente.';
+    } else if (pedido.status === 'em_embalagem') {
+      mensagemConfirmacao += '\n\n⚠️ Este pedido está em embalagem. A embalagem e produção serão canceladas.';
+    } else if (pedido.status === 'concluido') {
+      mensagemConfirmacao += '\n\n⚠️ Este pedido já foi produzido. Os produtos serão devolvidos ao estoque.';
+    }
+    
+    if (!window.confirm(mensagemConfirmacao)) {
+      return;
+    }
+    
+    try {
+      const response = await pedidosAPI.cancelar(pedido.id);
+      const acoes = response.data.acoes_realizadas || [];
+      
+      let mensagemSucesso = `Pedido ${pedido.numero} cancelado com sucesso!`;
+      if (acoes.length > 0) {
+        mensagemSucesso += '\n\nAções realizadas:\n• ' + acoes.join('\n• ');
+      }
+      
+      toast.success(mensagemSucesso);
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erro ao cancelar pedido');
+    }
+  };
+
+  const handleExcluirPedido = async (pedido) => {
+    if (pedido.status !== 'pendente') {
+      toast.error('Apenas pedidos pendentes podem ser excluídos. Use "Cancelar" para outros status.');
+      return;
+    }
+    
+    if (!window.confirm(`Deseja realmente EXCLUIR permanentemente o pedido ${pedido.numero}?`)) {
+      return;
+    }
+    
+    try {
+      await pedidosAPI.excluir(pedido.id);
+      toast.success(`Pedido ${pedido.numero} excluído com sucesso!`);
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erro ao excluir pedido');
+    }
   };
 
   const generatePDF = async (pedido) => {
@@ -905,9 +957,32 @@ Obrigado pela preferência! 🙏
                           size="sm"
                           className="bg-[#8B5A3C] text-white hover:bg-[#6B4423]"
                           title="Editar"
+                          disabled={pedido.status === 'cancelado'}
                         >
                           <PencilSimple size={16} weight="bold" />
                         </Button>
+                        {pedido.status !== 'cancelado' && pedido.status !== 'entregue' && (
+                          <Button
+                            onClick={() => handleCancelarPedido(pedido)}
+                            size="sm"
+                            variant="outline"
+                            className="text-orange-600 border-orange-600 hover:bg-orange-50"
+                            title="Cancelar Pedido"
+                          >
+                            <XCircle size={16} weight="bold" />
+                          </Button>
+                        )}
+                        {pedido.status === 'pendente' && (
+                          <Button
+                            onClick={() => handleExcluirPedido(pedido)}
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 border-red-600 hover:bg-red-50"
+                            title="Excluir Pedido"
+                          >
+                            <Trash size={16} weight="bold" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>

@@ -82,6 +82,13 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 
 ## Changelog
 
+### 2025-12-30 (Sessão 6)
+- Implementado cancelar/excluir pedidos
+  - Botão Cancelar (X laranja): cancela produção, devolve estoque, marca pedido como cancelado
+  - Botão Excluir (lixeira): remove pedidos pendentes permanentemente
+  - Novo status "Cancelado" com badge vermelho
+  - Lógica de reversão completa (produção, embalagem, venda)
+
 ### 2025-12-30 (Sessão 5)
 - Produção com sabores separados implementada
   - Itens "2 SABORES" são desmembrados em produções individuais por sabor
