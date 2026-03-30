@@ -50,13 +50,20 @@ async def criar_venda(venda_data: VendaCreate, current_user: dict = Depends(get_
         if not cliente:
             raise HTTPException(status_code=404, detail="Cliente não encontrado")
         
-        valor_total = sum(item.subtotal for item in venda_data.items)
+        # Calcular subtotal e valor total com desconto
+        subtotal = sum(item.subtotal for item in venda_data.items)
+        valor_desconto = venda_data.valor_desconto or 0
+        valor_total = max(0, subtotal - valor_desconto)
         
         venda = Venda(
             pedido_id=None,
             cliente_id=venda_data.cliente_id,
             cliente_nome=cliente['nome'],
             items=venda_data.items,
+            subtotal=subtotal,
+            desconto_tipo=venda_data.desconto_tipo,
+            desconto_valor=venda_data.desconto_valor,
+            valor_desconto=valor_desconto,
             valor_total=valor_total,
             forma_pagamento=venda_data.forma_pagamento,
             formas_pagamento=venda_data.formas_pagamento,

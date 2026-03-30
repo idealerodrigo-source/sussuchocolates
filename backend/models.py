@@ -252,6 +252,10 @@ class Venda(BaseModel):
     cliente_id: str
     cliente_nome: str
     items: List[ItemPedido]
+    subtotal: Optional[float] = None  # Subtotal antes do desconto
+    desconto_tipo: Optional[str] = None  # 'valor' ou 'percentual'
+    desconto_valor: float = 0  # Valor ou percentual do desconto
+    valor_desconto: float = 0  # Valor calculado do desconto
     valor_total: float
     forma_pagamento: str  # Mantido para compatibilidade (resumo ou principal)
     formas_pagamento: Optional[List[FormaPagamentoItem]] = None  # Múltiplas formas
@@ -286,6 +290,9 @@ class VendaCreate(BaseModel):
     data_previsao_pagamento: Optional[str] = None
     observacoes_pagamento: Optional[str] = None
     tem_itens_a_produzir: bool = False
+    desconto_tipo: Optional[str] = None
+    desconto_valor: float = 0
+    valor_desconto: float = 0
 
 
 class CancelarVendaRequest(BaseModel):

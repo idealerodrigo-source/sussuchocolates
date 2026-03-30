@@ -64,6 +64,8 @@ export default function VendasPage() {
     entrega_posterior: false,
     data_previsao_pagamento: '',
     observacoes_pagamento: '',
+    desconto_tipo: 'valor', // 'valor' ou 'percentual'
+    desconto_valor: 0,
   });
   const [itemTemp, setItemTemp] = useState({
     produto_id: '',
@@ -177,8 +179,14 @@ export default function VendasPage() {
           return;
         }
         
+        // Calcular total com desconto
+        const subtotal = formData.items.reduce((acc, item) => acc + item.subtotal, 0);
+        const valorDesconto = formData.desconto_tipo === 'percentual' 
+          ? (subtotal * (formData.desconto_valor || 0)) / 100 
+          : (formData.desconto_valor || 0);
+        const totalVenda = Math.max(0, subtotal - valorDesconto);
+        
         // Validar formas de pagamento
-        const totalVenda = formData.items.reduce((acc, item) => acc + item.subtotal, 0);
         const totalPago = formData.formas_pagamento.reduce((acc, fp) => acc + fp.valor, 0);
         
         if (formData.formas_pagamento.length === 0) {
@@ -211,6 +219,9 @@ export default function VendasPage() {
           data_previsao_pagamento: formData.entrega_posterior ? formData.data_previsao_pagamento : null,
           observacoes_pagamento: formData.observacoes_pagamento || null,
           tem_itens_a_produzir: itensAProduzir.length > 0,
+          desconto_tipo: formData.desconto_valor > 0 ? formData.desconto_tipo : null,
+          desconto_valor: formData.desconto_valor || 0,
+          valor_desconto: valorDesconto,
         };
         
         const vendaResponse = await vendasAPI.criar(vendaData);
@@ -487,6 +498,8 @@ export default function VendasPage() {
       entrega_posterior: false,
       data_previsao_pagamento: '',
       observacoes_pagamento: '',
+      desconto_tipo: 'valor',
+      desconto_valor: 0,
     });
     setItemTemp({ produto_id: '', quantidade: 1 });
     setNovaFormaPagamento({ tipo: '', valor: '', parcelas: 1 });
@@ -545,7 +558,7 @@ export default function VendasPage() {
     }
     
     const totalAtual = formData.formas_pagamento.reduce((acc, fp) => acc + fp.valor, 0);
-    const totalVenda = formData.items.reduce((acc, item) => acc + item.subtotal, 0);
+    const totalVenda = calcularTotalComDesconto();
     
     if (totalAtual + valor > totalVenda + 0.01) {
       toast.error(`O total das formas de pagamento não pode exceder ${formatCurrency(totalVenda)}`);
@@ -581,17 +594,38 @@ export default function VendasPage() {
     return formData.formas_pagamento.reduce((acc, fp) => acc + fp.valor, 0);
   };
 
+  // Calcula o subtotal dos itens (sem desconto)
+  const calcularSubtotalItens = () => {
+    return formData.items.reduce((acc, item) => acc + item.subtotal, 0);
+  };
+
+  // Calcula o valor do desconto
+  const calcularValorDesconto = () => {
+    const subtotal = calcularSubtotalItens();
+    if (formData.desconto_tipo === 'percentual') {
+      return (subtotal * (formData.desconto_valor || 0)) / 100;
+    }
+    return formData.desconto_valor || 0;
+  };
+
+  // Calcula o total final com desconto
+  const calcularTotalComDesconto = () => {
+    const subtotal = calcularSubtotalItens();
+    const desconto = calcularValorDesconto();
+    return Math.max(0, subtotal - desconto);
+  };
+
   const calcularRestantePagamento = () => {
-    const totalVenda = formData.items.reduce((acc, item) => acc + item.subtotal, 0);
+    const totalVenda = calcularTotalComDesconto();
     const totalPago = calcularTotalFormasPagamento();
-    return totalVenda - totalPago;
+    return Math.max(0, totalVenda - totalPago);
   };
 
   if (loading) {
     return <div className="flex items-center justify-center py-12"><p className="text-[#6B4423] font-sans">Carregando...</p></div>;
   }
 
-  const totalVendaDireta = formData.items.reduce((sum, item) => sum + item.subtotal, 0);
+  const totalVendaDireta = calcularTotalComDesconto();
 
   return (
     <div data-testid="vendas-page">
@@ -1074,15 +1108,89 @@ export default function VendasPage() {
                         </div>
                       ))}
                       
-                      <div className="pt-3 border-t border-[#8B5A3C]/15 flex justify-between items-center">
-                        <span className="text-[#705A4D]">{formData.items.length} item(ns)</span>
-                        <p className="text-xl font-serif font-bold text-[#3E2723]">
-                          Total: {formatCurrency(totalVendaDireta)}
-                        </p>
+                      <div className="pt-3 border-t border-[#8B5A3C]/15 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[#705A4D]">{formData.items.length} item(ns)</span>
+                          <p className="text-sm text-[#705A4D]">
+                            Subtotal: {formatCurrency(calcularSubtotalItens())}
+                          </p>
+                        </div>
+                        {calcularValorDesconto() > 0 && (
+                          <div className="flex justify-between items-center text-[#D97706]">
+                            <span>Desconto:</span>
+                            <span>- {formatCurrency(calcularValorDesconto())}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium text-[#3E2723]">Total:</span>
+                          <p className="text-xl font-serif font-bold text-[#3E2723]">
+                            {formatCurrency(totalVendaDireta)}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </>
+              )}
+
+              {/* Desconto - só mostra na etapa 2 para venda direta */}
+              {tipoVenda === 'direta' && etapaVendaDireta === 2 && (
+                <div className="bg-[#FEF3C7] border border-[#F59E0B]/30 rounded-lg p-4 space-y-3">
+                  <label className="block text-sm font-medium text-[#92400E]">Aplicar Desconto</label>
+                  <div className="flex gap-3 items-center">
+                    <select
+                      value={formData.desconto_tipo}
+                      onChange={(e) => setFormData({ ...formData, desconto_tipo: e.target.value, desconto_valor: 0, formas_pagamento: [] })}
+                      className="px-3 py-2 bg-[#FFFDF8] border border-[#F59E0B]/30 rounded-lg focus:border-[#D97706] focus:ring-1 focus:ring-[#D97706] outline-none text-[#3E2723] text-sm"
+                    >
+                      <option value="valor">Valor (R$)</option>
+                      <option value="percentual">Percentual (%)</option>
+                    </select>
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#705A4D] text-sm">
+                        {formData.desconto_tipo === 'percentual' ? '%' : 'R$'}
+                      </span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max={formData.desconto_tipo === 'percentual' ? 100 : calcularSubtotalItens()}
+                        placeholder="0,00"
+                        value={formData.desconto_valor || ''}
+                        onChange={(e) => {
+                          const valor = parseFloat(e.target.value) || 0;
+                          setFormData({ ...formData, desconto_valor: valor, formas_pagamento: [] });
+                        }}
+                        className="w-full pl-10 pr-4 py-2 bg-[#FFFDF8] border border-[#F59E0B]/30 rounded-lg focus:border-[#D97706] focus:ring-1 focus:ring-[#D97706] outline-none text-[#3E2723]"
+                      />
+                    </div>
+                    {formData.desconto_valor > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, desconto_valor: 0, formas_pagamento: [] })}
+                        className="p-2 text-[#C53030] hover:bg-[#FED7D7] rounded-lg"
+                      >
+                        <Trash size={18} />
+                      </button>
+                    )}
+                  </div>
+                  {calcularValorDesconto() > 0 && (
+                    <div className="bg-white/50 rounded p-2 text-sm">
+                      <div className="flex justify-between text-[#705A4D]">
+                        <span>Subtotal:</span>
+                        <span>{formatCurrency(calcularSubtotalItens())}</span>
+                      </div>
+                      <div className="flex justify-between text-[#D97706]">
+                        <span>Desconto {formData.desconto_tipo === 'percentual' ? `(${formData.desconto_valor}%)` : ''}:</span>
+                        <span>- {formatCurrency(calcularValorDesconto())}</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-[#3E2723] pt-1 border-t border-[#F59E0B]/20 mt-1">
+                        <span>Total a pagar:</span>
+                        <span>{formatCurrency(calcularTotalComDesconto())}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Forma de pagamento - só mostra na etapa 2 para venda direta ou sempre para pedido */}

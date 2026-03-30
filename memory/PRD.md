@@ -82,6 +82,12 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 
 ## Changelog
 
+### 2025-12-30 (Sessão 8)
+- Correção de múltiplas formas de pagamento
+- Implementado desconto na venda (valor ou percentual)
+  - Subtotal, desconto e total calculados automaticamente
+  - Interface na etapa 2 para configurar desconto
+
 ### 2025-12-30 (Sessão 7)
 - Múltiplas formas de pagamento implementadas
   - Uma venda pode ter várias formas: Dinheiro + Débito + Crédito 2x, etc.
