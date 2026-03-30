@@ -59,6 +59,7 @@ async def criar_venda(venda_data: VendaCreate, current_user: dict = Depends(get_
             items=venda_data.items,
             valor_total=valor_total,
             forma_pagamento=venda_data.forma_pagamento,
+            formas_pagamento=venda_data.formas_pagamento,
             parcelas=venda_data.parcelas,
             tipo_venda="direta",
             entrega_posterior=venda_data.entrega_posterior,

@@ -238,6 +238,13 @@ class EstoqueCreate(BaseModel):
     observacoes: Optional[str] = None
 
 
+# Forma de Pagamento para pagamentos múltiplos
+class FormaPagamentoItem(BaseModel):
+    tipo: str  # 'dinheiro', 'debito', 'credito', 'pix', 'boleto', etc.
+    valor: float
+    parcelas: int = 1  # Apenas para crédito
+
+
 # Venda Models
 class Venda(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -246,7 +253,8 @@ class Venda(BaseModel):
     cliente_nome: str
     items: List[ItemPedido]
     valor_total: float
-    forma_pagamento: str
+    forma_pagamento: str  # Mantido para compatibilidade (resumo ou principal)
+    formas_pagamento: Optional[List[FormaPagamentoItem]] = None  # Múltiplas formas
     parcelas: int = 1
     data_venda: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     nfce_emitida: bool = False
@@ -269,7 +277,8 @@ class VendaCreate(BaseModel):
     pedido_id: Optional[str] = None
     cliente_id: Optional[str] = None
     items: Optional[List[ItemPedido]] = None
-    forma_pagamento: str
+    forma_pagamento: str  # Mantido para compatibilidade
+    formas_pagamento: Optional[List[FormaPagamentoItem]] = None  # Múltiplas formas
     parcelas: int = 1
     tipo_venda: str = "pedido"
     entrega_posterior: bool = False

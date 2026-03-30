@@ -59,6 +59,7 @@ export default function VendasPage() {
     cliente_id: '',
     items: [],
     forma_pagamento: '',
+    formas_pagamento: [], // Múltiplas formas de pagamento
     parcelas: 1,
     entrega_posterior: false,
     data_previsao_pagamento: '',
@@ -67,6 +68,13 @@ export default function VendasPage() {
   const [itemTemp, setItemTemp] = useState({
     produto_id: '',
     quantidade: 1,
+  });
+  
+  // Estado para nova forma de pagamento
+  const [novaFormaPagamento, setNovaFormaPagamento] = useState({
+    tipo: '',
+    valor: '',
+    parcelas: 1,
   });
   
   // Estados para modais de NFC-e
@@ -135,16 +143,28 @@ export default function VendasPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const isCartaoCredito = formData.forma_pagamento === 'Cartão de Crédito';
-      const formaPagamentoFinal = isCartaoCredito && formData.parcelas > 1
-        ? `Cartão de Crédito (${formData.parcelas}x)`
-        : formData.forma_pagamento;
+      // Determinar forma de pagamento resumida para compatibilidade
+      let formaPagamentoFinal = formData.forma_pagamento;
+      let formasPagamentoFinal = formData.formas_pagamento;
+      
+      // Se tem múltiplas formas de pagamento, criar resumo
+      if (formasPagamentoFinal && formasPagamentoFinal.length > 0) {
+        formaPagamentoFinal = formasPagamentoFinal.map(fp => {
+          if (fp.tipo === 'Cartão de Crédito' && fp.parcelas > 1) {
+            return `${fp.tipo} ${fp.parcelas}x: ${formatCurrency(fp.valor)}`;
+          }
+          return `${fp.tipo}: ${formatCurrency(fp.valor)}`;
+        }).join(' + ');
+      } else if (formData.forma_pagamento === 'Cartão de Crédito' && formData.parcelas > 1) {
+        formaPagamentoFinal = `Cartão de Crédito (${formData.parcelas}x)`;
+      }
       
       if (tipoVenda === 'pedido') {
         await vendasAPI.criar({
           pedido_id: formData.pedido_id,
           forma_pagamento: formaPagamentoFinal,
-          parcelas: isCartaoCredito ? formData.parcelas : 1,
+          formas_pagamento: formasPagamentoFinal?.length > 0 ? formasPagamentoFinal : null,
+          parcelas: formData.parcelas || 1,
           tipo_venda: 'pedido',
           entrega_posterior: formData.entrega_posterior,
           status_pagamento: formData.entrega_posterior ? 'pendente' : 'pago',
@@ -154,6 +174,20 @@ export default function VendasPage() {
       } else {
         if (formData.items.length === 0) {
           toast.error('Adicione pelo menos um produto à venda');
+          return;
+        }
+        
+        // Validar formas de pagamento
+        const totalVenda = formData.items.reduce((acc, item) => acc + item.subtotal, 0);
+        const totalPago = formData.formas_pagamento.reduce((acc, fp) => acc + fp.valor, 0);
+        
+        if (formData.formas_pagamento.length === 0) {
+          toast.error('Adicione pelo menos uma forma de pagamento');
+          return;
+        }
+        
+        if (Math.abs(totalPago - totalVenda) > 0.01 && !formData.entrega_posterior) {
+          toast.error(`O total dos pagamentos (${formatCurrency(totalPago)}) deve ser igual ao total da venda (${formatCurrency(totalVenda)})`);
           return;
         }
         
@@ -169,7 +203,8 @@ export default function VendasPage() {
             tipo_entrega: item.tipo_entrega || 'imediata'
           })),
           forma_pagamento: formaPagamentoFinal,
-          parcelas: isCartaoCredito ? formData.parcelas : 1,
+          formas_pagamento: formasPagamentoFinal?.length > 0 ? formasPagamentoFinal : null,
+          parcelas: formData.parcelas || 1,
           tipo_venda: 'direta',
           entrega_posterior: formData.entrega_posterior,
           status_pagamento: formData.entrega_posterior ? 'pendente' : 'pago',
@@ -447,12 +482,14 @@ export default function VendasPage() {
       cliente_id: '',
       items: [],
       forma_pagamento: '',
+      formas_pagamento: [],
       parcelas: 1,
       entrega_posterior: false,
       data_previsao_pagamento: '',
       observacoes_pagamento: '',
     });
     setItemTemp({ produto_id: '', quantidade: 1 });
+    setNovaFormaPagamento({ tipo: '', valor: '', parcelas: 1 });
     setTipoVenda('pedido');
     setEtapaVendaDireta(1);
     setEditandoItem(null);
@@ -492,6 +529,62 @@ export default function VendasPage() {
 
   const handleVoltarParaEdicao = () => {
     setEtapaVendaDireta(1);
+  };
+
+  // Funções para múltiplas formas de pagamento
+  const handleAdicionarFormaPagamento = () => {
+    if (!novaFormaPagamento.tipo || !novaFormaPagamento.valor) {
+      toast.error('Selecione o tipo e informe o valor');
+      return;
+    }
+    
+    const valor = parseFloat(novaFormaPagamento.valor);
+    if (isNaN(valor) || valor <= 0) {
+      toast.error('Informe um valor válido');
+      return;
+    }
+    
+    const totalAtual = formData.formas_pagamento.reduce((acc, fp) => acc + fp.valor, 0);
+    const totalVenda = formData.items.reduce((acc, item) => acc + item.subtotal, 0);
+    
+    if (totalAtual + valor > totalVenda + 0.01) {
+      toast.error(`O total das formas de pagamento não pode exceder ${formatCurrency(totalVenda)}`);
+      return;
+    }
+    
+    const novaForma = {
+      tipo: novaFormaPagamento.tipo,
+      valor: valor,
+      parcelas: novaFormaPagamento.tipo === 'Cartão de Crédito' ? novaFormaPagamento.parcelas : 1,
+    };
+    
+    setFormData({
+      ...formData,
+      formas_pagamento: [...formData.formas_pagamento, novaForma],
+      forma_pagamento: novaFormaPagamento.tipo, // Atualiza a forma principal
+    });
+    
+    setNovaFormaPagamento({ tipo: '', valor: '', parcelas: 1 });
+    toast.success(`${novaFormaPagamento.tipo}: ${formatCurrency(valor)} adicionado`);
+  };
+
+  const handleRemoverFormaPagamento = (index) => {
+    const novasFormas = formData.formas_pagamento.filter((_, i) => i !== index);
+    setFormData({
+      ...formData,
+      formas_pagamento: novasFormas,
+      forma_pagamento: novasFormas.length > 0 ? novasFormas[0].tipo : '',
+    });
+  };
+
+  const calcularTotalFormasPagamento = () => {
+    return formData.formas_pagamento.reduce((acc, fp) => acc + fp.valor, 0);
+  };
+
+  const calcularRestantePagamento = () => {
+    const totalVenda = formData.items.reduce((acc, item) => acc + item.subtotal, 0);
+    const totalPago = calcularTotalFormasPagamento();
+    return totalVenda - totalPago;
   };
 
   if (loading) {
@@ -995,49 +1088,118 @@ export default function VendasPage() {
               {/* Forma de pagamento - só mostra na etapa 2 para venda direta ou sempre para pedido */}
               {(tipoVenda === 'pedido' || etapaVendaDireta === 2) && (
                 <>
-                <div>
-                  <label className="block text-sm font-medium text-[#6B4423] mb-1">Forma de Pagamento *</label>
-                  <select
-                    required
-                    value={formData.forma_pagamento}
-                    onChange={(e) => setFormData({ ...formData, forma_pagamento: e.target.value, parcelas: 1 })}
-                    className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
-                  >
-                    <option value="">Selecione...</option>
-                    <option value="Dinheiro">Dinheiro</option>
-                    <option value="Cartão de Crédito">Cartão de Crédito</option>
-                    <option value="Cartão de Débito">Cartão de Débito</option>
-                    <option value="PIX">PIX</option>
-                    <option value="Boleto">Boleto</option>
-                    <option value="A Prazo">A Prazo (Fiado)</option>
-                  </select>
-                </div>
-
-              {/* Opção de parcelas para Cartão de Crédito */}
-              {formData.forma_pagamento === 'Cartão de Crédito' && (
-                <div className="bg-[#EDE0D4]/50 rounded-lg p-4">
-                  <label className="block text-sm font-medium text-[#6B4423] mb-2">Número de Parcelas</label>
-                  <div className="flex flex-wrap gap-2">
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
-                      <button
-                        key={num}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, parcelas: num })}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          formData.parcelas === num
-                            ? 'bg-[#6B4423] text-[#F5E6D3]'
-                            : 'bg-[#FFFDF8] text-[#6B4423] border border-[#8B5A3C]/30 hover:bg-[#F5E6D3]'
-                        }`}
+                <div className="space-y-4">
+                  <label className="block text-sm font-medium text-[#6B4423]">Formas de Pagamento *</label>
+                  
+                  {/* Lista de formas de pagamento adicionadas */}
+                  {formData.formas_pagamento.length > 0 && (
+                    <div className="bg-[#E8F5E9] rounded-lg p-3 space-y-2">
+                      <p className="text-xs font-medium text-[#2F855A] mb-2">Pagamentos adicionados:</p>
+                      {formData.formas_pagamento.map((fp, index) => (
+                        <div key={index} className="flex items-center justify-between bg-white p-2 rounded-lg">
+                          <div>
+                            <span className="font-medium text-[#3E2723]">{fp.tipo}</span>
+                            {fp.tipo === 'Cartão de Crédito' && fp.parcelas > 1 && (
+                              <span className="text-xs text-[#705A4D] ml-1">({fp.parcelas}x)</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-[#2F855A]">{formatCurrency(fp.valor)}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoverFormaPagamento(index)}
+                              className="p-1 text-red-500 hover:bg-red-50 rounded"
+                            >
+                              <Trash size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="flex justify-between pt-2 border-t border-[#2F855A]/20">
+                        <span className="text-sm text-[#2F855A]">Total pago:</span>
+                        <span className="font-bold text-[#2F855A]">{formatCurrency(calcularTotalFormasPagamento())}</span>
+                      </div>
+                      {calcularRestantePagamento() > 0.01 && (
+                        <div className="flex justify-between text-orange-600">
+                          <span className="text-sm">Restante:</span>
+                          <span className="font-bold">{formatCurrency(calcularRestantePagamento())}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Adicionar nova forma de pagamento */}
+                  <div className="bg-[#F5E6D3]/50 rounded-lg p-4 space-y-3">
+                    <p className="text-xs font-medium text-[#6B4423]">
+                      {formData.formas_pagamento.length > 0 ? 'Adicionar outra forma:' : 'Adicionar forma de pagamento:'}
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <select
+                        value={novaFormaPagamento.tipo}
+                        onChange={(e) => setNovaFormaPagamento({ ...novaFormaPagamento, tipo: e.target.value, parcelas: 1 })}
+                        className="px-3 py-2 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] text-sm"
                       >
-                        {num}x
+                        <option value="">Tipo...</option>
+                        <option value="Dinheiro">Dinheiro</option>
+                        <option value="Cartão de Crédito">Cartão de Crédito</option>
+                        <option value="Cartão de Débito">Cartão de Débito</option>
+                        <option value="PIX">PIX</option>
+                        <option value="Boleto">Boleto</option>
+                        <option value="A Prazo">A Prazo (Fiado)</option>
+                      </select>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder={`Valor (restante: ${formatCurrency(calcularRestantePagamento())})`}
+                        value={novaFormaPagamento.valor}
+                        onChange={(e) => setNovaFormaPagamento({ ...novaFormaPagamento, valor: e.target.value })}
+                        className="px-3 py-2 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] text-sm"
+                      />
+                      <Button
+                        type="button"
+                        onClick={handleAdicionarFormaPagamento}
+                        className="bg-[#6B4423] text-white hover:bg-[#8B5A3C]"
+                      >
+                        <Plus size={16} className="mr-1" /> Adicionar
+                      </Button>
+                    </div>
+                    
+                    {/* Parcelas para Cartão de Crédito */}
+                    {novaFormaPagamento.tipo === 'Cartão de Crédito' && (
+                      <div className="bg-[#FFFDF8] rounded-lg p-3">
+                        <label className="block text-xs font-medium text-[#6B4423] mb-2">Parcelas</label>
+                        <div className="flex flex-wrap gap-1">
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
+                            <button
+                              key={num}
+                              type="button"
+                              onClick={() => setNovaFormaPagamento({ ...novaFormaPagamento, parcelas: num })}
+                              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                                novaFormaPagamento.parcelas === num
+                                  ? 'bg-[#6B4423] text-white'
+                                  : 'bg-[#F5E6D3] text-[#6B4423] hover:bg-[#E8D5C4]'
+                              }`}
+                            >
+                              {num}x
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Botão para preencher valor restante automaticamente */}
+                    {calcularRestantePagamento() > 0.01 && novaFormaPagamento.tipo && (
+                      <button
+                        type="button"
+                        onClick={() => setNovaFormaPagamento({ ...novaFormaPagamento, valor: calcularRestantePagamento().toFixed(2) })}
+                        className="text-xs text-[#6B4423] hover:underline"
+                      >
+                        Usar valor restante ({formatCurrency(calcularRestantePagamento())})
                       </button>
-                    ))}
+                    )}
                   </div>
-                  <p className="text-xs text-[#705A4D] mt-2">
-                    Pagamento em {formData.parcelas}x {formData.parcelas === 1 ? '(à vista)' : ''}
-                  </p>
                 </div>
-              )}
 
               {/* Opção de entrega com pagamento posterior */}
               <div className="bg-[#F5E6D3]/50 rounded-lg p-4 space-y-3">

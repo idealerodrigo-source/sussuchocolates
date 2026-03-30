@@ -82,6 +82,13 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 
 ## Changelog
 
+### 2025-12-30 (Sessão 7)
+- Múltiplas formas de pagamento implementadas
+  - Uma venda pode ter várias formas: Dinheiro + Débito + Crédito 2x, etc.
+  - Interface na etapa 2 com lista de pagamentos, botão adicionar/remover
+  - Validação automática (total pago = total da venda)
+  - Parcelas configuráveis para cartão de crédito
+
 ### 2025-12-30 (Sessão 6)
 - Implementado cancelar/excluir pedidos
   - Botão Cancelar (X laranja): cancela produção, devolve estoque, marca pedido como cancelado
