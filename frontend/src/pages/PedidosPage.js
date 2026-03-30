@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
 import { QuickCreateClienteModal, QuickCreateProdutoModal } from '../components/QuickCreateModals';
+import { SearchableSelect, SearchableInput } from '../components/SearchableSelect';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useSortableTable, SortableHeader } from '../hooks/useSortableTable';
@@ -506,25 +507,32 @@ Obrigado pela preferência! 🙏
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-[#6B4423] mb-1">Cliente *</label>
-                <div className="flex gap-2">
-                  <select
-                    required
-                    value={formData.cliente_id}
-                    onChange={(e) => setFormData({ ...formData, cliente_id: e.target.value })}
-                    className="flex-1 px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
-                  >
-                    <option value="">Selecione um cliente...</option>
-                    {clientes.map((cliente) => (
-                      <option key={cliente.id} value={cliente.id}>{cliente.nome}</option>
-                    ))}
-                  </select>
-                  <QuickCreateClienteModal
-                    onClienteCreated={(novoCliente) => {
-                      setClientes([...clientes, novoCliente]);
-                      setFormData({ ...formData, cliente_id: novoCliente.id });
-                    }}
-                  />
-                </div>
+                <SearchableSelect
+                  options={clientes.map(c => ({ 
+                    id: c.id, 
+                    label: c.nome,
+                    subtitle: c.telefone || c.email
+                  }))}
+                  value={formData.cliente_id}
+                  onChange={(id) => setFormData({ ...formData, cliente_id: id })}
+                  placeholder="Selecione um cliente..."
+                  searchPlaceholder="Buscar cliente..."
+                  emptyMessage="Nenhum cliente encontrado"
+                  actionButton={
+                    <QuickCreateClienteModal
+                      onClienteCreated={(novoCliente) => {
+                        setClientes([...clientes, novoCliente]);
+                        setFormData({ ...formData, cliente_id: novoCliente.id });
+                      }}
+                      trigger={
+                        <Button type="button" variant="ghost" size="sm" className="w-full text-[#6B4423] justify-start">
+                          <UserPlus size={16} className="mr-2" />
+                          Cadastrar novo cliente
+                        </Button>
+                      }
+                    />
+                  }
+                />
               </div>
 
               <div className="border-t border-[#8B5A3C]/15 pt-4">
@@ -537,39 +545,56 @@ Obrigado pela preferência! 🙏
                   />
                 </div>
                 
-                <div className="grid grid-cols-12 gap-3 mb-3">
-                  <div className="col-span-7">
-                    <input
-                      type="text"
-                      list="produtos-lista"
-                      value={itemTemp.produto_busca}
-                      onChange={handleProdutoBuscaChange}
-                      placeholder="Digite para buscar produto..."
-                      className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
-                    />
-                    <datalist id="produtos-lista">
-                      {produtos.map((produto) => (
-                        <option key={produto.id} value={produto.nome}>
-                          {formatCurrency(produto.preco)}
-                        </option>
-                      ))}
-                    </datalist>
-                  </div>
-                  <div className="col-span-3">
-                    <input
-                      type="number"
-                      min="1"
-                      value={itemTemp.quantidade}
-                      onChange={(e) => setItemTemp({ ...itemTemp, quantidade: parseInt(e.target.value) || 1 })}
-                      placeholder="Qtd"
-                      className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Button type="button" onClick={handleAddItem} className="w-full bg-[#8B5A3C] text-[#F5E6D3] hover:bg-[#6B4423]">
-                      <Plus size={18} weight="bold" />
-                    </Button>
-                  </div>
+                <div className="mb-3">
+                  <SearchableInput
+                    options={produtos.map(p => ({
+                      id: p.id,
+                      label: p.nome,
+                      subtitle: p.categoria,
+                      extra: formatCurrency(p.preco),
+                      preco: p.preco
+                    }))}
+                    onSelect={(produto) => {
+                      const produtoCompleto = produtos.find(p => p.id === produto.id);
+                      if (produtoCompleto) {
+                        const existente = formData.items.find(item => item.produto_id === produtoCompleto.id);
+                        if (existente) {
+                          const newItems = formData.items.map(item => 
+                            item.produto_id === produtoCompleto.id 
+                              ? { ...item, quantidade: item.quantidade + 1, subtotal: (item.quantidade + 1) * item.preco_unitario }
+                              : item
+                          );
+                          setFormData({ ...formData, items: newItems });
+                          toast.success(`${produtoCompleto.nome} - quantidade aumentada`);
+                        } else {
+                          const newItem = {
+                            produto_id: produtoCompleto.id,
+                            produto_nome: produtoCompleto.nome,
+                            quantidade: 1,
+                            preco_unitario: produtoCompleto.preco,
+                            subtotal: produtoCompleto.preco
+                          };
+                          setFormData({ ...formData, items: [...formData.items, newItem] });
+                          toast.success(`${produtoCompleto.nome} adicionado`);
+                        }
+                      }
+                    }}
+                    placeholder="Buscar produto para adicionar..."
+                    emptyMessage="Nenhum produto encontrado"
+                    actionButton={
+                      <QuickCreateProdutoModal
+                        onProdutoCreated={(novoProduto) => {
+                          setProdutos([...produtos, novoProduto]);
+                        }}
+                        trigger={
+                          <Button type="button" variant="ghost" size="sm" className="w-full text-[#6B4423] justify-start">
+                            <Package size={16} className="mr-2" />
+                            Cadastrar novo produto
+                          </Button>
+                        }
+                      />
+                    }
+                  />
                 </div>
                 
                 {/* Campo de desconto */}

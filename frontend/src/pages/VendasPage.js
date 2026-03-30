@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
 import { QuickCreateClienteModal, QuickCreateProdutoModal } from '../components/QuickCreateModals';
+import { SearchableSelect, SearchableInput } from '../components/SearchableSelect';
 import { useSortableTable, SortableHeader } from '../hooks/useSortableTable';
 
 export default function VendasPage() {
@@ -534,22 +535,32 @@ export default function VendasPage() {
                   <div>
                     <label className="block text-sm font-medium text-[#6B4423] mb-1">Cliente *</label>
                     <div className="flex gap-2">
-                      <select
-                        required
+                      <SearchableSelect
+                        options={clientes.map(c => ({ 
+                          id: c.id, 
+                          label: c.nome,
+                          subtitle: c.telefone || c.email
+                        }))}
                         value={formData.cliente_id}
-                        onChange={(e) => setFormData({ ...formData, cliente_id: e.target.value })}
-                        className="flex-1 px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
-                      >
-                        <option value="">Selecione um cliente...</option>
-                        {clientes.map((cliente) => (
-                          <option key={cliente.id} value={cliente.id}>{cliente.nome}</option>
-                        ))}
-                      </select>
-                      <QuickCreateClienteModal
-                        onClienteCreated={(novoCliente) => {
-                          setClientes([...clientes, novoCliente]);
-                          setFormData({ ...formData, cliente_id: novoCliente.id });
-                        }}
+                        onChange={(id) => setFormData({ ...formData, cliente_id: id })}
+                        placeholder="Selecione um cliente..."
+                        searchPlaceholder="Buscar cliente..."
+                        emptyMessage="Nenhum cliente encontrado"
+                        className="flex-1"
+                        actionButton={
+                          <QuickCreateClienteModal
+                            onClienteCreated={(novoCliente) => {
+                              setClientes([...clientes, novoCliente]);
+                              setFormData({ ...formData, cliente_id: novoCliente.id });
+                            }}
+                            trigger={
+                              <Button type="button" variant="ghost" size="sm" className="w-full text-[#6B4423] justify-start">
+                                <UserPlus size={16} className="mr-2" />
+                                Cadastrar novo cliente
+                              </Button>
+                            }
+                          />
+                        }
                       />
                     </div>
                   </div>
@@ -564,36 +575,60 @@ export default function VendasPage() {
                       />
                     </div>
                     
-                    <div className="grid grid-cols-12 gap-3 mb-3">
-                      <div className="col-span-7">
-                        <select
-                          value={itemTemp.produto_id}
-                          onChange={(e) => setItemTemp({ ...itemTemp, produto_id: e.target.value })}
-                          className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
-                        >
-                          <option value="">Selecione um produto...</option>
-                          {produtos.map((produto) => (
-                            <option key={produto.id} value={produto.id}>
-                              {produto.nome} - {formatCurrency(produto.preco)}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="col-span-3">
-                        <input
-                          type="number"
-                          min="1"
-                          value={itemTemp.quantidade}
-                          onChange={(e) => setItemTemp({ ...itemTemp, quantidade: parseInt(e.target.value) || 1 })}
-                          placeholder="Qtd"
-                          className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <Button type="button" onClick={handleAddItem} className="w-full bg-[#8B5A3C] text-[#F5E6D3] hover:bg-[#6B4423]">
-                          <Plus size={18} weight="bold" />
-                        </Button>
-                      </div>
+                    <div className="flex gap-3 mb-3">
+                      <SearchableInput
+                        options={produtos.map(p => ({
+                          id: p.id,
+                          label: p.nome,
+                          subtitle: p.categoria,
+                          extra: formatCurrency(p.preco),
+                          preco: p.preco
+                        }))}
+                        onSelect={(produto) => {
+                          // Adicionar produto diretamente
+                          const produtoCompleto = produtos.find(p => p.id === produto.id);
+                          if (produtoCompleto) {
+                            const existente = formData.items.find(item => item.produto_id === produtoCompleto.id);
+                            if (existente) {
+                              // Incrementar quantidade se já existe
+                              const newItems = formData.items.map(item => 
+                                item.produto_id === produtoCompleto.id 
+                                  ? { ...item, quantidade: item.quantidade + 1, subtotal: (item.quantidade + 1) * item.preco_unitario }
+                                  : item
+                              );
+                              setFormData({ ...formData, items: newItems });
+                              toast.success(`${produtoCompleto.nome} - quantidade aumentada`);
+                            } else {
+                              // Adicionar novo item
+                              const newItem = {
+                                produto_id: produtoCompleto.id,
+                                produto_nome: produtoCompleto.nome,
+                                quantidade: 1,
+                                preco_unitario: produtoCompleto.preco,
+                                subtotal: produtoCompleto.preco
+                              };
+                              setFormData({ ...formData, items: [...formData.items, newItem] });
+                              toast.success(`${produtoCompleto.nome} adicionado`);
+                            }
+                          }
+                        }}
+                        placeholder="Buscar produto para adicionar..."
+                        emptyMessage="Nenhum produto encontrado"
+                        className="flex-1"
+                        actionButton={
+                          <QuickCreateProdutoModal
+                            onProdutoCreated={(novoProduto) => {
+                              setProdutos([...produtos, novoProduto]);
+                            }}
+                            trigger={
+                              <Button type="button" variant="ghost" size="sm" className="w-full text-[#6B4423] justify-start">
+                                <Package size={16} className="mr-2" />
+                                Cadastrar novo produto
+                              </Button>
+                            }
+                          />
+                        }
+                      />
                     </div>
 
                     {formData.items.length > 0 && (
@@ -606,13 +641,28 @@ export default function VendasPage() {
                                 {item.quantidade}x {formatCurrency(item.preco_unitario)} = {formatCurrency(item.subtotal)}
                               </p>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveItem(index)}
-                              className="p-2 text-[#C53030] hover:bg-[#FED7D7] rounded-lg transition-colors"
-                            >
-                              <Trash size={18} />
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="1"
+                                value={item.quantidade}
+                                onChange={(e) => {
+                                  const qty = parseInt(e.target.value) || 1;
+                                  const newItems = formData.items.map((it, i) => 
+                                    i === index ? { ...it, quantidade: qty, subtotal: qty * it.preco_unitario } : it
+                                  );
+                                  setFormData({ ...formData, items: newItems });
+                                }}
+                                className="w-16 px-2 py-1 text-center bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg text-sm"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveItem(index)}
+                                className="p-2 text-[#C53030] hover:bg-[#FED7D7] rounded-lg transition-colors"
+                              >
+                                <Trash size={18} />
+                              </button>
+                            </div>
                           </div>
                         ))}
                         <div className="pt-2 border-t border-[#8B5A3C]/15 text-right">
