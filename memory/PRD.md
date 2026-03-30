@@ -82,6 +82,12 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 
 ## Changelog
 
+### 2025-03-30 (Sessão 9)
+- **Bug Fix**: Corrigido erro "o total da forma de pagamento não pode exceder 0,00" em Venda de Pedido
+  - Problema: função `calcularSubtotalItens()` usava variável `pedidos` (undefined) em vez de `pedidosConcluidos`
+  - Correção: alterada linha 556 de `VendasPage.js` para usar `pedidosConcluidos.find()`
+  - Resultado: Venda de Pedido agora calcula corretamente o valor total e permite múltiplas formas de pagamento
+
 ### 2025-12-30 (Sessão 8)
 - Correção de múltiplas formas de pagamento
 - Implementado desconto na venda (valor ou percentual)

@@ -553,7 +553,7 @@ export default function VendasPage() {
   const calcularSubtotalItens = () => {
     // Para venda de pedido, pegar o valor do pedido selecionado
     if (tipoVenda === 'pedido' && formData.pedido_id) {
-      const pedidoSelecionado = pedidos.find(p => p.id === formData.pedido_id);
+      const pedidoSelecionado = pedidosConcluidos.find(p => p.id === formData.pedido_id);
       return pedidoSelecionado?.valor_total || 0;
     }
     // Para venda direta, calcular dos itens
