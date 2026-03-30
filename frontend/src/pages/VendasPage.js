@@ -544,59 +544,20 @@ export default function VendasPage() {
     setEtapaVendaDireta(1);
   };
 
-  // Funções para múltiplas formas de pagamento
-  const handleAdicionarFormaPagamento = () => {
-    if (!novaFormaPagamento.tipo || !novaFormaPagamento.valor) {
-      toast.error('Selecione o tipo e informe o valor');
-      return;
-    }
-    
-    const valor = parseFloat(novaFormaPagamento.valor);
-    if (isNaN(valor) || valor <= 0) {
-      toast.error('Informe um valor válido');
-      return;
-    }
-    
-    const totalAtual = formData.formas_pagamento.reduce((acc, fp) => acc + fp.valor, 0);
-    const totalVenda = calcularTotalComDesconto();
-    
-    if (totalAtual + valor > totalVenda + 0.01) {
-      toast.error(`O total das formas de pagamento não pode exceder ${formatCurrency(totalVenda)}`);
-      return;
-    }
-    
-    const novaForma = {
-      tipo: novaFormaPagamento.tipo,
-      valor: valor,
-      parcelas: novaFormaPagamento.tipo === 'Cartão de Crédito' ? novaFormaPagamento.parcelas : 1,
-    };
-    
-    setFormData({
-      ...formData,
-      formas_pagamento: [...formData.formas_pagamento, novaForma],
-      forma_pagamento: novaFormaPagamento.tipo, // Atualiza a forma principal
-    });
-    
-    setNovaFormaPagamento({ tipo: '', valor: '', parcelas: 1 });
-    toast.success(`${novaFormaPagamento.tipo}: ${formatCurrency(valor)} adicionado`);
-  };
-
-  const handleRemoverFormaPagamento = (index) => {
-    const novasFormas = formData.formas_pagamento.filter((_, i) => i !== index);
-    setFormData({
-      ...formData,
-      formas_pagamento: novasFormas,
-      forma_pagamento: novasFormas.length > 0 ? novasFormas[0].tipo : '',
-    });
-  };
-
+  // Funções de cálculo (devem vir antes das funções que as usam)
   const calcularTotalFormasPagamento = () => {
     return formData.formas_pagamento.reduce((acc, fp) => acc + fp.valor, 0);
   };
 
-  // Calcula o subtotal dos itens (sem desconto)
+  // Calcula o subtotal dos itens (sem desconto) - para Venda Direta
   const calcularSubtotalItens = () => {
-    return formData.items.reduce((acc, item) => acc + item.subtotal, 0);
+    // Para venda de pedido, pegar o valor do pedido selecionado
+    if (tipoVenda === 'pedido' && formData.pedido_id) {
+      const pedidoSelecionado = pedidos.find(p => p.id === formData.pedido_id);
+      return pedidoSelecionado?.valor_total || 0;
+    }
+    // Para venda direta, calcular dos itens
+    return formData.items.reduce((acc, item) => acc + (item.subtotal || 0), 0);
   };
 
   // Calcula o valor do desconto
@@ -619,6 +580,57 @@ export default function VendasPage() {
     const totalVenda = calcularTotalComDesconto();
     const totalPago = calcularTotalFormasPagamento();
     return Math.max(0, totalVenda - totalPago);
+  };
+
+  // Funções para múltiplas formas de pagamento
+  const handleAdicionarFormaPagamento = () => {
+    if (!novaFormaPagamento.tipo || !novaFormaPagamento.valor) {
+      toast.error('Selecione o tipo e informe o valor');
+      return;
+    }
+    
+    const valor = parseFloat(novaFormaPagamento.valor);
+    if (isNaN(valor) || valor <= 0) {
+      toast.error('Informe um valor válido');
+      return;
+    }
+    
+    const totalAtual = formData.formas_pagamento.reduce((acc, fp) => acc + fp.valor, 0);
+    const totalVenda = calcularTotalComDesconto();
+    
+    if (totalVenda <= 0) {
+      toast.error('Selecione um pedido ou adicione produtos primeiro');
+      return;
+    }
+    
+    if (totalAtual + valor > totalVenda + 0.01) {
+      toast.error(`O total das formas de pagamento não pode exceder ${formatCurrency(totalVenda)}`);
+      return;
+    }
+    
+    const novaForma = {
+      tipo: novaFormaPagamento.tipo,
+      valor: valor,
+      parcelas: novaFormaPagamento.tipo === 'Cartão de Crédito' ? novaFormaPagamento.parcelas : 1,
+    };
+    
+    setFormData({
+      ...formData,
+      formas_pagamento: [...formData.formas_pagamento, novaForma],
+      forma_pagamento: novaFormaPagamento.tipo,
+    });
+    
+    setNovaFormaPagamento({ tipo: '', valor: '', parcelas: 1 });
+    toast.success(`${novaFormaPagamento.tipo}: ${formatCurrency(valor)} adicionado`);
+  };
+
+  const handleRemoverFormaPagamento = (index) => {
+    const novasFormas = formData.formas_pagamento.filter((_, i) => i !== index);
+    setFormData({
+      ...formData,
+      formas_pagamento: novasFormas,
+      forma_pagamento: novasFormas.length > 0 ? novasFormas[0].tipo : '',
+    });
   };
 
   if (loading) {
