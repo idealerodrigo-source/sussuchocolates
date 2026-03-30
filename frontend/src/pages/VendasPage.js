@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { vendasAPI, pedidosAPI, nfceAPI, clientesAPI, produtosAPI } from '../services/api';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
-import { Plus, Receipt, Trash, MagnifyingGlass, X, ArrowCounterClockwise, Eye, Printer, XCircle, QrCode, UserPlus, Package } from '@phosphor-icons/react';
+import { Plus, Receipt, Trash, MagnifyingGlass, X, ArrowCounterClockwise, Eye, Printer, XCircle, QrCode, UserPlus, Package, Factory, ShoppingBag } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
 import { QuickCreateClienteModal, QuickCreateProdutoModal } from '../components/QuickCreateModals';
 import { SearchableSelect, SearchableInput } from '../components/SearchableSelect';
+import { SelecionarSaboresModal, produtoPermiteMultiplosSabores, formatarSabores } from '../components/SelecionarSaboresModal';
 import { useSortableTable, SortableHeader } from '../hooks/useSortableTable';
 
 export default function VendasPage() {
@@ -20,6 +21,12 @@ export default function VendasPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [etapaVendaDireta, setEtapaVendaDireta] = useState(1); // 1 = montar, 2 = revisar/finalizar
   const [editandoItem, setEditandoItem] = useState(null); // índice do item sendo editado
+  
+  // Estado para modal de seleção de sabores
+  const [saboresModalOpen, setSaboresModalOpen] = useState(false);
+  const [produtoPendenteSabores, setProdutoPendenteSabores] = useState(null);
+  const [quantidadePendenteSabores, setQuantidadePendenteSabores] = useState(1);
+  const [tipoEntregaPendente, setTipoEntregaPendente] = useState('imediata'); // Para quando fechar o modal de sabores
   
   // Filtrar vendas pelo termo de pesquisa
   const filteredVendas = useMemo(() => {
@@ -149,9 +156,18 @@ export default function VendasPage() {
           toast.error('Adicione pelo menos um produto à venda');
           return;
         }
-        await vendasAPI.criar({
+        
+        // Separar itens por tipo de entrega
+        const itensImediatos = formData.items.filter(item => item.tipo_entrega === 'imediata' || !item.tipo_entrega);
+        const itensAProduzir = formData.items.filter(item => item.tipo_entrega === 'a_produzir');
+        
+        // Criar a venda com todos os itens (marcando o tipo de cada um)
+        const vendaData = {
           cliente_id: formData.cliente_id,
-          items: formData.items,
+          items: formData.items.map(item => ({
+            ...item,
+            tipo_entrega: item.tipo_entrega || 'imediata'
+          })),
           forma_pagamento: formaPagamentoFinal,
           parcelas: isCartaoCredito ? formData.parcelas : 1,
           tipo_venda: 'direta',
@@ -159,9 +175,41 @@ export default function VendasPage() {
           status_pagamento: formData.entrega_posterior ? 'pendente' : 'pago',
           data_previsao_pagamento: formData.entrega_posterior ? formData.data_previsao_pagamento : null,
           observacoes_pagamento: formData.observacoes_pagamento || null,
-        });
+          tem_itens_a_produzir: itensAProduzir.length > 0,
+        };
+        
+        const vendaResponse = await vendasAPI.criar(vendaData);
+        
+        // Se houver itens a produzir, criar um pedido automaticamente
+        if (itensAProduzir.length > 0) {
+          try {
+            const pedidoData = {
+              cliente_id: formData.cliente_id,
+              items: itensAProduzir.map(item => ({
+                produto_id: item.produto_id,
+                produto_nome: item.produto_nome,
+                quantidade: item.quantidade,
+                preco_unitario: item.preco_unitario,
+                subtotal: item.subtotal,
+                sabores: item.sabores || null
+              })),
+              observacoes: `Pedido gerado automaticamente pela venda. Itens para produção e entrega posterior.`,
+              venda_vinculada_id: vendaResponse.data?.id,
+              origem: 'venda_mista'
+            };
+            
+            await pedidosAPI.criar(pedidoData);
+            toast.success(`Venda registrada! Pedido de produção criado para ${itensAProduzir.length} item(ns).`, {
+              duration: 5000
+            });
+          } catch (pedidoError) {
+            console.error('Erro ao criar pedido:', pedidoError);
+            toast.warning('Venda registrada, mas houve erro ao criar o pedido de produção. Crie manualmente.');
+          }
+        } else {
+          toast.success('Venda registrada com sucesso');
+        }
       }
-      toast.success('Venda registrada com sucesso');
       setDialogOpen(false);
       resetForm();
       fetchData();
@@ -567,13 +615,46 @@ export default function VendasPage() {
 
                   <div className="border-t border-[#8B5A3C]/15 pt-4">
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-lg font-serif font-semibold text-[#3E2723]">Produtos do Estoque</h3>
+                      <h3 className="text-lg font-serif font-semibold text-[#3E2723]">Adicionar Produtos</h3>
                       <QuickCreateProdutoModal
                         onProdutoCreated={(novoProduto) => {
                           setProdutos([...produtos, novoProduto]);
                         }}
                       />
                     </div>
+                    
+                    {/* Seletor de tipo de entrega */}
+                    <div className="flex gap-2 mb-3">
+                      <button
+                        type="button"
+                        onClick={() => setTipoEntregaPendente('imediata')}
+                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all ${
+                          tipoEntregaPendente === 'imediata'
+                            ? 'border-[#22C55E] bg-[#22C55E]/10 text-[#16A34A]'
+                            : 'border-[#8B5A3C]/30 text-[#705A4D] hover:border-[#8B5A3C]/50'
+                        }`}
+                      >
+                        <ShoppingBag size={20} weight={tipoEntregaPendente === 'imediata' ? 'fill' : 'regular'} />
+                        <span className="text-sm font-medium">Entrega Imediata</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTipoEntregaPendente('a_produzir')}
+                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all ${
+                          tipoEntregaPendente === 'a_produzir'
+                            ? 'border-[#F59E0B] bg-[#F59E0B]/10 text-[#D97706]'
+                            : 'border-[#8B5A3C]/30 text-[#705A4D] hover:border-[#8B5A3C]/50'
+                        }`}
+                      >
+                        <Factory size={20} weight={tipoEntregaPendente === 'a_produzir' ? 'fill' : 'regular'} />
+                        <span className="text-sm font-medium">A Produzir</span>
+                      </button>
+                    </div>
+                    <p className="text-xs text-[#8B5A3C] mb-3">
+                      {tipoEntregaPendente === 'imediata' 
+                        ? 'Produto será retirado do estoque e entregue agora'
+                        : 'Será criado um pedido de produção para entrega posterior'}
+                    </p>
                     
                     <div className="flex gap-3 mb-3">
                       <SearchableInput
@@ -585,30 +666,42 @@ export default function VendasPage() {
                           preco: p.preco
                         }))}
                         onSelect={(produto) => {
-                          // Adicionar produto diretamente
                           const produtoCompleto = produtos.find(p => p.id === produto.id);
                           if (produtoCompleto) {
-                            const existente = formData.items.find(item => item.produto_id === produtoCompleto.id);
-                            if (existente) {
-                              // Incrementar quantidade se já existe
-                              const newItems = formData.items.map(item => 
-                                item.produto_id === produtoCompleto.id 
-                                  ? { ...item, quantidade: item.quantidade + 1, subtotal: (item.quantidade + 1) * item.preco_unitario }
-                                  : item
-                              );
-                              setFormData({ ...formData, items: newItems });
-                              toast.success(`${produtoCompleto.nome} - quantidade aumentada`);
+                            // Verificar se o produto permite múltiplos sabores
+                            if (produtoPermiteMultiplosSabores(produtoCompleto.nome)) {
+                              setProdutoPendenteSabores(produtoCompleto);
+                              setQuantidadePendenteSabores(1);
+                              setSaboresModalOpen(true);
                             } else {
-                              // Adicionar novo item
-                              const newItem = {
-                                produto_id: produtoCompleto.id,
-                                produto_nome: produtoCompleto.nome,
-                                quantidade: 1,
-                                preco_unitario: produtoCompleto.preco,
-                                subtotal: produtoCompleto.preco
-                              };
-                              setFormData({ ...formData, items: [...formData.items, newItem] });
-                              toast.success(`${produtoCompleto.nome} adicionado`);
+                              // Verificar se já existe item com mesmo produto E mesmo tipo de entrega
+                              const existente = formData.items.find(
+                                item => item.produto_id === produtoCompleto.id && 
+                                        item.tipo_entrega === tipoEntregaPendente &&
+                                        !item.sabores
+                              );
+                              if (existente) {
+                                const newItems = formData.items.map(item => 
+                                  item.produto_id === produtoCompleto.id && 
+                                  item.tipo_entrega === tipoEntregaPendente &&
+                                  !item.sabores
+                                    ? { ...item, quantidade: item.quantidade + 1, subtotal: (item.quantidade + 1) * item.preco_unitario }
+                                    : item
+                                );
+                                setFormData({ ...formData, items: newItems });
+                                toast.success(`${produtoCompleto.nome} - quantidade aumentada`);
+                              } else {
+                                const newItem = {
+                                  produto_id: produtoCompleto.id,
+                                  produto_nome: produtoCompleto.nome,
+                                  quantidade: 1,
+                                  preco_unitario: produtoCompleto.preco,
+                                  subtotal: produtoCompleto.preco,
+                                  tipo_entrega: tipoEntregaPendente // 'imediata' ou 'a_produzir'
+                                };
+                                setFormData({ ...formData, items: [...formData.items, newItem] });
+                                toast.success(`${produtoCompleto.nome} adicionado (${tipoEntregaPendente === 'imediata' ? 'entrega imediata' : 'a produzir'})`);
+                              }
                             }
                           }
                         }}
@@ -631,46 +724,145 @@ export default function VendasPage() {
                       />
                     </div>
 
+                    {/* Modal de seleção de sabores */}
+                    <SelecionarSaboresModal
+                      open={saboresModalOpen}
+                      onOpenChange={setSaboresModalOpen}
+                      produto={produtoPendenteSabores}
+                      quantidade={quantidadePendenteSabores}
+                      onConfirm={(sabores) => {
+                        if (produtoPendenteSabores) {
+                          const newItem = {
+                            produto_id: produtoPendenteSabores.id,
+                            produto_nome: produtoPendenteSabores.nome,
+                            quantidade: quantidadePendenteSabores,
+                            preco_unitario: produtoPendenteSabores.preco,
+                            subtotal: quantidadePendenteSabores * produtoPendenteSabores.preco,
+                            sabores: sabores,
+                            tipo_entrega: tipoEntregaPendente
+                          };
+                          setFormData({ ...formData, items: [...formData.items, newItem] });
+                          toast.success(`${produtoPendenteSabores.nome} adicionado (${tipoEntregaPendente === 'imediata' ? 'entrega imediata' : 'a produzir'})`);
+                          setProdutoPendenteSabores(null);
+                        }
+                      }}
+                    />
+
                     {formData.items.length > 0 && (
-                      <div className="bg-[#F5E6D3]/30 rounded-lg p-4 space-y-2">
-                        {formData.items.map((item, index) => (
-                          <div key={index} className="flex items-center justify-between bg-[#FFFDF8] p-3 rounded-lg">
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-[#3E2723]">{item.produto_nome}</p>
-                              <p className="text-xs text-[#705A4D]">
-                                {item.quantidade}x {formatCurrency(item.preco_unitario)} = {formatCurrency(item.subtotal)}
-                              </p>
+                      <div className="space-y-4">
+                        {/* Itens de entrega imediata */}
+                        {formData.items.some(item => item.tipo_entrega === 'imediata' || !item.tipo_entrega) && (
+                          <div className="bg-[#22C55E]/10 border border-[#22C55E]/30 rounded-lg p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <ShoppingBag size={20} className="text-[#16A34A]" weight="fill" />
+                              <h4 className="font-medium text-[#16A34A]">Entrega Imediata (do estoque)</h4>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="number"
-                                min="1"
-                                value={item.quantidade}
-                                onChange={(e) => {
-                                  const qty = parseInt(e.target.value) || 1;
-                                  const newItems = formData.items.map((it, i) => 
-                                    i === index ? { ...it, quantidade: qty, subtotal: qty * it.preco_unitario } : it
-                                  );
-                                  setFormData({ ...formData, items: newItems });
-                                }}
-                                className="w-16 px-2 py-1 text-center bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg text-sm"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveItem(index)}
-                                className="p-2 text-[#C53030] hover:bg-[#FED7D7] rounded-lg transition-colors"
-                              >
-                                <Trash size={18} />
-                              </button>
+                            <div className="space-y-2">
+                              {formData.items.filter(item => item.tipo_entrega === 'imediata' || !item.tipo_entrega).map((item, index) => {
+                                const realIndex = formData.items.findIndex(i => i === item);
+                                return (
+                                  <div key={realIndex} className="flex items-center justify-between bg-white p-3 rounded-lg">
+                                    <div className="flex-1">
+                                      <p className="text-sm font-medium text-[#3E2723]">{item.produto_nome}</p>
+                                      {item.sabores && item.sabores.length > 0 && (
+                                        <p className="text-xs text-[#6B4423] bg-[#F5E6D3] px-2 py-0.5 rounded inline-block mt-1">
+                                          Sabores: {formatarSabores(item.sabores)}
+                                        </p>
+                                      )}
+                                      <p className="text-xs text-[#705A4D] mt-1">
+                                        {item.quantidade}x {formatCurrency(item.preco_unitario)} = {formatCurrency(item.subtotal)}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        step="0.5"
+                                        value={item.quantidade}
+                                        onChange={(e) => {
+                                          const qty = parseFloat(e.target.value) || 1;
+                                          const newItems = formData.items.map((it, i) => 
+                                            i === realIndex ? { ...it, quantidade: qty, subtotal: qty * it.preco_unitario } : it
+                                          );
+                                          setFormData({ ...formData, items: newItems });
+                                        }}
+                                        className="w-16 px-2 py-1 text-center bg-white border border-[#8B5A3C]/30 rounded-lg text-sm"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveItem(realIndex)}
+                                        className="p-2 text-[#C53030] hover:bg-[#FED7D7] rounded-lg transition-colors"
+                                      >
+                                        <Trash size={18} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
-                        ))}
+                        )}
+
+                        {/* Itens a produzir */}
+                        {formData.items.some(item => item.tipo_entrega === 'a_produzir') && (
+                          <div className="bg-[#F59E0B]/10 border border-[#F59E0B]/30 rounded-lg p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <Factory size={20} className="text-[#D97706]" weight="fill" />
+                              <h4 className="font-medium text-[#D97706]">A Produzir (pedido será criado)</h4>
+                            </div>
+                            <div className="space-y-2">
+                              {formData.items.filter(item => item.tipo_entrega === 'a_produzir').map((item, index) => {
+                                const realIndex = formData.items.findIndex(i => i === item);
+                                return (
+                                  <div key={realIndex} className="flex items-center justify-between bg-white p-3 rounded-lg">
+                                    <div className="flex-1">
+                                      <p className="text-sm font-medium text-[#3E2723]">{item.produto_nome}</p>
+                                      {item.sabores && item.sabores.length > 0 && (
+                                        <p className="text-xs text-[#6B4423] bg-[#F5E6D3] px-2 py-0.5 rounded inline-block mt-1">
+                                          Sabores: {formatarSabores(item.sabores)}
+                                        </p>
+                                      )}
+                                      <p className="text-xs text-[#705A4D] mt-1">
+                                        {item.quantidade}x {formatCurrency(item.preco_unitario)} = {formatCurrency(item.subtotal)}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        step="0.5"
+                                        value={item.quantidade}
+                                        onChange={(e) => {
+                                          const qty = parseFloat(e.target.value) || 1;
+                                          const newItems = formData.items.map((it, i) => 
+                                            i === realIndex ? { ...it, quantidade: qty, subtotal: qty * it.preco_unitario } : it
+                                          );
+                                          setFormData({ ...formData, items: newItems });
+                                        }}
+                                        className="w-16 px-2 py-1 text-center bg-white border border-[#8B5A3C]/30 rounded-lg text-sm"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveItem(realIndex)}
+                                        className="p-2 text-[#C53030] hover:bg-[#FED7D7] rounded-lg transition-colors"
+                                      >
+                                        <Trash size={18} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
                         <div className="pt-2 border-t border-[#8B5A3C]/15 text-right">
                           <p className="text-lg font-serif font-bold text-[#3E2723]">
                             Total: {formatCurrency(totalVendaDireta)}
                           </p>
                         </div>
                       </div>
+                    )}
                     )}
                   </div>
 
