@@ -21,6 +21,11 @@
   - Botão "Enviar Pedido via WhatsApp" que formata mensagem e abre WhatsApp
   - Layout responsivo para mobile
   - API pública: /api/catalogo/produtos, /api/catalogo/categorias, /api/catalogo/empresa
+- **NEW**: Venda Direta em 2 etapas com revisão antes de finalizar
+  - Etapa 1: Montar Venda (selecionar cliente e adicionar produtos)
+  - Etapa 2: Revisar e Finalizar (visualizar resumo, editar quantidades, escolher forma de pagamento)
+  - Botão "Voltar e Editar" para retornar à etapa 1
+  - Edição de quantidade clicando no badge "Nx"
 - **FIXED**: Bug de serialização ObjectId no POST de usuários
 
 ## Changelog (2026-03-28)

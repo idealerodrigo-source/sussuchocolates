@@ -17,6 +17,8 @@ export default function VendasPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [tipoVenda, setTipoVenda] = useState('pedido');
   const [searchTerm, setSearchTerm] = useState('');
+  const [etapaVendaDireta, setEtapaVendaDireta] = useState(1); // 1 = montar, 2 = revisar/finalizar
+  const [editandoItem, setEditandoItem] = useState(null); // índice do item sendo editado
   
   // Filtrar vendas pelo termo de pesquisa
   const filteredVendas = useMemo(() => {
@@ -403,6 +405,44 @@ export default function VendasPage() {
     });
     setItemTemp({ produto_id: '', quantidade: 1 });
     setTipoVenda('pedido');
+    setEtapaVendaDireta(1);
+    setEditandoItem(null);
+  };
+
+  // Funções para editar itens na revisão
+  const handleEditarItem = (index) => {
+    setEditandoItem(index);
+  };
+
+  const handleSalvarEdicaoItem = (index, novaQuantidade) => {
+    if (novaQuantidade <= 0) {
+      handleRemoveItem(index);
+    } else {
+      const newItems = [...formData.items];
+      newItems[index] = {
+        ...newItems[index],
+        quantidade: novaQuantidade,
+        subtotal: newItems[index].preco_unitario * novaQuantidade
+      };
+      setFormData({ ...formData, items: newItems });
+    }
+    setEditandoItem(null);
+  };
+
+  const handleAvancarParaRevisao = () => {
+    if (!formData.cliente_id) {
+      toast.error('Selecione um cliente');
+      return;
+    }
+    if (formData.items.length === 0) {
+      toast.error('Adicione pelo menos um produto');
+      return;
+    }
+    setEtapaVendaDireta(2);
+  };
+
+  const handleVoltarParaEdicao = () => {
+    setEtapaVendaDireta(1);
   };
 
   if (loading) {
@@ -475,8 +515,22 @@ export default function VendasPage() {
                     Pedidos concluídos ou em embalagem
                   </p>
                 </div>
-              ) : (
+              ) : etapaVendaDireta === 1 ? (
+                /* ETAPA 1: Montar a venda */
                 <>
+                  {/* Indicador de etapa */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="w-8 h-8 rounded-full bg-[#6B4423] text-white flex items-center justify-center text-sm font-bold">1</span>
+                      <span className="text-sm font-medium text-[#6B4423]">Montar Venda</span>
+                    </div>
+                    <div className="flex-1 h-1 bg-[#E8D5C4] rounded"></div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-8 h-8 rounded-full bg-[#E8D5C4] text-[#8B5A3C] flex items-center justify-center text-sm font-bold">2</span>
+                      <span className="text-sm text-[#8B5A3C]">Revisar e Finalizar</span>
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-[#6B4423] mb-1">Cliente *</label>
                     <div className="flex gap-2">
@@ -569,26 +623,153 @@ export default function VendasPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Botão para avançar para revisão */}
+                  <div className="flex gap-3 justify-end pt-4 border-t border-[#8B5A3C]/15">
+                    <Button type="button" onClick={() => { setDialogOpen(false); resetForm(); }} variant="outline">
+                      Cancelar
+                    </Button>
+                    <Button 
+                      type="button" 
+                      onClick={handleAvancarParaRevisao}
+                      className="bg-[#6B4423] text-[#F5E6D3] hover:bg-[#8B5A3C]"
+                    >
+                      Revisar Venda
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                /* ETAPA 2: Revisar e Finalizar */
+                <>
+                  {/* Indicador de etapa */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="w-8 h-8 rounded-full bg-[#22C55E] text-white flex items-center justify-center text-sm font-bold">✓</span>
+                      <span className="text-sm text-[#22C55E]">Montar Venda</span>
+                    </div>
+                    <div className="flex-1 h-1 bg-[#6B4423] rounded"></div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-8 h-8 rounded-full bg-[#6B4423] text-white flex items-center justify-center text-sm font-bold">2</span>
+                      <span className="text-sm font-medium text-[#6B4423]">Revisar e Finalizar</span>
+                    </div>
+                  </div>
+
+                  {/* Resumo do Cliente */}
+                  <div className="bg-[#E8D5C4]/50 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-[#8B5A3C] uppercase tracking-wide">Cliente</p>
+                        <p className="text-lg font-semibold text-[#3E2723]">
+                          {clientes.find(c => c.id === formData.cliente_id)?.nome || 'Cliente não selecionado'}
+                        </p>
+                      </div>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleVoltarParaEdicao}
+                        className="text-[#6B4423]"
+                      >
+                        Alterar
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Itens da Venda - Editáveis */}
+                  <div className="border border-[#8B5A3C]/20 rounded-lg overflow-hidden">
+                    <div className="bg-[#E8D5C4] px-4 py-2 flex items-center justify-between">
+                      <h3 className="font-semibold text-[#3E2723]">Itens da Venda</h3>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={handleVoltarParaEdicao}
+                        className="text-[#6B4423] text-xs"
+                      >
+                        + Adicionar mais itens
+                      </Button>
+                    </div>
+                    <div className="p-4 space-y-3">
+                      {formData.items.map((item, index) => (
+                        <div key={index} className="flex items-center gap-3 bg-[#FFFDF8] p-3 rounded-lg border border-[#8B5A3C]/10">
+                          <div className="flex-1">
+                            <p className="font-medium text-[#3E2723]">{item.produto_nome}</p>
+                            <p className="text-sm text-[#705A4D]">
+                              {formatCurrency(item.preco_unitario)} / un
+                            </p>
+                          </div>
+                          
+                          {editandoItem === index ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="0"
+                                defaultValue={item.quantidade}
+                                className="w-20 px-2 py-1 border border-[#6B4423] rounded text-center"
+                                onBlur={(e) => handleSalvarEdicaoItem(index, parseInt(e.target.value) || 0)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleSalvarEdicaoItem(index, parseInt(e.target.value) || 0);
+                                  }
+                                }}
+                                autoFocus
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-3">
+                              <button
+                                type="button"
+                                onClick={() => handleEditarItem(index)}
+                                className="px-3 py-1 bg-[#F5E6D3] text-[#6B4423] rounded-lg text-sm font-medium hover:bg-[#E8D5C4] transition-colors"
+                              >
+                                {item.quantidade}x
+                              </button>
+                              <span className="font-semibold text-[#3E2723] min-w-[80px] text-right">
+                                {formatCurrency(item.subtotal)}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveItem(index)}
+                                className="p-1.5 text-[#C53030] hover:bg-[#FED7D7] rounded-lg transition-colors"
+                              >
+                                <Trash size={16} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      
+                      <div className="pt-3 border-t border-[#8B5A3C]/15 flex justify-between items-center">
+                        <span className="text-[#705A4D]">{formData.items.length} item(ns)</span>
+                        <p className="text-xl font-serif font-bold text-[#3E2723]">
+                          Total: {formatCurrency(totalVendaDireta)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </>
               )}
 
-              <div>
-                <label className="block text-sm font-medium text-[#6B4423] mb-1">Forma de Pagamento *</label>
-                <select
-                  required
-                  value={formData.forma_pagamento}
-                  onChange={(e) => setFormData({ ...formData, forma_pagamento: e.target.value, parcelas: 1 })}
-                  className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
-                >
-                  <option value="">Selecione...</option>
-                  <option value="Dinheiro">Dinheiro</option>
-                  <option value="Cartão de Crédito">Cartão de Crédito</option>
-                  <option value="Cartão de Débito">Cartão de Débito</option>
-                  <option value="PIX">PIX</option>
-                  <option value="Boleto">Boleto</option>
-                  <option value="A Prazo">A Prazo (Fiado)</option>
-                </select>
-              </div>
+              {/* Forma de pagamento - só mostra na etapa 2 para venda direta ou sempre para pedido */}
+              {(tipoVenda === 'pedido' || etapaVendaDireta === 2) && (
+                <>
+                <div>
+                  <label className="block text-sm font-medium text-[#6B4423] mb-1">Forma de Pagamento *</label>
+                  <select
+                    required
+                    value={formData.forma_pagamento}
+                    onChange={(e) => setFormData({ ...formData, forma_pagamento: e.target.value, parcelas: 1 })}
+                    className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                  >
+                    <option value="">Selecione...</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                    <option value="Cartão de Crédito">Cartão de Crédito</option>
+                    <option value="Cartão de Débito">Cartão de Débito</option>
+                    <option value="PIX">PIX</option>
+                    <option value="Boleto">Boleto</option>
+                    <option value="A Prazo">A Prazo (Fiado)</option>
+                  </select>
+                </div>
 
               {/* Opção de parcelas para Cartão de Crédito */}
               {formData.forma_pagamento === 'Cartão de Crédito' && (
@@ -665,13 +846,20 @@ export default function VendasPage() {
               </div>
 
               <div className="flex gap-3 justify-end pt-4">
+                {tipoVenda === 'direta' && etapaVendaDireta === 2 && (
+                  <Button type="button" onClick={handleVoltarParaEdicao} variant="outline">
+                    Voltar e Editar
+                  </Button>
+                )}
                 <Button type="button" onClick={() => { setDialogOpen(false); resetForm(); }} variant="outline">
                   Cancelar
                 </Button>
-                <Button type="submit" className="bg-[#6B4423] text-[#F5E6D3] hover:bg-[#8B5A3C]">
-                  Registrar Venda
+                <Button type="submit" className="bg-[#22C55E] text-white hover:bg-[#16A34A]">
+                  Finalizar Venda
                 </Button>
               </div>
+              </>
+              )}
             </form>
           </DialogContent>
         </Dialog>
