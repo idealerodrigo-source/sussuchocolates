@@ -1,322 +1,97 @@
 # Sussu Chocolates - Sistema de Gestão
 
-## Changelog (2026-03-30)
-- **NEW**: Autocomplete com busca em Pedidos e Vendas (cliente e produtos)
-- **NEW**: Seleção de sabores fracionados para produtos "2 SABORES"
-  - Modal abre automaticamente ao selecionar produto com "2 sabores" no nome
-  - Permite distribuir quantidades fracionadas (0.5 + 0.5 = 1 unidade)
-  - Lista de sabores: Brigadeiro, Beijinho, Maracujá, Cereja, Morango, etc.
-  - Mostra resumo e alerta se falta distribuir
-  - Opção "Distribuir igualmente" entre os sabores selecionados
-  - Sabores são exibidos nos itens do pedido e enviados para produção
-- **FIXED**: Modal de criação rápida (cliente/produto) não fecha mais o modal pai
+## Problema Original
+Criar um aplicativo/sistema de controle para fábrica de chocolates artesanais contendo:
+- Cadastro de Clientes
+- Pedidos
+- Produção
+- Embalagem
+- Estoque
+- Vendas
+- Emissão de Cupom Fiscal (NFC-e)
+- Relatórios e controles
 
-## Changelog (2026-03-29)
-- **NEW**: Módulo de Configurações completo (Usuários, Dados da Empresa, Logo)
-- **NEW**: RBAC (Controle de Acesso) implementado - apenas admin acessa Configurações
-- **NEW**: Logo dinâmico no sidebar usando EmpresaContext
-- **NEW**: Botões "Novo Cliente" e "Novo Produto" nos formulários de Pedidos e Vendas (criação rápida sem sair do modal)
-- **NEW**: PWA completo para instalação em dispositivos móveis
-  - Ícones em múltiplos tamanhos (72x72 até 512x512)
-  - Manifest.json com shortcuts (Novo Pedido, Nova Venda, Dashboard)
-  - Service Worker com cache offline
-  - Página offline dedicada
-  - Banner de instalação PWA
-  - Suporte iOS (instruções de instalação)
-  - Indicador de status offline na UI
-- **NEW**: Catálogo Público com Pedido via WhatsApp (/catalogo)
-  - Página pública sem necessidade de login
-  - Grid de produtos com busca e filtro por categoria
-  - Carrinho de compras com controle de quantidade
-  - Formulário com nome do cliente, telefone e observações
-  - Botão "Enviar Pedido via WhatsApp" que formata mensagem e abre WhatsApp
-  - Layout responsivo para mobile
-  - API pública: /api/catalogo/produtos, /api/catalogo/categorias, /api/catalogo/empresa
-- **NEW**: Venda Direta em 2 etapas com revisão antes de finalizar
-  - Etapa 1: Montar Venda (selecionar cliente e adicionar produtos)
-  - Etapa 2: Revisar e Finalizar (visualizar resumo, editar quantidades, escolher forma de pagamento)
-  - Botão "Voltar e Editar" para retornar à etapa 1
-  - Edição de quantidade clicando no badge "Nx"
-- **FIXED**: Bug de serialização ObjectId no POST de usuários
+## Módulos Implementados
 
-## Changelog (2026-03-28)
-- **REFACTOR**: Migração COMPLETA do backend para estrutura modular (2500 linhas → 17 arquivos menores)
-- **NEW**: Cancelamento de vendas com devolução automática dos itens ao estoque
-- **NEW**: Campo de pesquisa em Vendas (filtra por cliente, pedido, produto, forma de pagamento)
-- **NEW**: Opção de parcelamento (1x a 12x) quando forma de pagamento é Cartão de Crédito
-- **FIXED**: Botão "Concluir Selecionados" na Embalagem não fica mais coberto pelo logo
-- **FIXED**: Relatórios de Vendas e Produção Geral agora carregam automaticamente ao acessar a aba (antes exigiam clique manual no botão "Gerar Relatório")
-## Product Requirements Document (PRD)
+### Core
+- [x] Autenticação JWT com login email/senha
+- [x] Dashboard com visão geral
+- [x] Cadastro de Clientes
+- [x] Cadastro de Produtos
+- [x] Gestão de Pedidos
+- [x] Produção
+- [x] Embalagem
+- [x] Estoque
+- [x] Vendas (Venda Direta em 2 etapas)
+- [x] NFC-e (Homologação) - com certificado A1
+- [x] Relatórios (PDF/Excel)
+- [x] Configurações com RBAC
 
-### Original Problem Statement
-Criar um aplicativo/sistema de controle contendo: Cadastro Cliente, Pedido, Produção, Embalagem, Estoque, Venda, Emissão de Cupom Fiscal. Que possa gerar relatórios e controles. Trata-se de uma fábrica de chocolates artesanais chamada Sussu Chocolates.
+### Funcionalidades Avançadas
+- [x] PWA (Progressive Web App) com suporte offline
+- [x] Catálogo Público `/catalogo` para pedidos via WhatsApp
+- [x] Autocomplete (SearchableSelect) em todos dropdowns
+- [x] Quick Create Modals (criar cliente/produto inline)
+- [x] Seleção de sabores fracionados para produtos multi-sabor
+- [x] Contexto global EmpresaContext para logo dinâmico
 
-### Tech Stack
-- **Frontend**: React.js, Tailwind CSS, Shadcn/UI, Recharts, jsPDF, xlsx
-- **Backend**: FastAPI, Motor (Async MongoDB), Pydantic, BeautifulSoup4, pynfe, cryptography
+## Tech Stack
+- **Frontend**: React.js, Tailwind CSS, Shadcn/UI, Radix UI
+- **Backend**: FastAPI, Motor (Async MongoDB)
 - **Database**: MongoDB
-- **Authentication**: JWT
-- **PWA**: Service Workers, Web App Manifest
+- **PWA**: Service Workers, manifest.json
 
----
-
-## Implemented Features
-
-### Core Modules (Complete)
-
-| Module | Status | Description |
-|--------|--------|-------------|
-| **Login/Auth** | ✅ Done | JWT authentication with email/password |
-| **Dashboard** | ✅ Done | Overview with stats and quick actions |
-| **Clientes** | ✅ Done | Full CRUD for customers |
-| **Produtos** | ✅ Done | Full CRUD for chocolate products |
-| **Pedidos** | ✅ Done | Orders management with PDF generation |
-| **Produção** | ✅ Done | Production tracking with order linking |
-| **Embalagem** | ✅ Done | Packaging workflow with responsible tracking |
-| **Estoque** | ✅ Done | Inventory with location tracking |
-| **Vendas** | ✅ Done | Sales recording |
-| **Lucratividade** | ✅ Done | Profitability analysis |
-| **Compras** | ✅ Done | Complete purchasing module |
-| **Relatórios** | ✅ Done | Basic reports |
-| **Configurações** | ✅ Done | Usuários, Dados Empresa, Logo |
-
-### Configurações Module (March 29, 2026) ✅
-- ✅ **Aba Usuários**: CRUD completo de usuários do sistema
-  - Criar usuário com nome, email, senha, role (admin/vendedor/produção)
-  - Editar dados do usuário (opcional alterar senha)
-  - Excluir usuário (admin não pode excluir a si mesmo)
-  - Status ativo/inativo
-  - Badges coloridos por permissão
-- ✅ **Aba Dados da Empresa**: Visualização e edição
-  - Nome fantasia, Razão social, CNPJ, IE
-  - Endereço completo (rua, número, complemento, bairro, cidade, estado, CEP)
-  - Contato (telefone, email, website)
-- ✅ **Aba Logo**: Upload e remoção do logo
-  - Preview do logo atual
-  - Upload de imagem (JPEG, PNG, GIF, WebP - máx 2MB)
-  - Remoção do logo
-  - Logo atualiza dinamicamente no sidebar
-- ✅ **RBAC (Role-Based Access Control)**:
-  - Apenas usuários admin podem acessar Configurações
-  - Vendedores veem mensagem "Acesso Restrito"
-  - Endpoints protegidos por verificação de role
-
-### Pedidos - PDF Generation (March 27, 2026)
-- ✅ Geração de PDF do pedido com dados completos
-- ✅ Cabeçalho com logo/nome da empresa
-- ✅ Dados da empresa: telefone, endereço, email
-- ✅ Dados do cliente (nome, telefone, email, endereço)
-- ✅ Data de entrega prevista
-- ✅ Tabela de itens com quantidade e valores
-- ✅ Total do pedido
-- ✅ Campo de observações
-- ✅ Rodapé com mensagem de agradecimento
-- ✅ Botão de PDF na tabela (acesso rápido)
-- ✅ Botão de PDF no modal de detalhes
-
-**Dados da Empresa no PDF:**
-- Nome: SUSSU CHOCOLATES
-- Telefone: (43) 99967-6206
-- Endereço: Rua Quintino Bocaiuva, 737, Jacarezinho - PR, CEP: 86400-000
-- Email: sussuchocolates@hotmail.com
-
-### NF de Entrada - Parser Completo (March 27, 2026)
-- ✅ Parser HTML melhorado para extrair todos os campos:
-  - Dados do Fornecedor: CNPJ, IE, Razão Social, Endereço, Município, UF, CEP, Telefone
-  - Itens: Código, Descrição, NCM, CST, CFOP, Unidade, Quantidade, Valor Unitário, Total
-  - Totais: Produtos, Frete, Seguro, Outras Despesas, Desconto, IPI, ICMS, PIS, COFINS, Total
-  - Informações Complementares
-- ✅ Formulário atualizado com campos NCM, CST, CFOP
-- ✅ Visualização mostra badges para NCM/CST/CFOP nos itens
-
-### Relatórios de Produção (March 27, 2026)
-- ✅ **Itens a Produzir**: Lista de produtos pendentes de produção
-  - Agrupamento por produto
-  - Quantidade total por produto
-  - Detalhes de quais pedidos precisam de cada produto
-  - Gráfico de barras horizontal
-- ✅ **Itens Produzidos**: Lista de produtos já produzidos
-  - Filtro por data (início/fim)
-  - Agrupamento por produto
-  - Quantidade produzida por produto
-  - Gráfico de barras e pizza
-- ✅ **Resumo de Pedidos**: Itens dos pedidos ativos
-  - Tipos de produtos, quantidade total, valor total
-  - Tabela com produtos e valores
-
-### Compras Module (Latest Implementation)
-
-#### Fornecedores (Suppliers)
-- ✅ CRUD completo
-- ✅ Cadastro com CNPJ, contato, endereço
-
-#### Insumos (Raw Materials)
-- ✅ CRUD completo
-- ✅ Controle de estoque mínimo
-- ✅ Vinculação com fornecedores
-- ✅ Alertas de estoque baixo
-
-#### Pedidos de Compra (Purchase Orders)
-- ✅ Criação de pedidos
-- ✅ Múltiplos itens por pedido
-- ✅ Status workflow (pendente → aprovada → recebida)
-- ✅ Atualização automática de estoque ao receber
-
-#### NF de Entrada (Inbound Invoice) - NEW
-- ✅ **3 formas de importação**:
-  1. Chave de Acesso (44 dígitos) - extração automática
-  2. Importar HTML do portal SEFAZ
-  3. Entrada manual completa
-- ✅ Parse automático da chave (número, série, data, CNPJ)
-- ✅ Parse de HTML da consulta NF-e
-- ✅ Registro de itens com valores
-- ✅ Visualização de detalhes
-- ✅ Exclusão de NF
-
-### Production Features
-- ✅ Iniciar produção a partir de pedidos
-- ✅ Produção para estoque (sem pedido inicial)
-- ✅ Seleção de múltiplos produtos com quantidades
-- ✅ Auto-seleção de itens do pedido
-- ✅ "Iniciar Todos" para bulk start
-- ✅ Relatório de produção pendente
-
-### Packaging Features
-- ✅ Workflow de embalagem vinculado à produção
-- ✅ Número do pedido e nome do cliente visíveis
-- ✅ Campo "Responsável pela conclusão"
-- ✅ Localização de armazenamento
-
----
-
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/login` - Login
-- `POST /api/auth/register` - Register
-
-### Core CRUD
-- `/api/clientes` - Customers
-- `/api/produtos` - Products
-- `/api/pedidos` - Orders
-- `/api/producao` - Production
-- `/api/embalagem` - Packaging
-- `/api/estoque` - Inventory
-- `/api/vendas` - Sales
-
-### Compras
-- `/api/fornecedores` - Suppliers CRUD
-- `/api/insumos` - Raw materials CRUD
-- `/api/compras` - Purchase orders CRUD
-- `PATCH /api/compras/{id}/status` - Update status
-
-### NF de Entrada (NEW)
-- `GET /api/nf-entrada` - List all
-- `POST /api/nf-entrada` - Create
-- `POST /api/nf-entrada/parse-html` - Parse SEFAZ HTML
-- `POST /api/nf-entrada/parse-xml` - Parse XML file
-- `POST /api/nf-entrada/parse-chave` - Parse access key
-- `DELETE /api/nf-entrada/{id}` - Delete
-
-### Configurações
-- `GET /api/configuracoes/usuarios` - List all users (admin only)
-- `POST /api/configuracoes/usuarios` - Create user (admin only)
-- `PUT /api/configuracoes/usuarios/{id}` - Update user (admin only)
-- `DELETE /api/configuracoes/usuarios/{id}` - Delete user (admin only)
-- `GET /api/configuracoes/empresa` - Get company data
-- `PUT /api/configuracoes/empresa` - Update company data (admin only)
-- `POST /api/configuracoes/empresa/logo` - Upload logo (admin only)
-- `DELETE /api/configuracoes/empresa/logo` - Remove logo (admin only)
-
-### NFC-e (Cupom Fiscal)
-- `GET /api/nfce/configuracao` - Certificate status and config
-- `GET /api/nfce/status-sefaz` - SEFAZ service status
-- `POST /api/nfce/emitir` - Emit NFC-e
-- `GET /api/nfce/historico` - List emitted NFC-e
-- `POST /api/nfce/cancelar/{chave}` - Cancel NFC-e
-
----
-
-## Database Schema
-
-### nf_entrada (NEW)
-```javascript
-{
-  id: string,
-  chave_acesso: string (44 digits),
-  numero_nf: string,
-  serie: string,
-  data_emissao: datetime,
-  data_entrada: datetime,
-  fornecedor_cnpj: string,
-  fornecedor_nome: string,
-  fornecedor_endereco: string,
-  items: [{descricao, quantidade, valor_unitario, valor_total, unidade}],
-  valor_produtos: float,
-  valor_frete: float,
-  valor_desconto: float,
-  valor_total: float,
-  status: string (registrada/conferida/estornada),
-  observacoes: string
-}
+## Arquitetura
+```
+/app/
+├── backend/
+│   ├── routes/ (auth, clientes, pedidos, vendas, producao, estoque, nfce, catalogo, configuracoes)
+│   ├── models.py
+│   └── server.py
+├── frontend/
+│   ├── public/ (PWA files)
+│   └── src/
+│       ├── components/ (SearchableSelect, QuickCreateModals, SelecionarSaboresModal, PWAInstallPrompt)
+│       ├── contexts/ (AuthContext, EmpresaContext)
+│       └── pages/
 ```
 
----
+## Credenciais de Teste
+- Email: admin@sussu.com
+- Senha: 123456
 
-## Backlog / Future Tasks
+## Dados da Empresa
+- Nome: Sussu Chocolates
+- Telefone: (43) 99967-6206
+- Endereço: Rua Quintino Bocaiuva, 737, Centro, Jacarezinho/PR
 
-### P1 (High Priority)
-- [ ] Mudar NFC-e de Homologação para Produção (quando pronto para emissão real)
+## Sabores Disponíveis
+Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistache, Amendoim, Coco, Doce de Leite, Café, Churros, Oreo, Paçoca, Chocolate Branco, Chocolate ao Leite, Chocolate Meio Amargo, Prestígio, Tradicional, Amarula, Ovomaltine
 
-### P2 (Medium Priority)
-- [ ] Alertas automáticos de estoque baixo (insumos)
-- [ ] Push notifications para novos pedidos
-- [ ] Adicionar imagens aos produtos no catálogo
+## Tasks Pendentes
 
-## Recently Completed (March 27, 2026)
+### P0 - Em Progresso
+- [ ] Venda Mista (Entrega Imediata + A Produzir) - VendasPage.js
 
-### NFC-e - Emissão de Cupom Fiscal (March 27, 2026) ✅
-- ✅ **Integração real com SEFAZ-PR** via biblioteca `pynfe`
-- ✅ **Certificado Digital A1** configurado e validado
-  - Titular: SUZETE CANDIDO XAVIER
-  - CNPJ: 09.328.682/0001-30
-  - Validade: 20/03/2027
-- ✅ **CSC (Código de Segurança do Contribuinte)** configurado
-  - ID: 000001
-- ✅ **Ambiente: Homologação** (testes) - pronto para produção quando necessário
-- ✅ **Endpoints implementados**:
-  - `GET /api/nfce/configuracao` - Status do certificado e ambiente
-  - `GET /api/nfce/status-sefaz` - Status do serviço SEFAZ (online/offline)
-  - `POST /api/nfce/emitir` - Emissão de NFC-e
-  - `GET /api/nfce/historico` - Histórico de NFC-e emitidas
-  - `POST /api/nfce/cancelar/{chave}` - Cancelamento de NFC-e
-- ✅ **Frontend VendasPage** com botão "Emitir NFC-e"
-- ✅ **Chave de Acesso** gerada automaticamente (44 dígitos)
-- ✅ **QR Code URL** gerado para consulta
+### P1 - Próximas
+- [ ] Alertas automáticos de estoque baixo
 
-### PWA - Progressive Web App (March 27, 2026) ✅
-- ✅ Manifest.json configurado para instalação
-- ✅ Service Worker para cache e offline
-- ✅ Ícones em múltiplas resoluções
-- ✅ Instalável em dispositivos móveis
+### P2 - Backlog
+- [ ] Migrar NFC-e para Produção (requer CSC de produção)
+- [ ] Refatorar VendasPage.js (1500+ linhas) em componentes menores
 
-### Outras Implementações Recentes ✅
-- ✅ Parser XML de NF-e com todos os campos (NCM, CST, CFOP)
-- ✅ Upload de arquivo XML com drag-and-drop
-- ✅ Exportação PDF/Excel para todos os relatórios
-- ✅ Relatórios de Itens a Produzir e Itens Produzidos
-- ✅ Geração de PDF para Pedidos com logo da empresa
+## Changelog
 
----
+### 2025-12-30
+- Atualizado telefone da empresa para (43) 99967-6206
+- Adicionados sabores: Prestígio, Tradicional, Amarula, Ovomaltine
 
-## Test Credentials
-- **Admin**: rodrigo_busatta@hotmail.com / admin123
-
-## URLs
-- **Preview**: https://sussu-manage.preview.emergentagent.com
-- **API Base**: https://sussu-manage.preview.emergentagent.com/api
-
----
-
-*Last updated: March 29, 2026*
-*NFC-e integration: Homologação mode (SEFAZ-PR)*
+### Sessões Anteriores
+- Implementado PWA completo
+- Criado Catálogo Público com WhatsApp
+- Implementado SearchableSelect (autocomplete)
+- Quick Create Modals para cliente/produto
+- Modal de seleção de sabores fracionados
+- Corrigido bug de fechamento de modais aninhados Radix UI
+- Venda Direta refatorada em 2 etapas
+- RBAC nas configurações

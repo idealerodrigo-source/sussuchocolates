@@ -478,13 +478,6 @@ Obrigado pela preferência! 🙏
     setEditingPedidoId(null);
   };
 
-  // Dados da empresa para WhatsApp
-  const EMPRESA = {
-    nome: 'Sussu Chocolates',
-    telefone: '(43) 99999-9999',
-    endereco: 'Jacarezinho - PR'
-  };
-
   if (loading) {
     return <div className="flex items-center justify-center py-12"><p className="text-[#6B4423] font-sans">Carregando...</p></div>;
   }

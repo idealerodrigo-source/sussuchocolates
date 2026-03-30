@@ -24,6 +24,10 @@ const SABORES_DISPONIVEIS = [
   'Chocolate Branco',
   'Chocolate ao Leite',
   'Chocolate Meio Amargo',
+  'Prestígio',
+  'Tradicional',
+  'Amarula',
+  'Ovomaltine',
 ];
 
 /**
