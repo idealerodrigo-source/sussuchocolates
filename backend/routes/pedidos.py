@@ -33,7 +33,9 @@ async def criar_pedido(pedido_data: PedidoCreate, current_user: dict = Depends(g
         valor_total=valor_total,
         forma_pagamento=pedido_data.forma_pagamento,
         observacoes=pedido_data.observacoes,
-        data_entrega=datetime.fromisoformat(pedido_data.data_entrega) if pedido_data.data_entrega else None
+        data_entrega=datetime.fromisoformat(pedido_data.data_entrega) if pedido_data.data_entrega else None,
+        venda_vinculada_id=pedido_data.venda_vinculada_id,
+        origem=pedido_data.origem or "manual"
     )
     
     doc = pedido.model_dump()

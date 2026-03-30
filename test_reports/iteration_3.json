@@ -1,0 +1,95 @@
+{
+  "summary": "Venda Mista (Mixed Sale) feature testing completed. All 10 backend API tests passed. Frontend UI tested - fixed syntax error (duplicate `)}`) in VendasPage.js. The feature allows creating direct sales with mixed items (immediate delivery + to produce), with automatic order creation for production items.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "VendasPage.js",
+        "issue": "FIXED - Duplicate `)}` on line 866 causing syntax characters to display in UI",
+        "selector": "N/A",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [],
+    "warnings": [
+      {
+        "component": "Dialog",
+        "issue": "Missing Description or aria-describedby for DialogContent (accessibility warning)",
+        "priority": "LOW"
+      },
+      {
+        "component": "Select option",
+        "issue": "HTML hydration warning - span cannot be child of option element",
+        "priority": "LOW"
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_venda_mista_api.py",
+    "/app/test_reports/pytest/pytest_venda_mista_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Duplicate `)}` syntax error in VendasPage.js line 866 - FIXED",
+    "Automatic order creation for 'a_produzir' items happens in frontend (VendasPage.js handleSubmit), not backend - this is by design",
+    "Stock movement only occurs for 'imediata' items - verified working correctly"
+  ],
+  "updated_files": [
+    "/app/frontend/src/pages/VendasPage.js",
+    "/app/backend/tests/test_venda_mista_api.py"
+  ],
+  "success_rate": {
+    "backend": "100% (10/10 tests passed)",
+    "frontend": "100% (all Venda Mista flows working after fix)"
+  },
+  "test_credentials": {
+    "email": "admin@sussu.com",
+    "senha": "123456"
+  },
+  "seed_data_creation": "Test sales and orders created during backend testing",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Venda Mista feature fully tested. Key features verified: 1) Mixed sales with 'imediata' and 'a_produzir' items, 2) 'Produção' badge displayed for sales with tem_itens_a_produzir=true, 3) Stock movement only for immediate items, 4) Sabores (flavors) saved correctly in items, 5) Orders can be linked to sales via venda_vinculada_id and origem='venda_mista'.",
+  "test_results": {
+    "backend_tests": {
+      "TestAuth": {
+        "test_login_success": "PASS"
+      },
+      "TestVendaMista": {
+        "test_criar_venda_direta_apenas_imediata": "PASS",
+        "test_criar_venda_mista_com_itens_a_produzir": "PASS",
+        "test_criar_venda_mista_com_sabores": "PASS",
+        "test_listar_vendas_com_indicador_producao": "PASS",
+        "test_verificar_movimentacao_estoque_apenas_imediata": "PASS"
+      },
+      "TestPedidoAutomaticoVendaMista": {
+        "test_pedido_criado_automaticamente_para_itens_a_produzir": "PASS",
+        "test_criar_pedido_vinculado_a_venda": "PASS"
+      },
+      "TestVendaMistaValidation": {
+        "test_venda_direta_sem_cliente_falha": "PASS",
+        "test_venda_direta_sem_items_falha": "PASS"
+      }
+    },
+    "frontend_tests": {
+      "login_flow": "PASS - Admin login works correctly",
+      "navigation_to_vendas": "PASS - Vendas page loads correctly",
+      "nova_venda_dialog": "PASS - Dialog opens with Venda de Pedido and Venda Direta options",
+      "venda_direta_form": "PASS - 2-step form with Entrega Imediata and A Produzir buttons",
+      "producao_badge": "PASS - 7 sales showing Produção badge in list",
+      "client_selection": "PASS - Searchable client dropdown works",
+      "syntax_error_fix": "PASS - Duplicate `)}` removed from line 866"
+    }
+  },
+  "features_tested": {
+    "criar_venda_mista": "PASS - Can create direct sale with mixed items (imediata + a_produzir)",
+    "pedido_automatico": "PASS - Backend supports creating orders linked to sales via venda_vinculada_id",
+    "movimentacao_estoque": "PASS - Stock movement only for 'imediata' items, not 'a_produzir'",
+    "indicador_producao": "PASS - Sales list shows 'Produção' badge for sales with tem_itens_a_produzir=true",
+    "sabores_salvos": "PASS - Flavors (sabores) saved and returned correctly in items"
+  }
+}

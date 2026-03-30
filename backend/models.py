@@ -122,6 +122,7 @@ class ItemPedido(BaseModel):
     desconto_valor: float = 0.0
     valor_desconto: float = 0.0
     sabores: Optional[List[SaborItem]] = None  # Lista de sabores com quantidades fracionadas
+    tipo_entrega: Optional[str] = "imediata"  # 'imediata' ou 'a_produzir'
 
 
 class Pedido(BaseModel):
@@ -137,6 +138,8 @@ class Pedido(BaseModel):
     data_pedido: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     data_entrega: Optional[datetime] = None
     observacoes: Optional[str] = None
+    venda_vinculada_id: Optional[str] = None  # ID da venda que gerou este pedido (venda mista)
+    origem: Optional[str] = "manual"  # 'manual', 'venda_mista', etc.
 
 
 class PedidoCreate(BaseModel):
@@ -145,6 +148,8 @@ class PedidoCreate(BaseModel):
     forma_pagamento: Optional[str] = None
     data_entrega: Optional[str] = None
     observacoes: Optional[str] = None
+    venda_vinculada_id: Optional[str] = None  # ID da venda que gerou este pedido (venda mista)
+    origem: Optional[str] = None  # 'manual', 'venda_mista', etc.
 
 
 class PedidoUpdate(BaseModel):
@@ -239,6 +244,7 @@ class Venda(BaseModel):
     items: List[ItemPedido]
     valor_total: float
     forma_pagamento: str
+    parcelas: int = 1
     data_venda: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     nfce_emitida: bool = False
     nfce_chave: Optional[str] = None
@@ -252,6 +258,8 @@ class Venda(BaseModel):
     data_pagamento: Optional[datetime] = None
     data_cancelamento: Optional[datetime] = None
     motivo_cancelamento: Optional[str] = None
+    tem_itens_a_produzir: bool = False  # Indica se há itens para produção
+    pedido_producao_id: Optional[str] = None  # ID do pedido gerado para produção
 
 
 class VendaCreate(BaseModel):
@@ -259,11 +267,13 @@ class VendaCreate(BaseModel):
     cliente_id: Optional[str] = None
     items: Optional[List[ItemPedido]] = None
     forma_pagamento: str
+    parcelas: int = 1
     tipo_venda: str = "pedido"
     entrega_posterior: bool = False
     status_pagamento: str = "pago"
     data_previsao_pagamento: Optional[str] = None
     observacoes_pagamento: Optional[str] = None
+    tem_itens_a_produzir: bool = False
 
 
 class CancelarVendaRequest(BaseModel):

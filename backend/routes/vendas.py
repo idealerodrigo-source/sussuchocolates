@@ -30,6 +30,7 @@ async def criar_venda(venda_data: VendaCreate, current_user: dict = Depends(get_
             items=[ItemPedido(**item) if isinstance(item, dict) else item for item in pedido['items']],
             valor_total=pedido['valor_total'],
             forma_pagamento=venda_data.forma_pagamento,
+            parcelas=venda_data.parcelas,
             tipo_venda="pedido",
             entrega_posterior=venda_data.entrega_posterior,
             status_pagamento=venda_data.status_pagamento,
@@ -58,11 +59,13 @@ async def criar_venda(venda_data: VendaCreate, current_user: dict = Depends(get_
             items=venda_data.items,
             valor_total=valor_total,
             forma_pagamento=venda_data.forma_pagamento,
+            parcelas=venda_data.parcelas,
             tipo_venda="direta",
             entrega_posterior=venda_data.entrega_posterior,
             status_pagamento=venda_data.status_pagamento,
             data_previsao_pagamento=venda_data.data_previsao_pagamento,
-            observacoes_pagamento=venda_data.observacoes_pagamento
+            observacoes_pagamento=venda_data.observacoes_pagamento,
+            tem_itens_a_produzir=venda_data.tem_itens_a_produzir
         )
     
     doc = venda.model_dump()
@@ -71,18 +74,23 @@ async def criar_venda(venda_data: VendaCreate, current_user: dict = Depends(get_
         doc['data_pagamento'] = doc['data_pagamento'].isoformat()
     await db.vendas.insert_one(doc)
     
+    # Dar baixa no estoque APENAS para itens de entrega imediata
     for item in venda.items:
         item_dict = item if isinstance(item, dict) else item.model_dump()
-        await db.estoque.insert_one({
-            "id": str(uuid.uuid4()),
-            "produto_id": item_dict['produto_id'],
-            "produto_nome": item_dict['produto_nome'],
-            "quantidade": item_dict['quantidade'],
-            "tipo_movimento": MovimentoEstoque.SAIDA,
-            "data_movimento": datetime.now(timezone.utc).isoformat(),
-            "responsavel": current_user['nome'],
-            "observacoes": f"Venda {venda.tipo_venda} - ID: {venda.id}"
-        })
+        tipo_entrega = item_dict.get('tipo_entrega', 'imediata')
+        
+        # Só dá baixa no estoque se for entrega imediata
+        if tipo_entrega == 'imediata' or tipo_entrega is None:
+            await db.estoque.insert_one({
+                "id": str(uuid.uuid4()),
+                "produto_id": item_dict['produto_id'],
+                "produto_nome": item_dict['produto_nome'],
+                "quantidade": item_dict['quantidade'],
+                "tipo_movimento": MovimentoEstoque.SAIDA,
+                "data_movimento": datetime.now(timezone.utc).isoformat(),
+                "responsavel": current_user['nome'],
+                "observacoes": f"Venda {venda.tipo_venda} - ID: {venda.id}"
+            })
     
     return venda
 

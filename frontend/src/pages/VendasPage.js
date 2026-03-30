@@ -863,7 +863,6 @@ export default function VendasPage() {
                         </div>
                       </div>
                     )}
-                    )}
                   </div>
 
                   {/* Botão para avançar para revisão */}
@@ -1164,13 +1163,20 @@ export default function VendasPage() {
                 sortedData.map((venda) => (
                   <tr key={venda.id} className={`border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50 ${venda.status_venda === 'cancelada' ? 'bg-red-50/50 opacity-75' : ''}`}>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        venda.tipo_venda === 'direta' 
-                          ? 'bg-purple-100 text-purple-700' 
-                          : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {venda.tipo_venda === 'direta' ? 'Direta' : 'Pedido'}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`px-2 py-1 rounded text-xs font-medium inline-block w-fit ${
+                          venda.tipo_venda === 'direta' 
+                            ? 'bg-purple-100 text-purple-700' 
+                            : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {venda.tipo_venda === 'direta' ? 'Direta' : 'Pedido'}
+                        </span>
+                        {venda.tem_itens_a_produzir && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[#FEF3C7] text-[#D97706] inline-flex items-center gap-1 w-fit">
+                            <Factory size={10} weight="fill" /> Produção
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">{venda.cliente_nome}</td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{formatDateTime(venda.data_venda)}</td>
