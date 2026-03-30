@@ -1,5 +1,16 @@
 # Sussu Chocolates - Sistema de Gestão
 
+## Changelog (2026-03-30)
+- **NEW**: Autocomplete com busca em Pedidos e Vendas (cliente e produtos)
+- **NEW**: Seleção de sabores fracionados para produtos "2 SABORES"
+  - Modal abre automaticamente ao selecionar produto com "2 sabores" no nome
+  - Permite distribuir quantidades fracionadas (0.5 + 0.5 = 1 unidade)
+  - Lista de sabores: Brigadeiro, Beijinho, Maracujá, Cereja, Morango, etc.
+  - Mostra resumo e alerta se falta distribuir
+  - Opção "Distribuir igualmente" entre os sabores selecionados
+  - Sabores são exibidos nos itens do pedido e enviados para produção
+- **FIXED**: Modal de criação rápida (cliente/produto) não fecha mais o modal pai
+
 ## Changelog (2026-03-29)
 - **NEW**: Módulo de Configurações completo (Usuários, Dados da Empresa, Logo)
 - **NEW**: RBAC (Controle de Acesso) implementado - apenas admin acessa Configurações

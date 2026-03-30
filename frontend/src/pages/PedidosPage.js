@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '../components/ui/button';
 import { QuickCreateClienteModal, QuickCreateProdutoModal } from '../components/QuickCreateModals';
 import { SearchableSelect, SearchableInput } from '../components/SearchableSelect';
+import { SelecionarSaboresModal, produtoPermiteMultiplosSabores, formatarSabores } from '../components/SelecionarSaboresModal';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useSortableTable, SortableHeader } from '../hooks/useSortableTable';
@@ -32,6 +33,12 @@ export default function PedidosPage() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingPedido, setViewingPedido] = useState(null);
   const { sortedData, requestSort, sortConfig } = useSortableTable(pedidos, { key: 'data_pedido', direction: 'desc' });
+  
+  // Estado para modal de seleção de sabores
+  const [saboresModalOpen, setSaboresModalOpen] = useState(false);
+  const [produtoPendenteSabores, setProdutoPendenteSabores] = useState(null);
+  const [quantidadePendenteSabores, setQuantidadePendenteSabores] = useState(1);
+  
   const [formData, setFormData] = useState({
     cliente_id: '',
     items: [],
@@ -557,25 +564,34 @@ Obrigado pela preferência! 🙏
                     onSelect={(produto) => {
                       const produtoCompleto = produtos.find(p => p.id === produto.id);
                       if (produtoCompleto) {
-                        const existente = formData.items.find(item => item.produto_id === produtoCompleto.id);
-                        if (existente) {
-                          const newItems = formData.items.map(item => 
-                            item.produto_id === produtoCompleto.id 
-                              ? { ...item, quantidade: item.quantidade + 1, subtotal: (item.quantidade + 1) * item.preco_unitario }
-                              : item
-                          );
-                          setFormData({ ...formData, items: newItems });
-                          toast.success(`${produtoCompleto.nome} - quantidade aumentada`);
+                        // Verificar se o produto permite múltiplos sabores
+                        if (produtoPermiteMultiplosSabores(produtoCompleto.nome)) {
+                          // Abrir modal de seleção de sabores
+                          setProdutoPendenteSabores(produtoCompleto);
+                          setQuantidadePendenteSabores(1);
+                          setSaboresModalOpen(true);
                         } else {
-                          const newItem = {
-                            produto_id: produtoCompleto.id,
-                            produto_nome: produtoCompleto.nome,
-                            quantidade: 1,
-                            preco_unitario: produtoCompleto.preco,
-                            subtotal: produtoCompleto.preco
-                          };
-                          setFormData({ ...formData, items: [...formData.items, newItem] });
-                          toast.success(`${produtoCompleto.nome} adicionado`);
+                          // Adicionar normalmente
+                          const existente = formData.items.find(item => item.produto_id === produtoCompleto.id && !item.sabores);
+                          if (existente) {
+                            const newItems = formData.items.map(item => 
+                              item.produto_id === produtoCompleto.id && !item.sabores
+                                ? { ...item, quantidade: item.quantidade + 1, subtotal: (item.quantidade + 1) * item.preco_unitario }
+                                : item
+                            );
+                            setFormData({ ...formData, items: newItems });
+                            toast.success(`${produtoCompleto.nome} - quantidade aumentada`);
+                          } else {
+                            const newItem = {
+                              produto_id: produtoCompleto.id,
+                              produto_nome: produtoCompleto.nome,
+                              quantidade: 1,
+                              preco_unitario: produtoCompleto.preco,
+                              subtotal: produtoCompleto.preco
+                            };
+                            setFormData({ ...formData, items: [...formData.items, newItem] });
+                            toast.success(`${produtoCompleto.nome} adicionado`);
+                          }
                         }
                       }
                     }}
@@ -596,6 +612,29 @@ Obrigado pela preferência! 🙏
                     }
                   />
                 </div>
+                
+                {/* Modal de seleção de sabores */}
+                <SelecionarSaboresModal
+                  open={saboresModalOpen}
+                  onOpenChange={setSaboresModalOpen}
+                  produto={produtoPendenteSabores}
+                  quantidade={quantidadePendenteSabores}
+                  onConfirm={(sabores) => {
+                    if (produtoPendenteSabores) {
+                      const newItem = {
+                        produto_id: produtoPendenteSabores.id,
+                        produto_nome: produtoPendenteSabores.nome,
+                        quantidade: quantidadePendenteSabores,
+                        preco_unitario: produtoPendenteSabores.preco,
+                        subtotal: quantidadePendenteSabores * produtoPendenteSabores.preco,
+                        sabores: sabores // Array de {sabor, quantidade}
+                      };
+                      setFormData({ ...formData, items: [...formData.items, newItem] });
+                      toast.success(`${produtoPendenteSabores.nome} adicionado com sabores`);
+                      setProdutoPendenteSabores(null);
+                    }
+                  }}
+                />
                 
                 {/* Campo de desconto */}
                 <div className="grid grid-cols-12 gap-3 items-end">
@@ -652,7 +691,12 @@ Obrigado pela preferência! 🙏
                       <div key={index} className="flex items-center justify-between bg-[#FFFDF8] p-3 rounded-lg">
                         <div className="flex-1">
                           <p className="text-sm font-medium text-[#3E2723]">{item.produto_nome}</p>
-                          <p className="text-xs text-[#705A4D]">
+                          {item.sabores && item.sabores.length > 0 && (
+                            <p className="text-xs text-[#6B4423] bg-[#F5E6D3] px-2 py-0.5 rounded inline-block mt-1">
+                              Sabores: {formatarSabores(item.sabores)}
+                            </p>
+                          )}
+                          <p className="text-xs text-[#705A4D] mt-1">
                             {item.quantidade}x {formatCurrency(item.preco_unitario)}
                             {item.valor_desconto > 0 && (
                               <span className="text-[#D97706] ml-1">
