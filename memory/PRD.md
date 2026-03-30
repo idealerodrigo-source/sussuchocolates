@@ -70,8 +70,8 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 
 ## Tasks Pendentes
 
-### P0 - Em Progresso
-- [ ] Venda Mista (Entrega Imediata + A Produzir) - VendasPage.js
+### P0 - Concluído ✅
+- [x] Venda Mista (Entrega Imediata + A Produzir) - VendasPage.js
 
 ### P1 - Próximas
 - [ ] Alertas automáticos de estoque baixo
@@ -82,10 +82,14 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 
 ## Changelog
 
-### 2025-12-30 (Sessão 2)
-- Sabores agora fluem do Pedido → Produção → Embalagem
-- Adicionado campo `sabores` nos modelos `Producao` e `Embalagem`
-- Frontend exibe sabores em ProducaoPage e EmbalagemPage
+### 2025-12-30 (Sessão 3)
+- **P0 COMPLETO**: Venda Mista implementada
+  - Backend: tipo_entrega em ItemPedido, tem_itens_a_produzir em Venda
+  - Backend: venda_vinculada_id e origem em Pedido
+  - Backend: Movimentação de estoque apenas para itens 'imediata'
+  - Frontend: Formulário em 2 etapas com botões Entrega Imediata / A Produzir
+  - Frontend: Badge "Produção" na lista de vendas
+  - Testes: 10/10 backend, todos frontend passaram
 
 ### 2025-12-30 (Sessão 1)
 - Atualizado telefone da empresa para (43) 99967-6206
