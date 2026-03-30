@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
 import { useSortableTable, SortableHeader } from '../hooks/useSortableTable';
+import { formatarSabores } from '../components/SelecionarSaboresModal';
 
 export default function ProducaoPage() {
   const [producoes, setProducoes] = useState([]);
@@ -27,7 +28,7 @@ export default function ProducaoPage() {
   });
   
   const [itensProducao, setItensProducao] = useState([
-    { produto_id: '', quantidade: '' }
+    { produto_id: '', quantidade: '', sabores: null }
   ]);
 
   useEffect(() => {
@@ -63,22 +64,23 @@ export default function ProducaoPage() {
     if (pedidoId) {
       const pedido = allPedidos.find(p => p.id === pedidoId);
       if (pedido && pedido.items && pedido.items.length > 0) {
-        // Converter itens do pedido para formato de produção
+        // Converter itens do pedido para formato de produção (incluindo sabores)
         const itensFromPedido = pedido.items.map(item => ({
           produto_id: item.produto_id,
-          quantidade: item.quantidade.toString()
+          quantidade: item.quantidade.toString(),
+          sabores: item.sabores || null  // Manter sabores do pedido
         }));
         setItensProducao(itensFromPedido);
         toast.success(`${itensFromPedido.length} item(s) carregado(s) do pedido`);
       }
     } else {
       // Limpar itens se nenhum pedido selecionado
-      setItensProducao([{ produto_id: '', quantidade: '' }]);
+      setItensProducao([{ produto_id: '', quantidade: '', sabores: null }]);
     }
   };
 
   const addItemProducao = () => {
-    setItensProducao([...itensProducao, { produto_id: '', quantidade: '' }]);
+    setItensProducao([...itensProducao, { produto_id: '', quantidade: '', sabores: null }]);
   };
 
   const removeItemProducao = (index) => {
@@ -110,6 +112,7 @@ export default function ProducaoPage() {
         const data = {
           produto_id: item.produto_id,
           quantidade: parseFloat(item.quantidade),
+          sabores: item.sabores || null,  // Incluir sabores na produção
           responsavel: formData.responsavel || null,
           observacoes: formData.observacoes || null,
           tipo_producao: tipoProducao,
@@ -486,11 +489,18 @@ export default function ProducaoPage() {
                 {itensProducao.some(item => item.produto_id && item.quantidade) && (
                   <div className="bg-[#E8D5C4] rounded-lg p-3 mt-2">
                     <p className="text-xs font-medium text-[#6B4423] mb-2">Resumo da Produção:</p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="space-y-2">
                       {itensProducao.filter(item => item.produto_id && item.quantidade).map((item, index) => (
-                        <span key={index} className="inline-flex items-center px-2 py-1 bg-[#FFFDF8] rounded text-xs text-[#3E2723]">
-                          {item.quantidade}x {getProdutoNome(item.produto_id)}
-                        </span>
+                        <div key={index} className="bg-[#FFFDF8] rounded p-2">
+                          <span className="text-xs text-[#3E2723] font-medium">
+                            {item.quantidade}x {getProdutoNome(item.produto_id)}
+                          </span>
+                          {item.sabores && item.sabores.length > 0 && (
+                            <p className="text-xs text-[#8B5A3C] mt-1 ml-2">
+                              → Sabores: {formatarSabores(item.sabores)}
+                            </p>
+                          )}
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -607,7 +617,14 @@ export default function ProducaoPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{producao.produto_nome}</td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-[#4A3B32] font-sans">{producao.produto_nome}</div>
+                        {producao.sabores && producao.sabores.length > 0 && (
+                          <div className="text-xs text-[#8B5A3C] mt-0.5">
+                            Sabores: {formatarSabores(producao.sabores)}
+                          </div>
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans text-right font-medium">{producao.quantidade}</td>
                       <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{producao.responsavel || '-'}</td>
                       <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{formatDateTime(producao.data_inicio)}</td>

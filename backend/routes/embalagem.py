@@ -24,6 +24,7 @@ async def criar_embalagem(embalagem_data: EmbalagemCreate, current_user: dict = 
         pedido_id=embalagem_data.pedido_id,
         produto_nome=producao['produto_nome'],
         quantidade=embalagem_data.quantidade,
+        sabores=producao.get('sabores'),  # Copiar sabores da produção
         responsavel=embalagem_data.responsavel,
         tipo_embalagem=embalagem_data.tipo_embalagem
     )

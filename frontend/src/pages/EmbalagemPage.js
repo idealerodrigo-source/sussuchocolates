@@ -5,6 +5,7 @@ import { Plus, CheckCircle, MapPin, User, Package, CheckSquare } from '@phosphor
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
+import { formatarSabores } from '../components/SelecionarSaboresModal';
 
 export default function EmbalagemPage() {
   const [embalagens, setEmbalagens] = useState([]);
@@ -395,7 +396,14 @@ export default function EmbalagemPage() {
                               />
                             )}
                           </td>
-                          <td className="px-4 py-3 text-sm text-[#4A3B32] font-sans font-medium">{embalagem.produto_nome}</td>
+                          <td className="px-4 py-3">
+                            <div className="text-sm text-[#4A3B32] font-sans font-medium">{embalagem.produto_nome}</div>
+                            {embalagem.sabores && embalagem.sabores.length > 0 && (
+                              <div className="text-xs text-[#8B5A3C] mt-0.5">
+                                Sabores: {formatarSabores(embalagem.sabores)}
+                              </div>
+                            )}
+                          </td>
                           <td className="px-4 py-3 text-sm text-[#4A3B32] font-sans text-right font-bold">{embalagem.quantidade}</td>
                           <td className="px-4 py-3 text-sm text-[#4A3B32] font-sans">{embalagem.responsavel || '-'}</td>
                           <td className="px-4 py-3 text-sm text-[#4A3B32] font-sans">{formatDateTime(embalagem.data_inicio || embalagem.data_embalagem)}</td>

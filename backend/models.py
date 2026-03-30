@@ -105,6 +105,12 @@ class ProdutoCreate(BaseModel):
     estoque_minimo: int = 0
 
 
+# Sabor para produtos com múltiplos sabores
+class SaborItem(BaseModel):
+    sabor: str
+    quantidade: float
+
+
 # Pedido Models
 class ItemPedido(BaseModel):
     produto_id: str
@@ -115,6 +121,7 @@ class ItemPedido(BaseModel):
     desconto_tipo: Optional[str] = None
     desconto_valor: float = 0.0
     valor_desconto: float = 0.0
+    sabores: Optional[List[SaborItem]] = None  # Lista de sabores com quantidades fracionadas
 
 
 class Pedido(BaseModel):
@@ -157,6 +164,7 @@ class Producao(BaseModel):
     produto_id: str
     produto_nome: str
     quantidade: float
+    sabores: Optional[List[SaborItem]] = None  # Sabores do recheio
     data_inicio: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     data_conclusao: Optional[datetime] = None
     responsavel: Optional[str] = None
@@ -168,6 +176,7 @@ class ProducaoCreate(BaseModel):
     pedido_id: Optional[str] = None
     produto_id: str
     quantidade: float
+    sabores: Optional[List[SaborItem]] = None  # Sabores do recheio
     responsavel: Optional[str] = None
     observacoes: Optional[str] = None
 
@@ -181,6 +190,7 @@ class Embalagem(BaseModel):
     cliente_nome: Optional[str] = None
     produto_nome: str
     quantidade: float
+    sabores: Optional[List[SaborItem]] = None  # Sabores do recheio
     data_inicio: Optional[datetime] = None
     data_conclusao: Optional[datetime] = None
     responsavel: Optional[str] = None

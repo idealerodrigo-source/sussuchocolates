@@ -39,12 +39,18 @@ async def criar_producao(producao_data: ProducaoCreate, current_user: dict = Dep
         count = await db.producao.count_documents({"tipo_producao": "estoque"})
         pedido_numero = f"EST-{count + 1:06d}"
     
+    # Preparar sabores para salvar
+    sabores_data = None
+    if producao_data.sabores:
+        sabores_data = [s.model_dump() for s in producao_data.sabores]
+    
     producao = Producao(
         pedido_id=pedido_id,
         pedido_numero=pedido_numero,
         produto_id=producao_data.produto_id,
         produto_nome=produto['nome'],
         quantidade=producao_data.quantidade,
+        sabores=producao_data.sabores,
         responsavel=producao_data.responsavel,
         observacoes=producao_data.observacoes,
         tipo_producao=tipo_producao

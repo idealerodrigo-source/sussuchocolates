@@ -82,7 +82,12 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 
 ## Changelog
 
-### 2025-12-30
+### 2025-12-30 (Sessão 2)
+- Sabores agora fluem do Pedido → Produção → Embalagem
+- Adicionado campo `sabores` nos modelos `Producao` e `Embalagem`
+- Frontend exibe sabores em ProducaoPage e EmbalagemPage
+
+### 2025-12-30 (Sessão 1)
 - Atualizado telefone da empresa para (43) 99967-6206
 - Adicionados sabores: Prestígio, Tradicional, Amarula, Ovomaltine
 
