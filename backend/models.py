@@ -124,6 +124,7 @@ class ItemPedido(BaseModel):
     valor_desconto: float = 0.0
     sabores: Optional[List[SaborItem]] = None  # Lista de sabores com quantidades fracionadas
     tipo_entrega: Optional[str] = "imediata"  # 'imediata' ou 'a_produzir'
+    ja_entregue: Optional[bool] = False  # Indica se o item já foi entregue (retirado do estoque)
 
 
 class Pedido(BaseModel):

@@ -120,6 +120,88 @@ async def atualizar_pedido(pedido_id: str, pedido_data: PedidoUpdate, current_us
     return updated
 
 
+@router.patch("/{pedido_id}/item/{item_index}/entregue")
+async def marcar_item_entregue(pedido_id: str, item_index: int, current_user: dict = Depends(get_current_user)):
+    """
+    Marca um item do pedido como 'já entregue' (retirado do estoque).
+    Itens marcados como já entregues não precisam ser produzidos.
+    Também remove da produção se já estiver em produção.
+    """
+    from models import MovimentoEstoque
+    
+    pedido = await db.pedidos.find_one({"id": pedido_id}, {"_id": 0})
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    
+    items = pedido.get('items', [])
+    if item_index < 0 or item_index >= len(items):
+        raise HTTPException(status_code=400, detail="Índice do item inválido")
+    
+    item = items[item_index]
+    
+    if item.get('ja_entregue'):
+        raise HTTPException(status_code=400, detail="Este item já foi marcado como entregue")
+    
+    # Marcar o item como entregue
+    items[item_index]['ja_entregue'] = True
+    
+    await db.pedidos.update_one(
+        {"id": pedido_id},
+        {"$set": {"items": items}}
+    )
+    
+    # Verificar se há produção deste item e removê-la
+    produto_nome = item.get('produto_nome')
+    quantidade = item.get('quantidade')
+    
+    # Buscar produção vinculada ao pedido com mesmo produto
+    producao = await db.producao.find_one({
+        "pedido_id": pedido_id,
+        "produto_nome": produto_nome,
+        "quantidade": quantidade,
+        "data_conclusao": None  # Apenas produções não concluídas
+    }, {"_id": 0})
+    
+    acoes = []
+    
+    if producao:
+        # Remover a produção pois o item foi entregue do estoque
+        await db.producao.delete_one({"id": producao['id']})
+        acoes.append(f"Produção de {produto_nome} removida")
+    
+    # Dar baixa no estoque
+    produto = await db.produtos.find_one({"nome": produto_nome}, {"_id": 0})
+    if produto:
+        movimento = MovimentoEstoque(
+            produto_id=produto['id'],
+            produto_nome=produto_nome,
+            tipo_movimento='saida',
+            quantidade=quantidade,
+            responsavel=current_user.get('nome', 'Sistema'),
+            observacoes=f"Entrega antecipada - Pedido {pedido.get('numero')}"
+        )
+        movimento_doc = movimento.model_dump()
+        movimento_doc['data_movimento'] = movimento_doc['data_movimento'].isoformat()
+        await db.estoque.insert_one(movimento_doc)
+        acoes.append(f"Baixa de {quantidade} {produto_nome} no estoque")
+    
+    # Verificar se todos os itens foram entregues
+    todos_entregues = all(i.get('ja_entregue', False) for i in items)
+    if todos_entregues:
+        # Atualizar status do pedido para entregue
+        await db.pedidos.update_one(
+            {"id": pedido_id},
+            {"$set": {"status": "entregue"}}
+        )
+        acoes.append("Pedido marcado como entregue")
+    
+    return {
+        "success": True,
+        "message": f"Item {produto_nome} marcado como entregue",
+        "acoes": acoes
+    }
+
+
 @router.delete("/{pedido_id}/cancelar")
 async def cancelar_pedido(pedido_id: str, current_user: dict = Depends(get_current_user)):
     """
@@ -201,7 +283,7 @@ async def cancelar_pedido(pedido_id: str, current_user: dict = Depends(get_curre
                 "motivo_cancelamento": f"Cancelamento do pedido {pedido.get('numero', pedido_id)}"
             }}
         )
-        acoes_realizadas.append(f"Venda cancelada")
+        acoes_realizadas.append("Venda cancelada")
     
     # 4. Atualizar status do pedido para CANCELADO
     await db.pedidos.update_one(

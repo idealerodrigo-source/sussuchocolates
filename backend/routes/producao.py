@@ -244,6 +244,9 @@ async def relatorio_por_data_entrega(current_user: dict = Depends(get_current_us
             data_key = "sem_data"
         
         for item in pedido.get('items', []):
+            # Pular itens já entregues
+            if item.get('ja_entregue', False):
+                continue
             sabores_texto = formatar_sabores(item.get('sabores'))
             adicionar_item(data_key, data_entrega, pedido, item.get('produto_nome', ''), item.get('quantidade', 1), sabores_texto, "pendente")
     

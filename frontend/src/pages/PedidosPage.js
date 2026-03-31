@@ -304,6 +304,28 @@ Obrigado pela preferência! 🙏
     }
   };
 
+  const handleMarcarEntregue = async (pedidoId, itemIndex) => {
+    if (!window.confirm('Marcar este item como entregue?\n\nIsso indica que o produto foi retirado do estoque e não precisará ser produzido.')) {
+      return;
+    }
+    
+    try {
+      await pedidosAPI.marcarItemEntregue(pedidoId, itemIndex);
+      toast.success('Item marcado como entregue!');
+      
+      // Atualizar viewingPedido localmente
+      if (viewingPedido && viewingPedido.id === pedidoId) {
+        const updatedItems = [...viewingPedido.items];
+        updatedItems[itemIndex] = { ...updatedItems[itemIndex], ja_entregue: true };
+        setViewingPedido({ ...viewingPedido, items: updatedItems });
+      }
+      
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erro ao marcar item como entregue');
+    }
+  };
+
   const handleExcluirPedido = async (pedido) => {
     if (pedido.status !== 'pendente') {
       toast.error('Apenas pedidos pendentes podem ser excluídos. Use "Cancelar" para outros status.');
@@ -951,9 +973,16 @@ Obrigado pela preferência! 🙏
                       {pedido.forma_pagamento || '-'}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(pedido.status)}`}>
-                        {getStatusLabel(pedido.status)}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(pedido.status)}`}>
+                          {getStatusLabel(pedido.status)}
+                        </span>
+                        {pedido.items?.some(i => i.ja_entregue) && (
+                          <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] rounded-full text-center">
+                            {pedido.items.filter(i => i.ja_entregue).length}/{pedido.items.length} entregues
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans text-right font-medium">
                       {formatCurrency(pedido.valor_total)}
@@ -1065,12 +1094,38 @@ Obrigado pela preferência! 🙏
                 <h3 className="text-lg font-serif font-semibold text-[#3E2723] mb-3">Itens do Pedido</h3>
                 <div className="space-y-2">
                   {viewingPedido.items.map((item, index) => (
-                    <div key={index} className="flex justify-between items-center bg-[#F5E6D3]/50 p-3 rounded-lg">
-                      <div>
-                        <p className="font-medium text-[#3E2723]">{item.produto_nome}</p>
+                    <div key={index} className={`flex justify-between items-center p-3 rounded-lg ${item.ja_entregue ? 'bg-green-50 border border-green-200' : 'bg-[#F5E6D3]/50'}`}>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-[#3E2723]">{item.produto_nome}</p>
+                          {item.ja_entregue && (
+                            <span className="px-2 py-0.5 bg-green-500 text-white text-xs rounded-full font-medium">
+                              Já Entregue
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-[#705A4D]">{item.quantidade}x {formatCurrency(item.preco_unitario)}</p>
+                        {item.sabores && item.sabores.length > 0 && (
+                          <p className="text-xs text-[#8B5A3C]">
+                            Sabores: {item.sabores.map(s => `${s.quantidade === 0.5 ? '½' : s.quantidade} ${s.nome}`).join(' + ')}
+                          </p>
+                        )}
                       </div>
-                      <p className="font-medium text-[#3E2723]">{formatCurrency(item.subtotal)}</p>
+                      <div className="flex items-center gap-3">
+                        <p className="font-medium text-[#3E2723]">{formatCurrency(item.subtotal)}</p>
+                        {!item.ja_entregue && viewingPedido.status !== 'cancelado' && viewingPedido.status !== 'entregue' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-green-600 border-green-500 hover:bg-green-50 text-xs"
+                            onClick={() => handleMarcarEntregue(viewingPedido.id, index)}
+                            title="Marcar como já entregue (retirado do estoque)"
+                          >
+                            <Package size={14} className="mr-1" />
+                            Entregar
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
