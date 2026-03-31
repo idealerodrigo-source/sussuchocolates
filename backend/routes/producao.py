@@ -122,11 +122,78 @@ async def relatorio_por_data_entrega(current_user: dict = Depends(get_current_us
     """
     Retorna relatório de itens a produzir agrupados por data de entrega.
     Inclui:
-    - Itens já em produção (producao sem data_conclusao)
-    - Itens de pedidos pendentes/em_producao que ainda não foram enviados para produção
+    - Resumo agregado por produto (ex: "20.5 Ovo 05 recheado PRESTÍGIO")
+    - Detalhes por pedido
     """
-    # Agrupar por data de entrega
+    # Estrutura para agrupar por data de entrega
     por_data_entrega = {}
+    
+    # Função auxiliar para formatar sabores
+    def formatar_sabores(sabores_list):
+        if not sabores_list or not isinstance(sabores_list, list):
+            return None
+        partes = []
+        for s in sabores_list:
+            if isinstance(s, dict):
+                nome = s.get('nome', s.get('sabor', ''))
+                qtd = s.get('quantidade', 1)
+                if qtd == 0.5:
+                    partes.append(f"½ {nome}")
+                elif qtd != 1:
+                    partes.append(f"{qtd} {nome}")
+                else:
+                    partes.append(nome)
+        return " + ".join(partes) if partes else None
+    
+    # Função para adicionar item ao agrupamento
+    def adicionar_item(data_key, data_entrega_valor, pedido, produto_nome, quantidade, sabores_texto, origem):
+        if data_key not in por_data_entrega:
+            por_data_entrega[data_key] = {
+                "data_entrega": data_key if data_key != "sem_data" else None,
+                "data_formatada": datetime.strptime(data_key, '%Y-%m-%d').strftime('%d/%m/%Y') if data_key != "sem_data" else "Sem data definida",
+                "resumo_produtos": {},  # Agregado por produto
+                "pedidos": {},
+                "total_itens": 0,
+                "total_quantidade": 0
+            }
+        
+        # Chave para agrupar produto (produto + sabores)
+        chave_produto = f"{produto_nome}|{sabores_texto or ''}"
+        
+        # Atualizar resumo agregado por produto
+        if chave_produto not in por_data_entrega[data_key]["resumo_produtos"]:
+            por_data_entrega[data_key]["resumo_produtos"][chave_produto] = {
+                "produto_nome": produto_nome,
+                "sabores": sabores_texto,
+                "quantidade_total": 0,
+                "pedidos_count": 0
+            }
+        por_data_entrega[data_key]["resumo_produtos"][chave_produto]["quantidade_total"] += quantidade
+        por_data_entrega[data_key]["resumo_produtos"][chave_produto]["pedidos_count"] += 1
+        
+        # Atualizar detalhes por pedido
+        pedido_numero = pedido.get('numero')
+        if pedido_numero not in por_data_entrega[data_key]["pedidos"]:
+            por_data_entrega[data_key]["pedidos"][pedido_numero] = {
+                "pedido_id": pedido.get('id'),
+                "pedido_numero": pedido_numero,
+                "cliente_nome": pedido.get('cliente_nome', 'N/A'),
+                "cliente_telefone": pedido.get('cliente_telefone', ''),
+                "observacoes": pedido.get('observacoes', ''),
+                "status": pedido.get('status', ''),
+                "origem": origem,
+                "itens": []
+            }
+        
+        por_data_entrega[data_key]["pedidos"][pedido_numero]["itens"].append({
+            "produto_nome": produto_nome,
+            "quantidade": quantidade,
+            "sabores": sabores_texto,
+            "status": origem
+        })
+        
+        por_data_entrega[data_key]["total_itens"] += 1
+        por_data_entrega[data_key]["total_quantidade"] += quantidade
     
     # PARTE 1: Produções pendentes (já enviadas para produção)
     producoes_pendentes = await db.producao.find(
@@ -136,13 +203,13 @@ async def relatorio_por_data_entrega(current_user: dict = Depends(get_current_us
     
     pedidos_ids_producao = list(set([p['pedido_id'] for p in producoes_pendentes if p.get('pedido_id')]))
     
-    # PARTE 2: Pedidos pendentes ou em_producao (incluir itens deles também)
+    # PARTE 2: Pedidos pendentes ou em_producao
     pedidos_pendentes = await db.pedidos.find(
         {"status": {"$in": ["pendente", "em_producao"]}, "id": {"$nin": pedidos_ids_producao}},
         {"_id": 0}
     ).to_list(1000)
     
-    # Buscar todos os pedidos relacionados
+    # Buscar todos os pedidos
     todos_pedidos_ids = list(set(pedidos_ids_producao + [p['id'] for p in pedidos_pendentes]))
     todos_pedidos = await db.pedidos.find(
         {"id": {"$in": todos_pedidos_ids}},
@@ -155,141 +222,41 @@ async def relatorio_por_data_entrega(current_user: dict = Depends(get_current_us
         pedido_id = prod.get('pedido_id')
         if not pedido_id or pedido_id not in pedidos_dict:
             continue
-            
+        
         pedido = pedidos_dict[pedido_id]
         data_entrega = pedido.get('data_entrega')
         
-        # Formatar data de entrega
         if data_entrega:
-            if isinstance(data_entrega, str):
-                data_key = data_entrega[:10]
-            else:
-                data_key = data_entrega.strftime('%Y-%m-%d')
+            data_key = data_entrega[:10] if isinstance(data_entrega, str) else data_entrega.strftime('%Y-%m-%d')
         else:
             data_key = "sem_data"
         
-        if data_key not in por_data_entrega:
-            por_data_entrega[data_key] = {
-                "data_entrega": data_key if data_key != "sem_data" else None,
-                "data_formatada": datetime.strptime(data_key, '%Y-%m-%d').strftime('%d/%m/%Y') if data_key != "sem_data" else "Sem data definida",
-                "pedidos": {},
-                "total_itens": 0,
-                "total_quantidade": 0
-            }
-        
-        pedido_numero = pedido.get('numero', prod.get('pedido_numero'))
-        if pedido_numero not in por_data_entrega[data_key]["pedidos"]:
-            por_data_entrega[data_key]["pedidos"][pedido_numero] = {
-                "pedido_id": pedido_id,
-                "pedido_numero": pedido_numero,
-                "cliente_nome": pedido.get('cliente_nome', 'N/A'),
-                "cliente_telefone": pedido.get('cliente_telefone', ''),
-                "observacoes": pedido.get('observacoes', ''),
-                "status": pedido.get('status', ''),
-                "origem": "em_producao",
-                "itens": []
-            }
-        
-        # Formatar sabores
-        sabores_texto = None
-        if prod.get('sabores'):
-            sabores_list = prod['sabores']
-            if isinstance(sabores_list, list) and len(sabores_list) > 0:
-                partes = []
-                for s in sabores_list:
-                    if isinstance(s, dict):
-                        nome = s.get('nome', s.get('sabor', ''))
-                        qtd = s.get('quantidade', 1)
-                        if qtd == 0.5:
-                            partes.append(f"½ {nome}")
-                        elif qtd != 1:
-                            partes.append(f"{qtd} {nome}")
-                        else:
-                            partes.append(nome)
-                sabores_texto = " + ".join(partes)
-        
-        item_info = {
-            "producao_id": prod['id'],
-            "produto_nome": prod['produto_nome'],
-            "quantidade": prod['quantidade'],
-            "sabores": sabores_texto,
-            "status": "em_producao",
-            "observacoes": prod.get('observacoes', '')
-        }
-        
-        por_data_entrega[data_key]["pedidos"][pedido_numero]["itens"].append(item_info)
-        por_data_entrega[data_key]["total_itens"] += 1
-        por_data_entrega[data_key]["total_quantidade"] += prod['quantidade']
+        sabores_texto = formatar_sabores(prod.get('sabores'))
+        adicionar_item(data_key, data_entrega, pedido, prod['produto_nome'], prod['quantidade'], sabores_texto, "em_producao")
     
-    # Processar pedidos pendentes (ainda não enviados para produção)
+    # Processar pedidos pendentes
     for pedido in pedidos_pendentes:
         data_entrega = pedido.get('data_entrega')
         
         if data_entrega:
-            if isinstance(data_entrega, str):
-                data_key = data_entrega[:10]
-            else:
-                data_key = data_entrega.strftime('%Y-%m-%d')
+            data_key = data_entrega[:10] if isinstance(data_entrega, str) else data_entrega.strftime('%Y-%m-%d')
         else:
             data_key = "sem_data"
         
-        if data_key not in por_data_entrega:
-            por_data_entrega[data_key] = {
-                "data_entrega": data_key if data_key != "sem_data" else None,
-                "data_formatada": datetime.strptime(data_key, '%Y-%m-%d').strftime('%d/%m/%Y') if data_key != "sem_data" else "Sem data definida",
-                "pedidos": {},
-                "total_itens": 0,
-                "total_quantidade": 0
-            }
-        
-        pedido_numero = pedido.get('numero')
-        if pedido_numero not in por_data_entrega[data_key]["pedidos"]:
-            por_data_entrega[data_key]["pedidos"][pedido_numero] = {
-                "pedido_id": pedido['id'],
-                "pedido_numero": pedido_numero,
-                "cliente_nome": pedido.get('cliente_nome', 'N/A'),
-                "cliente_telefone": pedido.get('cliente_telefone', ''),
-                "observacoes": pedido.get('observacoes', ''),
-                "status": pedido.get('status', ''),
-                "origem": "pendente",
-                "itens": []
-            }
-        
-        # Adicionar itens do pedido
         for item in pedido.get('items', []):
-            # Formatar sabores do item
-            sabores_texto = None
-            if item.get('sabores'):
-                sabores_list = item['sabores']
-                if isinstance(sabores_list, list) and len(sabores_list) > 0:
-                    partes = []
-                    for s in sabores_list:
-                        if isinstance(s, dict):
-                            nome = s.get('nome', s.get('sabor', ''))
-                            qtd = s.get('quantidade', 1)
-                            if qtd == 0.5:
-                                partes.append(f"½ {nome}")
-                            elif qtd != 1:
-                                partes.append(f"{qtd} {nome}")
-                            else:
-                                partes.append(nome)
-                    sabores_texto = " + ".join(partes)
-            
-            item_info = {
-                "producao_id": None,
-                "produto_nome": item.get('produto_nome', ''),
-                "quantidade": item.get('quantidade', 1),
-                "sabores": sabores_texto,
-                "status": "pendente",
-                "observacoes": ""
-            }
-            
-            por_data_entrega[data_key]["pedidos"][pedido_numero]["itens"].append(item_info)
-            por_data_entrega[data_key]["total_itens"] += 1
-            por_data_entrega[data_key]["total_quantidade"] += item.get('quantidade', 1)
+            sabores_texto = formatar_sabores(item.get('sabores'))
+            adicionar_item(data_key, data_entrega, pedido, item.get('produto_nome', ''), item.get('quantidade', 1), sabores_texto, "pendente")
     
-    # Converter pedidos de dict para lista
+    # Converter dicts para listas e ordenar
     for data_key in por_data_entrega:
+        # Ordenar resumo de produtos por quantidade (maior primeiro)
+        resumo_lista = sorted(
+            por_data_entrega[data_key]["resumo_produtos"].values(),
+            key=lambda x: (-x['quantidade_total'], x['produto_nome'])
+        )
+        por_data_entrega[data_key]["resumo_produtos"] = resumo_lista
+        
+        # Converter pedidos para lista
         por_data_entrega[data_key]["pedidos"] = list(por_data_entrega[data_key]["pedidos"].values())
     
     # Ordenar por data de entrega

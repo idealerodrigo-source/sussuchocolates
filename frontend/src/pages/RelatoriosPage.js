@@ -772,6 +772,31 @@ export default function RelatoriosPage() {
                         </div>
                       </div>
 
+                      {/* RESUMO AGREGADO POR PRODUTO */}
+                      <div className="px-6 py-4 bg-gradient-to-r from-[#6B4423]/5 to-[#8B5A3C]/5 border-b border-[#8B5A3C]/15">
+                        <h4 className="text-sm font-semibold text-[#6B4423] mb-3 flex items-center gap-2">
+                          <Factory size={18} weight="fill" />
+                          Resumo de Produção - O que produzir:
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {dataGrupo.resumo_produtos?.map((produto, prodIdx) => (
+                            <div key={prodIdx} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-[#8B5A3C]/15 shadow-sm">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-[#3E2723] truncate">{produto.produto_nome}</p>
+                                {produto.sabores && (
+                                  <p className="text-xs text-[#705A4D] truncate">{produto.sabores}</p>
+                                )}
+                              </div>
+                              <div className="ml-3 flex-shrink-0">
+                                <span className="bg-[#D97706] text-white px-3 py-1 rounded-full text-sm font-bold">
+                                  {produto.quantidade_total % 1 === 0 ? produto.quantidade_total : produto.quantidade_total.toFixed(1)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
                       {/* Pedidos desta data */}
                       <div className="divide-y divide-[#8B5A3C]/10">
                         {dataGrupo.pedidos.map((pedido, pedidoIdx) => (
