@@ -72,16 +72,13 @@ export function SearchableSelect({
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
-      {/* Botão principal */}
-      <button
-        type="button"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-        disabled={disabled}
+      {/* Container do seletor */}
+      <div
         className={`w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg 
-          text-left flex items-center justify-between gap-2
-          focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none
+          flex items-center justify-between gap-2
           ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-[#8B5A3C]/50'}
           ${isOpen ? 'border-[#6B4423] ring-1 ring-[#6B4423]' : ''}`}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
       >
         <span className={`flex-1 truncate ${selectedOption ? 'text-[#3E2723]' : 'text-[#8B5A3C]'}`}>
           {selectedOption ? selectedOption.label : placeholder}
@@ -90,7 +87,10 @@ export function SearchableSelect({
           {value && (
             <button
               type="button"
-              onClick={handleClear}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClear(e);
+              }}
               className="p-0.5 hover:bg-[#E8D5C4] rounded transition-colors"
             >
               <X size={14} className="text-[#8B5A3C]" />
@@ -101,7 +101,7 @@ export function SearchableSelect({
             className={`text-[#8B5A3C] transition-transform ${isOpen ? 'rotate-180' : ''}`} 
           />
         </div>
-      </button>
+      </div>
 
       {/* Dropdown */}
       {isOpen && (

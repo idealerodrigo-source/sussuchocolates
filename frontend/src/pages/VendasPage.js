@@ -94,9 +94,23 @@ export default function VendasPage() {
         produtosAPI.listar(),
       ]);
       setVendas(vendasRes.data);
-      const pedidosFinalizados = pedidosRes.data.filter(
-        (p) => p.status === 'concluido' || p.status === 'em_embalagem'
-      );
+      // Filtrar pedidos que estão prontos para venda:
+      // 1. Status 'concluido' ou 'em_embalagem'
+      // 2. OU pedidos onde TODOS os itens estão marcados como 'já entregue'
+      const pedidosFinalizados = pedidosRes.data.filter((p) => {
+        // Condição tradicional: status concluido ou em_embalagem
+        if (p.status === 'concluido' || p.status === 'em_embalagem') {
+          return true;
+        }
+        // Nova condição: todos os itens do pedido estão marcados como 'já entregue'
+        if (p.items && p.items.length > 0) {
+          const todosEntregues = p.items.every(item => item.ja_entregue === true);
+          if (todosEntregues) {
+            return true;
+          }
+        }
+        return false;
+      });
       setPedidosConcluidos(pedidosFinalizados);
       setClientes(clientesRes.data);
       setProdutos(produtosRes.data);
@@ -488,13 +502,18 @@ export default function VendasPage() {
                     className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
                   >
                     <option value="">Selecione um pedido...</option>
-                    {pedidosConcluidos.map((pedido) => (
-                      <option key={pedido.id} value={pedido.id}>
-                        {pedido.numero} - {pedido.cliente_nome} - {formatCurrency(pedido.valor_total)}
-                      </option>
-                    ))}
+                    {pedidosConcluidos.map((pedido) => {
+                      // Verificar se é um pedido com todos itens já entregues (do estoque)
+                      const todosEntregues = pedido.items?.length > 0 && pedido.items.every(item => item.ja_entregue === true);
+                      const statusLabel = todosEntregues ? '[Itens Entregues]' : '';
+                      return (
+                        <option key={pedido.id} value={pedido.id}>
+                          {pedido.numero} - {pedido.cliente_nome} - {formatCurrency(pedido.valor_total)} {statusLabel}
+                        </option>
+                      );
+                    })}
                   </select>
-                  <p className="text-xs text-[#705A4D] mt-1">Pedidos concluídos ou em embalagem</p>
+                  <p className="text-xs text-[#705A4D] mt-1">Pedidos concluídos, em embalagem, ou com todos itens já entregues</p>
                 </div>
               ) : etapaVendaDireta === 1 ? (
                 /* ETAPA 1: Montar a venda */

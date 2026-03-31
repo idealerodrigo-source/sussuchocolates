@@ -82,6 +82,19 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 
 ## Changelog
 
+### 2025-03-31 (Sessão 10)
+- **Nova Feature**: Pedidos com todos itens "Já Entregue" aparecem na área de Vendas
+  - Pedidos onde todos os itens foram marcados como "já entregue" agora aparecem automaticamente no dropdown de "Venda de Pedido"
+  - Indicação visual "[Itens Entregues]" no nome do pedido para diferenciá-los
+  - Mensagem atualizada: "Pedidos concluídos, em embalagem, ou com todos itens já entregues"
+- **Bug Fix**: Corrigido erro HTML "button cannot be descendant of button" no SearchableSelect
+  - Mudado container principal de `<button>` para `<div>` com onClick
+  - Botão de limpar (X) agora funciona sem conflitos de eventos
+- **Verificação**: Criação de pedidos funcionando normalmente
+  - Confirmado que a busca de produtos e clientes está funcionando
+  - Produtos são adicionados corretamente ao pedido
+  - Totais calculados corretamente
+
 ### 2025-03-30 (Sessão 9)
 - **Bug Fix**: Corrigido erro "o total da forma de pagamento não pode exceder 0,00" em Venda de Pedido
   - Problema: função `calcularSubtotalItens()` usava variável `pedidos` (undefined) em vez de `pedidosConcluidos`
