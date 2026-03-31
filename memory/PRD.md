@@ -83,6 +83,11 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 ## Changelog
 
 ### 2025-03-31 (Sessão 10)
+- **Nova Feature**: Export Excel "Resumo de Produção" nos Relatórios
+  - Novo botão "Resumo Produção" na aba "Por Data de Entrega"
+  - Exporta apenas dados agregados: Data | Produto | Sabores | Quantidade Total
+  - Ideal para checklist de produção simplificado
+  - Exemplo: 01/04/2026 - Ovo 06 AO LEITE 350g - quant: 24
 - **Nova Feature**: Quantidades decimais para produtos vendidos por peso (bombons, trufas, etc.)
   - Input de quantidade aceita valores decimais (0.1, 0.5, 1.5, etc.)
   - Botões +/- incrementam/decrementam em 0.5

@@ -671,7 +671,51 @@ export default function RelatoriosPage() {
                     className="text-green-600 border-green-600 hover:bg-green-50"
                   >
                     <FileXls size={18} className="mr-2" weight="fill" />
-                    Excel
+                    Excel Completo
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      // Excel com RESUMO agregado por produto (o que produzir)
+                      const wsData = [
+                        ['SUSSU CHOCOLATES - RESUMO DE PRODUÇÃO'],
+                        ['O QUE PRODUZIR - QUANTIDADES AGREGADAS POR PRODUTO'],
+                        [`Gerado em: ${new Date().toLocaleString('pt-BR')}`],
+                        [],
+                        ['Data Entrega', 'Produto', 'Sabores', 'Quantidade Total'],
+                      ];
+                      
+                      producaoPorDataEntrega.por_data_entrega.forEach(dataGrupo => {
+                        dataGrupo.resumo_produtos?.forEach(produto => {
+                          wsData.push([
+                            dataGrupo.data_formatada,
+                            produto.produto_nome,
+                            produto.sabores || '-',
+                            produto.quantidade_total
+                          ]);
+                        });
+                        // Linha vazia entre datas
+                        wsData.push([]);
+                      });
+                      
+                      // Adiciona totais gerais
+                      wsData.push([]);
+                      wsData.push(['TOTAL GERAL', '', '', producaoPorDataEntrega.total_quantidade]);
+                      
+                      const ws = XLSX.utils.aoa_to_sheet(wsData);
+                      ws['!cols'] = [{ wch: 20 }, { wch: 45 }, { wch: 35 }, { wch: 18 }];
+                      
+                      const wb = XLSX.utils.book_new();
+                      XLSX.utils.book_append_sheet(wb, ws, 'Resumo Produção');
+                      
+                      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                      saveAs(new Blob([excelBuffer]), 'Resumo_Producao.xlsx');
+                      toast.success('Resumo de produção exportado!');
+                    }} 
+                    variant="outline" 
+                    className="text-emerald-600 border-emerald-600 hover:bg-emerald-50"
+                  >
+                    <FileXls size={18} className="mr-2" weight="fill" />
+                    Resumo Produção
                   </Button>
                 </>
               )}
