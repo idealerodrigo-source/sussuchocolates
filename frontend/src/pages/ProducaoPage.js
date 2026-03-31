@@ -76,6 +76,7 @@ export default function ProducaoPage() {
 
   // Função para carregar itens do pedido selecionado
   // Desmembra itens com múltiplos sabores em itens separados para produção
+  // IGNORA itens já entregues (ja_entregue = true)
   const handlePedidoChange = (pedidoId) => {
     setFormData({ ...formData, pedido_id: pedidoId });
     
@@ -84,9 +85,15 @@ export default function ProducaoPage() {
       if (pedido && pedido.items && pedido.items.length > 0) {
         // Converter itens do pedido para formato de produção
         // Se tem sabores, desmembra em itens separados por sabor
+        // Ignora itens já entregues
         const itensFromPedido = [];
         
         pedido.items.forEach(item => {
+          // Pular itens já entregues
+          if (item.ja_entregue) {
+            return;
+          }
+          
           if (item.sabores && item.sabores.length > 0) {
             // Desmembrar por sabor - cada sabor vira um item de produção separado
             item.sabores.forEach(sabor => {
@@ -117,7 +124,11 @@ export default function ProducaoPage() {
           }
         });
         
-        setItensProducao(itensFromPedido);
+        if (itensFromPedido.length === 0) {
+          toast.info('Todos os itens deste pedido já foram entregues');
+        }
+        
+        setItensProducao(itensFromPedido.length > 0 ? itensFromPedido : [{ produto_id: '', quantidade: '' }]);
         toast.success(`${itensFromPedido.length} item(s) carregado(s) do pedido (sabores desmembrados)`);
       }
     } else {
@@ -232,6 +243,10 @@ export default function ProducaoPage() {
       pedidosPendentes.forEach(pedido => {
         if (pedido.items && pedido.items.length > 0) {
           pedido.items.forEach(item => {
+            // Pular itens já entregues
+            if (item.ja_entregue) {
+              return;
+            }
             todasProducoes.push({
               pedido_id: pedido.id,
               produto_id: item.produto_id,
@@ -245,7 +260,7 @@ export default function ProducaoPage() {
       });
       
       if (todasProducoes.length === 0) {
-        toast.error('Nenhum item encontrado nos pedidos pendentes');
+        toast.error('Nenhum item para produzir (todos já foram entregues)');
         setSubmitting(false);
         return;
       }
@@ -267,7 +282,11 @@ export default function ProducaoPage() {
 
   // Obter pedidos apenas pendentes (não em produção)
   const pedidosApenasNovos = pedidos.filter(p => p.status === 'pendente');
-  const totalItensPendentes = pedidosApenasNovos.reduce((acc, p) => acc + (p.items?.length || 0), 0);
+  // Contar apenas itens não entregues
+  const totalItensPendentes = pedidosApenasNovos.reduce((acc, p) => {
+    const itensNaoEntregues = p.items?.filter(i => !i.ja_entregue) || [];
+    return acc + itensNaoEntregues.length;
+  }, 0);
 
   const getProdutoNome = (produtoId) => {
     const produto = produtos.find(p => p.id === produtoId);
