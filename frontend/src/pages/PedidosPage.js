@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { pedidosAPI, clientesAPI, produtosAPI } from '../services/api';
 import { formatCurrency, formatDateTime, getStatusColor, getStatusLabel } from '../utils/formatters';
-import { Plus, ShoppingCart, Trash, PencilSimple, Eye, FilePdf, WhatsappLogo, UserPlus, Package, XCircle } from '@phosphor-icons/react';
+import { Plus, ShoppingCart, Trash, PencilSimple, Eye, FilePdf, WhatsappLogo, UserPlus, Package, XCircle, MagnifyingGlass } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -32,7 +32,22 @@ export default function PedidosPage() {
   const [editingPedidoId, setEditingPedidoId] = useState(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingPedido, setViewingPedido] = useState(null);
-  const { sortedData, requestSort, sortConfig } = useSortableTable(pedidos, { key: 'data_pedido', direction: 'desc' });
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Filtrar pedidos pelo termo de pesquisa
+  const filteredPedidos = useMemo(() => {
+    if (!searchTerm.trim()) return pedidos;
+    const term = searchTerm.toLowerCase();
+    return pedidos.filter(p => 
+      p.numero?.toLowerCase().includes(term) ||
+      p.cliente_nome?.toLowerCase().includes(term) ||
+      p.status?.toLowerCase().includes(term) ||
+      p.observacoes?.toLowerCase().includes(term) ||
+      p.items?.some(i => i.produto_nome?.toLowerCase().includes(term))
+    );
+  }, [pedidos, searchTerm]);
+  
+  const { sortedData, requestSort, sortConfig } = useSortableTable(filteredPedidos, { key: 'data_pedido', direction: 'desc' });
   
   // Estado para modal de seleção de sabores
   const [saboresModalOpen, setSaboresModalOpen] = useState(false);
@@ -879,6 +894,26 @@ Obrigado pela preferência! 🙏
             </form>
           </DialogContent>
         </Dialog>
+      </div>
+
+      {/* Campo de Pesquisa */}
+      <div className="mb-4">
+        <div className="relative max-w-md">
+          <MagnifyingGlass size={20} weight="bold" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#8B5A3C]" />
+          <input
+            type="text"
+            placeholder="Pesquisar por número, cliente, produto, status..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans placeholder:text-[#8B5A3C]/60"
+          />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#8B5A3C] hover:text-[#6B4423]">✕</button>
+          )}
+        </div>
+        {searchTerm && (
+          <p className="text-xs text-[#705A4D] mt-1">Encontrados: {filteredPedidos.length} de {pedidos.length} pedidos</p>
+        )}
       </div>
 
       <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl shadow-sm overflow-hidden">

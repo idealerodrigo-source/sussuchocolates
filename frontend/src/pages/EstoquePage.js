@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { estoqueAPI, produtosAPI } from '../services/api';
 import { formatDateTime } from '../utils/formatters';
-import { Plus, TrendUp, TrendDown, ArrowsClockwise, MapPin } from '@phosphor-icons/react';
+import { Plus, TrendUp, TrendDown, ArrowsClockwise, MapPin, MagnifyingGlass } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -14,8 +14,32 @@ export default function EstoquePage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('saldo');
-  const { sortedData: sortedSaldos, requestSort: requestSortSaldos, sortConfig: sortConfigSaldos } = useSortableTable(saldos, { key: 'produto_nome', direction: 'asc' });
-  const { sortedData: sortedMovimentos, requestSort: requestSortMovimentos, sortConfig: sortConfigMovimentos } = useSortableTable(movimentos, { key: 'data_movimento', direction: 'desc' });
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Filtrar saldos pelo termo de pesquisa
+  const filteredSaldos = useMemo(() => {
+    if (!searchTerm.trim()) return saldos;
+    const term = searchTerm.toLowerCase();
+    return saldos.filter(s => 
+      s.produto_nome?.toLowerCase().includes(term) ||
+      s.localizacao?.toLowerCase().includes(term)
+    );
+  }, [saldos, searchTerm]);
+  
+  // Filtrar movimentos pelo termo de pesquisa
+  const filteredMovimentos = useMemo(() => {
+    if (!searchTerm.trim()) return movimentos;
+    const term = searchTerm.toLowerCase();
+    return movimentos.filter(m => 
+      m.produto_nome?.toLowerCase().includes(term) ||
+      m.responsavel?.toLowerCase().includes(term) ||
+      m.tipo_movimento?.toLowerCase().includes(term) ||
+      m.observacoes?.toLowerCase().includes(term)
+    );
+  }, [movimentos, searchTerm]);
+  
+  const { sortedData: sortedSaldos, requestSort: requestSortSaldos, sortConfig: sortConfigSaldos } = useSortableTable(filteredSaldos, { key: 'produto_nome', direction: 'asc' });
+  const { sortedData: sortedMovimentos, requestSort: requestSortMovimentos, sortConfig: sortConfigMovimentos } = useSortableTable(filteredMovimentos, { key: 'data_movimento', direction: 'desc' });
   const [formData, setFormData] = useState({
     produto_id: '',
     quantidade: '',
@@ -208,6 +232,28 @@ export default function EstoquePage() {
             Movimentações
           </button>
         </div>
+      </div>
+
+      {/* Campo de Pesquisa */}
+      <div className="mb-4">
+        <div className="relative max-w-md">
+          <MagnifyingGlass size={20} weight="bold" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#8B5A3C]" />
+          <input
+            type="text"
+            placeholder="Pesquisar por produto, responsável, localização..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans placeholder:text-[#8B5A3C]/60"
+          />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#8B5A3C] hover:text-[#6B4423]">✕</button>
+          )}
+        </div>
+        {searchTerm && (
+          <p className="text-xs text-[#705A4D] mt-1">
+            Encontrados: {activeTab === 'saldo' ? filteredSaldos.length : filteredMovimentos.length} de {activeTab === 'saldo' ? saldos.length : movimentos.length} {activeTab === 'saldo' ? 'produtos' : 'movimentos'}
+          </p>
+        )}
       </div>
 
       {activeTab === 'saldo' && (

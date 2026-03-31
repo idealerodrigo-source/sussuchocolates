@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { fornecedoresAPI, insumosAPI, comprasAPI, nfEntradaAPI } from '../services/api';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
 import { 
   Plus, Truck, Package, ShoppingCart, Trash, PencilSimple, 
-  CheckCircle, XCircle, Buildings, Eye, FileText, Barcode, Code, Upload, CloudArrowUp
+  CheckCircle, XCircle, Buildings, Eye, FileText, Barcode, Code, Upload, CloudArrowUp, MagnifyingGlass
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
@@ -16,6 +16,48 @@ export default function ComprasPage() {
   const [compras, setCompras] = useState([]);
   const [nfEntradas, setNfEntradas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Filtros para cada tab
+  const filteredFornecedores = useMemo(() => {
+    if (!searchTerm.trim()) return fornecedores;
+    const term = searchTerm.toLowerCase();
+    return fornecedores.filter(f => 
+      f.nome?.toLowerCase().includes(term) ||
+      f.cnpj?.includes(term) ||
+      f.cidade?.toLowerCase().includes(term)
+    );
+  }, [fornecedores, searchTerm]);
+  
+  const filteredInsumos = useMemo(() => {
+    if (!searchTerm.trim()) return insumos;
+    const term = searchTerm.toLowerCase();
+    return insumos.filter(i => 
+      i.nome?.toLowerCase().includes(term) ||
+      i.categoria?.toLowerCase().includes(term) ||
+      i.fornecedor_nome?.toLowerCase().includes(term)
+    );
+  }, [insumos, searchTerm]);
+  
+  const filteredCompras = useMemo(() => {
+    if (!searchTerm.trim()) return compras;
+    const term = searchTerm.toLowerCase();
+    return compras.filter(c => 
+      c.fornecedor_nome?.toLowerCase().includes(term) ||
+      c.numero_nf?.includes(term) ||
+      c.status?.toLowerCase().includes(term)
+    );
+  }, [compras, searchTerm]);
+  
+  const filteredNfEntradas = useMemo(() => {
+    if (!searchTerm.trim()) return nfEntradas;
+    const term = searchTerm.toLowerCase();
+    return nfEntradas.filter(n => 
+      n.fornecedor_nome?.toLowerCase().includes(term) ||
+      n.numero_nf?.includes(term) ||
+      n.chave_acesso?.includes(term)
+    );
+  }, [nfEntradas, searchTerm]);
   
   // Dialogs
   const [fornecedorDialogOpen, setFornecedorDialogOpen] = useState(false);
@@ -789,6 +831,38 @@ export default function ComprasPage() {
         </div>
       </div>
 
+      {/* Campo de Pesquisa */}
+      <div className="mb-4">
+        <div className="relative max-w-md">
+          <MagnifyingGlass size={20} weight="bold" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#8B5A3C]" />
+          <input
+            type="text"
+            placeholder={
+              activeTab === 'fornecedores' ? "Pesquisar por nome, CNPJ, cidade..." :
+              activeTab === 'insumos' ? "Pesquisar por nome, categoria, fornecedor..." :
+              activeTab === 'compras' ? "Pesquisar por fornecedor, NF, status..." :
+              "Pesquisar por fornecedor, NF, chave de acesso..."
+            }
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans placeholder:text-[#8B5A3C]/60"
+          />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#8B5A3C] hover:text-[#6B4423]">✕</button>
+          )}
+        </div>
+        {searchTerm && (
+          <p className="text-xs text-[#705A4D] mt-1">
+            Encontrados: {
+              activeTab === 'fornecedores' ? `${filteredFornecedores.length} de ${fornecedores.length} fornecedores` :
+              activeTab === 'insumos' ? `${filteredInsumos.length} de ${insumos.length} insumos` :
+              activeTab === 'compras' ? `${filteredCompras.length} de ${compras.length} compras` :
+              `${filteredNfEntradas.length} de ${nfEntradas.length} notas fiscais`
+            }
+          </p>
+        )}
+      </div>
+
       {/* TAB: NF DE ENTRADA */}
       {activeTab === 'nf-entrada' && (
         <>
@@ -1301,10 +1375,10 @@ export default function ComprasPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {nfEntradas.length === 0 ? (
-                    <tr><td colSpan="8" className="text-center py-12 text-[#705A4D] font-sans">Nenhuma NF de entrada registrada</td></tr>
+                  {filteredNfEntradas.length === 0 ? (
+                    <tr><td colSpan="8" className="text-center py-12 text-[#705A4D] font-sans">Nenhuma NF de entrada encontrada</td></tr>
                   ) : (
-                    nfEntradas.map((nf) => (
+                    filteredNfEntradas.map((nf) => (
                       <tr key={nf.id} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
                         <td className="px-4 py-4 text-sm text-[#4A3B32] font-sans font-medium">{nf.numero_nf}{nf.serie ? `/${nf.serie}` : ''}</td>
                         <td className="px-4 py-4 text-sm text-[#4A3B32] font-sans">{nf.fornecedor_nome}</td>
@@ -1513,8 +1587,8 @@ export default function ComprasPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {fornecedores.length === 0 ? (<tr><td colSpan="6" className="text-center py-12 text-[#705A4D] font-sans">Nenhum fornecedor cadastrado</td></tr>) : (
-                    fornecedores.map((f) => (
+                  {filteredFornecedores.length === 0 ? (<tr><td colSpan="6" className="text-center py-12 text-[#705A4D] font-sans">Nenhum fornecedor encontrado</td></tr>) : (
+                    filteredFornecedores.map((f) => (
                       <tr key={f.id} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
                         <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">{f.nome}</td>
                         <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{f.cnpj || '-'}</td>
@@ -1586,8 +1660,8 @@ export default function ComprasPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {insumos.length === 0 ? (<tr><td colSpan="6" className="text-center py-12 text-[#705A4D] font-sans">Nenhum insumo cadastrado</td></tr>) : (
-                    insumos.map((i) => (
+                  {filteredInsumos.length === 0 ? (<tr><td colSpan="6" className="text-center py-12 text-[#705A4D] font-sans">Nenhum insumo encontrado</td></tr>) : (
+                    filteredInsumos.map((i) => (
                       <tr key={i.id} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
                         <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">{i.nome}</td>
                         <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{i.categoria || '-'}</td>
@@ -1636,8 +1710,8 @@ export default function ComprasPage() {
               <table className="w-full">
                 <thead className="bg-[#E8D5C4]"><tr><th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Número</th><th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Fornecedor</th><th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Data Pedido</th><th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Entrega Prevista</th><th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Valor Total</th><th className="text-left px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Status</th><th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Ações</th></tr></thead>
                 <tbody>
-                  {compras.length === 0 ? (<tr><td colSpan="7" className="text-center py-12 text-[#705A4D] font-sans">Nenhum pedido de compra</td></tr>) : (
-                    compras.map((c) => (
+                  {filteredCompras.length === 0 ? (<tr><td colSpan="7" className="text-center py-12 text-[#705A4D] font-sans">Nenhum pedido de compra encontrado</td></tr>) : (
+                    filteredCompras.map((c) => (
                       <tr key={c.id} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
                         <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">{c.numero}</td>
                         <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{c.fornecedor_nome}</td>

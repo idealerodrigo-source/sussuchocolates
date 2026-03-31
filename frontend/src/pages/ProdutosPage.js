@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { produtosAPI } from '../services/api';
 import { formatCurrency } from '../utils/formatters';
-import { Plus, Pencil, Trash } from '@phosphor-icons/react';
+import { Plus, Pencil, Trash, MagnifyingGlass } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -12,7 +12,20 @@ export default function ProdutosPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduto, setEditingProduto] = useState(null);
-  const { sortedData, requestSort, sortConfig } = useSortableTable(produtos, { key: 'nome', direction: 'asc' });
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Filtrar produtos pelo termo de pesquisa
+  const filteredProdutos = useMemo(() => {
+    if (!searchTerm.trim()) return produtos;
+    const term = searchTerm.toLowerCase();
+    return produtos.filter(p => 
+      p.nome?.toLowerCase().includes(term) ||
+      p.categoria?.toLowerCase().includes(term) ||
+      p.descricao?.toLowerCase().includes(term)
+    );
+  }, [produtos, searchTerm]);
+  
+  const { sortedData, requestSort, sortConfig } = useSortableTable(filteredProdutos, { key: 'nome', direction: 'asc' });
   const [formData, setFormData] = useState({
     nome: '',
     descricao: '',
@@ -267,6 +280,26 @@ export default function ProdutosPage() {
             </form>
           </DialogContent>
         </Dialog>
+      </div>
+
+      {/* Campo de Pesquisa */}
+      <div className="mb-4">
+        <div className="relative max-w-md">
+          <MagnifyingGlass size={20} weight="bold" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#8B5A3C]" />
+          <input
+            type="text"
+            placeholder="Pesquisar por nome, categoria, descrição..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans placeholder:text-[#8B5A3C]/60"
+          />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#8B5A3C] hover:text-[#6B4423]">✕</button>
+          )}
+        </div>
+        {searchTerm && (
+          <p className="text-xs text-[#705A4D] mt-1">Encontrados: {filteredProdutos.length} de {produtos.length} produtos</p>
+        )}
       </div>
 
       <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl shadow-sm overflow-hidden">

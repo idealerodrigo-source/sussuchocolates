@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { embalagemAPI, producaoAPI } from '../services/api';
 import { formatDateTime } from '../utils/formatters';
-import { Plus, CheckCircle, MapPin, User, Package, CheckSquare } from '@phosphor-icons/react';
+import { Plus, CheckCircle, MapPin, User, Package, CheckSquare, MagnifyingGlass } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -19,6 +19,21 @@ export default function EmbalagemPage() {
   const [selectedEmbalagens, setSelectedEmbalagens] = useState([]);
   const [localizacao, setLocalizacao] = useState('');
   const [responsavelConclusao, setResponsavelConclusao] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Filtrar embalagens pelo termo de pesquisa
+  const filteredEmbalagens = useMemo(() => {
+    if (!searchTerm.trim()) return embalagens;
+    const term = searchTerm.toLowerCase();
+    return embalagens.filter(e => 
+      e.produto_nome?.toLowerCase().includes(term) ||
+      e.pedido_numero?.toLowerCase().includes(term) ||
+      e.responsavel?.toLowerCase().includes(term) ||
+      e.tipo_embalagem?.toLowerCase().includes(term) ||
+      e.localizacao?.toLowerCase().includes(term)
+    );
+  }, [embalagens, searchTerm]);
+  
   const [formData, setFormData] = useState({
     producao_id: '',
     pedido_id: '',
@@ -108,8 +123,8 @@ export default function EmbalagemPage() {
     }
   };
 
-  // Agrupar embalagens por pedido
-  const embalagensPorPedido = embalagens.reduce((acc, emb) => {
+  // Agrupar embalagens por pedido (usando filteredEmbalagens)
+  const embalagensPorPedido = filteredEmbalagens.reduce((acc, emb) => {
     const pedidoKey = emb.pedido_id || emb.pedido_numero || 'sem_pedido';
     if (!acc[pedidoKey]) {
       acc[pedidoKey] = {
@@ -315,6 +330,26 @@ export default function EmbalagemPage() {
         <p className="text-sm text-blue-800 font-sans">
           ℹ️ <strong>Dica:</strong> Você pode concluir todas as embalagens de um pedido de uma vez clicando em "Concluir Pedido", ou selecionar itens individuais.
         </p>
+      </div>
+
+      {/* Campo de Pesquisa */}
+      <div className="mb-4">
+        <div className="relative max-w-md">
+          <MagnifyingGlass size={20} weight="bold" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#8B5A3C]" />
+          <input
+            type="text"
+            placeholder="Pesquisar por produto, pedido, responsável, localização..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans placeholder:text-[#8B5A3C]/60"
+          />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#8B5A3C] hover:text-[#6B4423]">✕</button>
+          )}
+        </div>
+        {searchTerm && (
+          <p className="text-xs text-[#705A4D] mt-1">Encontrados: {filteredEmbalagens.length} de {embalagens.length} embalagens</p>
+        )}
       </div>
 
       {/* Cards agrupados por pedido */}

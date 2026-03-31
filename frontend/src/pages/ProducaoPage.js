@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { producaoAPI, pedidosAPI, produtosAPI } from '../services/api';
 import { formatDateTime } from '../utils/formatters';
-import { Plus, CheckCircle, Package, ShoppingCart, Trash, PlusCircle, ClipboardText, Factory, Printer, Lightning } from '@phosphor-icons/react';
+import { Plus, CheckCircle, Package, ShoppingCart, Trash, PlusCircle, ClipboardText, Factory, Printer, Lightning, MagnifyingGlass } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -21,7 +21,21 @@ export default function ProducaoPage() {
   const [tipoProducao, setTipoProducao] = useState('estoque');
   const [responsavelTodos, setResponsavelTodos] = useState('');
   const [relatorioPendente, setRelatorioPendente] = useState(null);
-  const { sortedData, requestSort, sortConfig } = useSortableTable(producoes, { key: 'data_criacao', direction: 'desc' });
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Filtrar produções pelo termo de pesquisa
+  const filteredProducoes = useMemo(() => {
+    if (!searchTerm.trim()) return producoes;
+    const term = searchTerm.toLowerCase();
+    return producoes.filter(p => 
+      p.produto_nome?.toLowerCase().includes(term) ||
+      p.pedido_numero?.toLowerCase().includes(term) ||
+      p.responsavel?.toLowerCase().includes(term) ||
+      p.observacoes?.toLowerCase().includes(term)
+    );
+  }, [producoes, searchTerm]);
+  
+  const { sortedData, requestSort, sortConfig } = useSortableTable(filteredProducoes, { key: 'data_criacao', direction: 'desc' });
   const [formData, setFormData] = useState({
     pedido_id: '',
     responsavel: '',
@@ -619,6 +633,26 @@ export default function ProducaoPage() {
       {/* Tab: Produções */}
       {activeTab === 'producao' && (
         <>
+          {/* Campo de Pesquisa */}
+          <div className="mb-4">
+            <div className="relative max-w-md">
+              <MagnifyingGlass size={20} weight="bold" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#8B5A3C]" />
+              <input
+                type="text"
+                placeholder="Pesquisar por produto, pedido, responsável..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans placeholder:text-[#8B5A3C]/60"
+              />
+              {searchTerm && (
+                <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#8B5A3C] hover:text-[#6B4423]">✕</button>
+              )}
+            </div>
+            {searchTerm && (
+              <p className="text-xs text-[#705A4D] mt-1">Encontrados: {filteredProducoes.length} de {producoes.length} produções</p>
+            )}
+          </div>
+
           {/* Card de Resumo - Produção Pendente por Produto/Sabor */}
           {relatorioPendente && relatorioPendente.produtos_agrupados && relatorioPendente.produtos_agrupados.length > 0 && (
             <div className="mb-6 bg-gradient-to-r from-[#FEF3C7] to-[#FDE68A] border border-[#F59E0B]/30 rounded-xl p-4 shadow-sm">
