@@ -257,6 +257,12 @@ export default function VendasPage() {
         : (formData.desconto_valor || 0);
       const valorTotal = Math.max(0, subtotal - valorDesconto);
 
+      // Determinar status de pagamento:
+      // - "pendente" se marcou entrega posterior OU se alguma forma de pagamento é "A Prazo"
+      // - "pago" caso contrário
+      const temPagamentoAPrazo = formasPagamentoFinal.some(fp => fp.tipo === 'A Prazo');
+      const statusPagamento = (formData.entrega_posterior || temPagamentoAPrazo) ? 'pendente' : 'pago';
+
       if (tipoVenda === 'pedido') {
         const pedido = pedidosConcluidos.find(p => p.id === formData.pedido_id);
         if (!pedido) {
@@ -270,6 +276,7 @@ export default function VendasPage() {
           formas_pagamento: formasPagamentoFinal,
           parcelas: formData.parcelas,
           entrega_posterior: formData.entrega_posterior,
+          status_pagamento: statusPagamento,
           data_previsao_pagamento: formData.data_previsao_pagamento || null,
           observacoes_pagamento: formData.observacoes_pagamento,
           desconto_tipo: formData.desconto_valor > 0 ? formData.desconto_tipo : null,
@@ -296,6 +303,7 @@ export default function VendasPage() {
           cliente_id: formData.cliente_id,
           items: formData.items.map(item => ({
             produto_id: item.produto_id,
+            produto_nome: item.produto_nome,
             quantidade: item.quantidade,
             preco_unitario: item.preco_unitario,
             subtotal: item.subtotal,
@@ -306,6 +314,7 @@ export default function VendasPage() {
           formas_pagamento: formasPagamentoFinal,
           parcelas: formData.parcelas,
           entrega_posterior: formData.entrega_posterior,
+          status_pagamento: statusPagamento,
           data_previsao_pagamento: formData.data_previsao_pagamento || null,
           observacoes_pagamento: formData.observacoes_pagamento,
           tem_itens_a_produzir: temItemAProduzir,
@@ -315,7 +324,7 @@ export default function VendasPage() {
           valor_total: valorTotal,
         };
         
-        await vendasAPI.criarDireta(payload);
+        await vendasAPI.criar(payload);
         toast.success(temItemAProduzir 
           ? 'Venda registrada! Pedido de produção criado automaticamente.' 
           : 'Venda registrada com sucesso!');

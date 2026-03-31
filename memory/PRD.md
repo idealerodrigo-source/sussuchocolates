@@ -83,6 +83,12 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 ## Changelog
 
 ### 2025-03-31 (Sessão 10)
+- **Bug Fix CRÍTICO**: Vendas "A Prazo (Fiado)" agora mostram status "A Receber" corretamente
+  - Antes: vendas com pagamento a prazo eram marcadas como "Pago"
+  - Agora: frontend envia `status_pagamento: "pendente"` quando forma de pagamento é "A Prazo" ou quando checkbox "Entrega com pagamento posterior" está marcado
+  - Badge laranja "A Receber" aparece corretamente na lista de vendas
+- **Bug Fix**: Corrigido erro ao criar venda direta - `produto_nome` faltando no payload
+- **Bug Fix**: Corrigido chamada incorreta `vendasAPI.criarDireta` → `vendasAPI.criar`
 - **Nova Feature**: Pedidos com todos itens "Já Entregue" aparecem na área de Vendas
   - Pedidos onde todos os itens foram marcados como "já entregue" agora aparecem automaticamente no dropdown de "Venda de Pedido"
   - Indicação visual "[Itens Entregues]" no nome do pedido para diferenciá-los
