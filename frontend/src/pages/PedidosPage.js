@@ -12,6 +12,15 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useSortableTable, SortableHeader } from '../hooks/useSortableTable';
 
+// Função para formatar quantidade (mostra decimal se for fracionado)
+const formatarQuantidade = (qtd) => {
+  if (Number.isInteger(qtd)) {
+    return `${qtd}x`;
+  }
+  // Para quantidades fracionadas, mostrar com indicação de kg
+  return `${qtd.toFixed(1).replace('.', ',')}kg`;
+};
+
 // Dados da empresa Sussu Chocolates
 const EMPRESA = {
   nome: 'SUSSU CHOCOLATES',
@@ -780,7 +789,7 @@ Obrigado pela preferência! 🙏
                             </p>
                           )}
                           <p className="text-xs text-[#705A4D] mt-1">
-                            {item.quantidade}x {formatCurrency(item.preco_unitario)}
+                            {formatarQuantidade(item.quantidade)} {formatCurrency(item.preco_unitario)}
                             {item.valor_desconto > 0 && (
                               <span className="text-[#D97706] ml-1">
                                 (-{item.tipo_desconto === 'percentual' ? `${item.desconto}%` : formatCurrency(item.desconto)})
@@ -795,28 +804,30 @@ Obrigado pela preferência! 🙏
                             <button
                               type="button"
                               onClick={() => {
-                                if (item.quantidade > 1) {
+                                if (item.quantidade > 0.1) {
+                                  const novaQtd = Math.round((item.quantidade - 0.5) * 10) / 10; // Decrementa 0.5
                                   const newItems = [...formData.items];
                                   newItems[index] = {
                                     ...item,
-                                    quantidade: item.quantidade - 1,
-                                    subtotal: (item.quantidade - 1) * item.preco_unitario - (item.valor_desconto || 0)
+                                    quantidade: Math.max(0.1, novaQtd),
+                                    subtotal: Math.max(0.1, novaQtd) * item.preco_unitario - (item.valor_desconto || 0)
                                   };
                                   setFormData({ ...formData, items: newItems });
                                 }
                               }}
-                              disabled={item.quantidade <= 1}
+                              disabled={item.quantidade <= 0.1}
                               className="w-7 h-7 flex items-center justify-center rounded bg-[#FFFDF8] hover:bg-[#E8D5C4] disabled:opacity-50 disabled:cursor-not-allowed text-[#6B4423] font-bold"
                             >
                               -
                             </button>
                             <input
                               type="number"
-                              min="1"
+                              min="0.1"
+                              step="0.1"
                               value={item.quantidade}
                               onChange={(e) => {
-                                const novaQtd = parseInt(e.target.value) || 1;
-                                if (novaQtd >= 1) {
+                                const novaQtd = parseFloat(e.target.value) || 0.1;
+                                if (novaQtd >= 0.1) {
                                   const newItems = [...formData.items];
                                   newItems[index] = {
                                     ...item,
@@ -826,16 +837,17 @@ Obrigado pela preferência! 🙏
                                   setFormData({ ...formData, items: newItems });
                                 }
                               }}
-                              className="w-12 text-center bg-[#FFFDF8] border-0 text-[#3E2723] font-semibold text-sm rounded focus:ring-1 focus:ring-[#6B4423]"
+                              className="w-14 text-center bg-[#FFFDF8] border-0 text-[#3E2723] font-semibold text-sm rounded focus:ring-1 focus:ring-[#6B4423]"
                             />
                             <button
                               type="button"
                               onClick={() => {
+                                const novaQtd = Math.round((item.quantidade + 0.5) * 10) / 10; // Incrementa 0.5
                                 const newItems = [...formData.items];
                                 newItems[index] = {
                                   ...item,
-                                  quantidade: item.quantidade + 1,
-                                  subtotal: (item.quantidade + 1) * item.preco_unitario - (item.valor_desconto || 0)
+                                  quantidade: novaQtd,
+                                  subtotal: novaQtd * item.preco_unitario - (item.valor_desconto || 0)
                                 };
                                 setFormData({ ...formData, items: newItems });
                               }}

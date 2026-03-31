@@ -83,6 +83,11 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 ## Changelog
 
 ### 2025-03-31 (Sessão 10)
+- **Nova Feature**: Quantidades decimais para produtos vendidos por peso (bombons, trufas, etc.)
+  - Input de quantidade aceita valores decimais (0.1, 0.5, 1.5, etc.)
+  - Botões +/- incrementam/decrementam em 0.5
+  - Subtotal é recalculado automaticamente (ex: 0.5 x R$ 200 = R$ 100)
+  - Implementado em Pedidos e Vendas
 - **Bug Fix CRÍTICO**: Vendas "A Prazo (Fiado)" agora mostram status "A Receber" corretamente
   - Antes: vendas com pagamento a prazo eram marcadas como "Pago"
   - Agora: frontend envia `status_pagamento: "pendente"` quando forma de pagamento é "A Prazo" ou quando checkbox "Entrega com pagamento posterior" está marcado

@@ -668,20 +668,36 @@ export default function VendasPage() {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    if (item.quantidade > 1) {
+                                    if (item.quantidade > 0.1) {
+                                      const novaQtd = Math.round((item.quantidade - 0.5) * 10) / 10;
                                       const newItems = [...formData.items];
-                                      newItems[index] = { ...item, quantidade: item.quantidade - 1, subtotal: (item.quantidade - 1) * item.preco_unitario };
+                                      newItems[index] = { ...item, quantidade: Math.max(0.1, novaQtd), subtotal: Math.max(0.1, novaQtd) * item.preco_unitario };
                                       setFormData({ ...formData, items: newItems });
                                     }
                                   }}
                                   className="w-6 h-6 rounded bg-[#E8D5C4] text-[#6B4423] flex items-center justify-center hover:bg-[#D4C4B0]"
                                 >-</button>
-                                <span className="w-8 text-center text-sm font-medium">{item.quantidade}</span>
+                                <input
+                                  type="number"
+                                  min="0.1"
+                                  step="0.1"
+                                  value={item.quantidade}
+                                  onChange={(e) => {
+                                    const novaQtd = parseFloat(e.target.value) || 0.1;
+                                    if (novaQtd >= 0.1) {
+                                      const newItems = [...formData.items];
+                                      newItems[index] = { ...item, quantidade: novaQtd, subtotal: novaQtd * item.preco_unitario };
+                                      setFormData({ ...formData, items: newItems });
+                                    }
+                                  }}
+                                  className="w-12 text-center text-sm font-medium bg-transparent border border-[#8B5A3C]/30 rounded"
+                                />
                                 <button
                                   type="button"
                                   onClick={() => {
+                                    const novaQtd = Math.round((item.quantidade + 0.5) * 10) / 10;
                                     const newItems = [...formData.items];
-                                    newItems[index] = { ...item, quantidade: item.quantidade + 1, subtotal: (item.quantidade + 1) * item.preco_unitario };
+                                    newItems[index] = { ...item, quantidade: novaQtd, subtotal: novaQtd * item.preco_unitario };
                                     setFormData({ ...formData, items: newItems });
                                   }}
                                   className="w-6 h-6 rounded bg-[#E8D5C4] text-[#6B4423] flex items-center justify-center hover:bg-[#D4C4B0]"
