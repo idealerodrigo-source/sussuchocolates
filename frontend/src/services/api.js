@@ -48,6 +48,7 @@ export const producaoAPI = {
   criar: (data) => api.post('/producao', data),
   concluir: (id) => api.patch(`/producao/${id}/concluir`),
   relatorioPendente: () => api.get('/producao/relatorio/pendente'),
+  relatorioPorDataEntrega: () => api.get('/producao/relatorio/por-data-entrega'),
 };
 
 export const embalagemAPI = {

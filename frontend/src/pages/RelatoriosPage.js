@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { relatoriosAPI } from '../services/api';
+import { relatoriosAPI, producaoAPI } from '../services/api';
 import { formatCurrency } from '../utils/formatters';
-import { MagnifyingGlass, Factory, Package, Users, ShoppingCart, CheckCircle, FilePdf, FileXls, DownloadSimple } from '@phosphor-icons/react';
+import { MagnifyingGlass, Factory, Package, Users, ShoppingCart, CheckCircle, FilePdf, FileXls, DownloadSimple, CalendarBlank, Phone, Warning } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
@@ -21,13 +21,14 @@ const EMPRESA = {
 };
 
 export default function RelatoriosPage() {
-  const [activeTab, setActiveTab] = useState('a-produzir');
+  const [activeTab, setActiveTab] = useState('por-data-entrega');
   const [relatorioVendas, setRelatorioVendas] = useState(null);
   const [relatorioProducao, setRelatorioProducao] = useState(null);
   const [relatorioClientes, setRelatorioClientes] = useState(null);
   const [producaoPendente, setProducaoPendente] = useState(null);
   const [producaoConcluida, setProducaoConcluida] = useState(null);
   const [pedidosResumo, setPedidosResumo] = useState(null);
+  const [producaoPorDataEntrega, setProducaoPorDataEntrega] = useState(null);
   const [loading, setLoading] = useState(false);
   const [filtros, setFiltros] = useState({
     data_inicio: '',
@@ -36,7 +37,9 @@ export default function RelatoriosPage() {
 
   // Carregar relatórios automaticamente ao acessar cada aba
   useEffect(() => {
-    if (activeTab === 'a-produzir') {
+    if (activeTab === 'por-data-entrega') {
+      buscarProducaoPorDataEntrega();
+    } else if (activeTab === 'a-produzir') {
       buscarProducaoPendente();
     } else if (activeTab === 'produzidos') {
       buscarProducaoConcluida();
@@ -50,6 +53,18 @@ export default function RelatoriosPage() {
       buscarRelatorioClientes();
     }
   }, [activeTab]);
+
+  const buscarProducaoPorDataEntrega = async () => {
+    setLoading(true);
+    try {
+      const response = await producaoAPI.relatorioPorDataEntrega();
+      setProducaoPorDataEntrega(response.data);
+    } catch (error) {
+      toast.error('Erro ao carregar relatório');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const buscarProducaoPendente = async () => {
     setLoading(true);
@@ -500,6 +515,7 @@ export default function RelatoriosPage() {
   };
 
   const tabs = [
+    { id: 'por-data-entrega', label: 'Por Data de Entrega', icon: CalendarBlank },
     { id: 'a-produzir', label: 'Itens a Produzir', icon: Factory },
     { id: 'produzidos', label: 'Itens Produzidos', icon: CheckCircle },
     { id: 'pedidos-resumo', label: 'Resumo Pedidos', icon: ShoppingCart },
@@ -533,6 +549,301 @@ export default function RelatoriosPage() {
           ))}
         </div>
       </div>
+
+      {/* TAB: POR DATA DE ENTREGA */}
+      {activeTab === 'por-data-entrega' && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center flex-wrap gap-3">
+            <h2 className="text-2xl font-serif font-semibold text-[#3E2723]">Itens a Produzir por Data de Entrega</h2>
+            <div className="flex gap-2">
+              <Button onClick={buscarProducaoPorDataEntrega} disabled={loading} variant="outline" className="text-[#6B4423] border-[#6B4423]">
+                <MagnifyingGlass size={18} className="mr-2" />
+                Atualizar
+              </Button>
+              {producaoPorDataEntrega?.por_data_entrega?.length > 0 && (
+                <>
+                  <Button 
+                    onClick={() => {
+                      const doc = new jsPDF();
+                      let startY = addPdfHeader(doc, 'RELATÓRIO DE PRODUÇÃO POR DATA DE ENTREGA');
+                      
+                      producaoPorDataEntrega.por_data_entrega.forEach((dataGrupo, idx) => {
+                        if (idx > 0) {
+                          startY = doc.internal.pageSize.height - 60;
+                          if (doc.lastAutoTable && doc.lastAutoTable.finalY > startY - 30) {
+                            doc.addPage();
+                            startY = 20;
+                          } else {
+                            startY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 15 : startY;
+                          }
+                        }
+                        
+                        // Título da data
+                        doc.setFontSize(14);
+                        doc.setFont('helvetica', 'bold');
+                        doc.setTextColor(107, 68, 35);
+                        doc.text(`📅 ${dataGrupo.data_formatada}`, 15, startY);
+                        doc.setFontSize(10);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(`${dataGrupo.total_itens} itens | ${dataGrupo.total_quantidade} unidades`, 15, startY + 6);
+                        
+                        // Tabela de itens
+                        const tableData = [];
+                        dataGrupo.pedidos.forEach(pedido => {
+                          pedido.itens.forEach(item => {
+                            tableData.push([
+                              pedido.pedido_numero,
+                              pedido.cliente_nome,
+                              item.produto_nome,
+                              item.sabores || '-',
+                              item.quantidade
+                            ]);
+                          });
+                        });
+                        
+                        autoTable(doc, {
+                          startY: startY + 12,
+                          head: [['Pedido', 'Cliente', 'Produto', 'Sabores', 'Qtd']],
+                          body: tableData,
+                          theme: 'striped',
+                          headStyles: { fillColor: [107, 68, 35], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+                          bodyStyles: { textColor: [62, 39, 35], fontSize: 8 },
+                          alternateRowStyles: { fillColor: [250, 245, 235] },
+                          columnStyles: {
+                            0: { cellWidth: 25 },
+                            1: { cellWidth: 40 },
+                            2: { cellWidth: 50 },
+                            3: { cellWidth: 40 },
+                            4: { cellWidth: 15, halign: 'center' }
+                          }
+                        });
+                      });
+                      
+                      doc.save('Relatorio_Producao_Por_Data_Entrega.pdf');
+                      toast.success('PDF exportado com sucesso!');
+                    }} 
+                    variant="outline" 
+                    className="text-red-600 border-red-600 hover:bg-red-50"
+                  >
+                    <FilePdf size={18} className="mr-2" weight="fill" />
+                    PDF
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      const wsData = [
+                        ['SUSSU CHOCOLATES - RELATÓRIO DE PRODUÇÃO POR DATA DE ENTREGA'],
+                        [`Gerado em: ${new Date().toLocaleString('pt-BR')}`],
+                        [],
+                      ];
+                      
+                      producaoPorDataEntrega.por_data_entrega.forEach(dataGrupo => {
+                        wsData.push([]);
+                        wsData.push([`DATA DE ENTREGA: ${dataGrupo.data_formatada}`]);
+                        wsData.push(['Pedido', 'Cliente', 'Telefone', 'Produto', 'Sabores', 'Quantidade']);
+                        
+                        dataGrupo.pedidos.forEach(pedido => {
+                          pedido.itens.forEach(item => {
+                            wsData.push([
+                              pedido.pedido_numero,
+                              pedido.cliente_nome,
+                              pedido.cliente_telefone || '-',
+                              item.produto_nome,
+                              item.sabores || '-',
+                              item.quantidade
+                            ]);
+                          });
+                        });
+                        
+                        wsData.push(['', '', '', '', 'TOTAL:', dataGrupo.total_quantidade]);
+                      });
+                      
+                      const ws = XLSX.utils.aoa_to_sheet(wsData);
+                      ws['!cols'] = [{ wch: 15 }, { wch: 30 }, { wch: 15 }, { wch: 40 }, { wch: 30 }, { wch: 12 }];
+                      
+                      const wb = XLSX.utils.book_new();
+                      XLSX.utils.book_append_sheet(wb, ws, 'Por Data Entrega');
+                      
+                      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                      saveAs(new Blob([excelBuffer]), 'Relatorio_Producao_Por_Data_Entrega.xlsx');
+                      toast.success('Excel exportado com sucesso!');
+                    }} 
+                    variant="outline" 
+                    className="text-green-600 border-green-600 hover:bg-green-50"
+                  >
+                    <FileXls size={18} className="mr-2" weight="fill" />
+                    Excel
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {loading && (
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[#6B4423] border-r-transparent"></div>
+              <p className="mt-3 text-[#705A4D]">Carregando relatório...</p>
+            </div>
+          )}
+
+          {!loading && producaoPorDataEntrega && (
+            <>
+              {/* Cards de resumo */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gradient-to-br from-[#6B4423] to-[#8B5A3C] text-white rounded-xl p-5 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm opacity-80">Datas de Entrega</p>
+                      <p className="text-3xl font-bold">{producaoPorDataEntrega.total_datas}</p>
+                    </div>
+                    <CalendarBlank size={40} className="opacity-60" weight="fill" />
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-[#D97706] to-[#F59E0B] text-white rounded-xl p-5 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm opacity-80">Itens Pendentes</p>
+                      <p className="text-3xl font-bold">{producaoPorDataEntrega.total_itens_pendentes}</p>
+                    </div>
+                    <Factory size={40} className="opacity-60" weight="fill" />
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-[#2F855A] to-[#48BB78] text-white rounded-xl p-5 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm opacity-80">Total Unidades</p>
+                      <p className="text-3xl font-bold">{producaoPorDataEntrega.total_quantidade}</p>
+                    </div>
+                    <Package size={40} className="opacity-60" weight="fill" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Lista por data de entrega */}
+              {producaoPorDataEntrega.por_data_entrega?.length > 0 ? (
+                <div className="space-y-6">
+                  {producaoPorDataEntrega.por_data_entrega.map((dataGrupo, idx) => (
+                    <div key={idx} className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl shadow-sm overflow-hidden">
+                      {/* Cabeçalho da data */}
+                      <div className={`px-6 py-4 ${
+                        dataGrupo.data_entrega === null 
+                          ? 'bg-yellow-50 border-b-2 border-yellow-400' 
+                          : new Date(dataGrupo.data_entrega) < new Date(new Date().toISOString().split('T')[0])
+                            ? 'bg-red-50 border-b-2 border-red-400'
+                            : 'bg-[#E8D5C4]'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <CalendarBlank size={28} weight="fill" className={
+                              dataGrupo.data_entrega === null 
+                                ? 'text-yellow-600' 
+                                : new Date(dataGrupo.data_entrega) < new Date(new Date().toISOString().split('T')[0])
+                                  ? 'text-red-600'
+                                  : 'text-[#6B4423]'
+                            } />
+                            <div>
+                              <h3 className={`text-xl font-serif font-semibold ${
+                                dataGrupo.data_entrega === null 
+                                  ? 'text-yellow-700' 
+                                  : new Date(dataGrupo.data_entrega) < new Date(new Date().toISOString().split('T')[0])
+                                    ? 'text-red-700'
+                                    : 'text-[#3E2723]'
+                              }`}>
+                                {dataGrupo.data_formatada}
+                                {dataGrupo.data_entrega === null && (
+                                  <span className="ml-2 text-sm font-normal bg-yellow-200 px-2 py-0.5 rounded">
+                                    <Warning size={14} className="inline mr-1" />
+                                    Definir data
+                                  </span>
+                                )}
+                                {dataGrupo.data_entrega && new Date(dataGrupo.data_entrega) < new Date(new Date().toISOString().split('T')[0]) && (
+                                  <span className="ml-2 text-sm font-normal bg-red-200 px-2 py-0.5 rounded">
+                                    <Warning size={14} className="inline mr-1" />
+                                    Atrasado
+                                  </span>
+                                )}
+                              </h3>
+                              <p className="text-sm text-[#705A4D]">{dataGrupo.pedidos.length} pedido(s)</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-2xl font-bold text-[#3E2723]">{dataGrupo.total_quantidade}</p>
+                            <p className="text-xs text-[#705A4D]">unidades</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Pedidos desta data */}
+                      <div className="divide-y divide-[#8B5A3C]/10">
+                        {dataGrupo.pedidos.map((pedido, pedidoIdx) => (
+                          <div key={pedidoIdx} className="p-4">
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <span className="inline-block bg-[#6B4423] text-white px-3 py-1 rounded-full text-sm font-bold">
+                                  {pedido.pedido_numero}
+                                </span>
+                                <h4 className="text-lg font-medium text-[#3E2723] mt-2">{pedido.cliente_nome}</h4>
+                                {pedido.cliente_telefone && (
+                                  <p className="text-sm text-[#705A4D] flex items-center gap-1 mt-1">
+                                    <Phone size={14} />
+                                    {pedido.cliente_telefone}
+                                  </p>
+                                )}
+                                {pedido.observacoes && (
+                                  <p className="text-xs text-[#8B5A3C] mt-1 italic">Obs: {pedido.observacoes}</p>
+                                )}
+                              </div>
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                pedido.status === 'em_producao' ? 'bg-blue-100 text-blue-700' :
+                                pedido.status === 'pendente' ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-gray-100 text-gray-700'
+                              }`}>
+                                {pedido.status === 'em_producao' ? 'Em Produção' : 
+                                 pedido.status === 'pendente' ? 'Pendente' : pedido.status}
+                              </span>
+                            </div>
+
+                            {/* Itens do pedido */}
+                            <div className="bg-[#F5E6D3]/50 rounded-lg overflow-hidden">
+                              <table className="w-full text-sm">
+                                <thead className="bg-[#E8D5C4]/50">
+                                  <tr>
+                                    <th className="text-left px-3 py-2 font-medium text-[#6B4423]">Produto</th>
+                                    <th className="text-left px-3 py-2 font-medium text-[#6B4423]">Sabores</th>
+                                    <th className="text-center px-3 py-2 font-medium text-[#6B4423]">Qtd</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {pedido.itens.map((item, itemIdx) => (
+                                    <tr key={itemIdx} className="border-t border-[#8B5A3C]/10">
+                                      <td className="px-3 py-2 text-[#3E2723] font-medium">{item.produto_nome}</td>
+                                      <td className="px-3 py-2 text-[#705A4D]">{item.sabores || '-'}</td>
+                                      <td className="px-3 py-2 text-center">
+                                        <span className="bg-[#D97706]/20 text-[#D97706] px-3 py-1 rounded-full font-bold">
+                                          {item.quantidade}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-12 text-center">
+                  <CheckCircle size={64} className="mx-auto mb-4 text-[#2F855A]" weight="fill" />
+                  <p className="text-xl font-serif text-[#3E2723]">Nenhum item pendente de produção!</p>
+                  <p className="text-[#705A4D] mt-2">Todas as produções estão em dia.</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* TAB: ITENS A PRODUZIR */}
       {activeTab === 'a-produzir' && (

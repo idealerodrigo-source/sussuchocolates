@@ -96,6 +96,15 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
     - `NFCeModals.js` - Modais de pré-visualização e visualização de NFC-e
     - `index.js` - Barrel export para importação facilitada
   - Código mais limpo, testável e manutenível
+- **Bug Fix**: Corrigido produto "Ovo 07 recheado AMARULA 610g" que tinha caractere tab no nome
+- **Nova Feature**: Relatório de Itens a Produzir por Data de Entrega
+  - Backend: `GET /api/producao/relatorio/por-data-entrega`
+  - Frontend: Nova aba "Por Data de Entrega" em Relatórios (primeira aba)
+  - Cards de resumo: Datas de Entrega | Itens Pendentes | Total Unidades
+  - Agrupa por data de entrega com pedidos e itens detalhados
+  - Destaque amarelo para "Sem data definida" e vermelho para "Atrasado"
+  - Exportação para PDF e Excel
+  - Inclui pedidos pendentes E itens já em produção
 
 ### 2025-12-30 (Sessão 8)
 - Correção de múltiplas formas de pagamento
