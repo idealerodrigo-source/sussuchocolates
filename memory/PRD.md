@@ -90,6 +90,12 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 - **Bug Fix**: Corrigido erro HTML "button cannot be descendant of button" no SearchableSelect
   - Mudado container principal de `<button>` para `<div>` com onClick
   - Botão de limpar (X) agora funciona sem conflitos de eventos
+- **Melhoria**: Filtro "Já Entregue" na Produção totalmente funcional
+  - Pedidos onde TODOS os itens foram entregues são excluídos da lista de produção
+  - Contagem de itens no dropdown mostra apenas itens a produzir (exclui entregues)
+  - "Iniciar Todos" considera apenas itens não entregues
+  - Exemplo: PED-000077 (todos entregues) não aparece mais na Produção
+  - Exemplo: PED-000072 mostra "(3 itens a produzir)" em vez de "(5 itens)" porque 2 já foram entregues
 - **Verificação**: Criação de pedidos funcionando normalmente
   - Confirmado que a busca de produtos e clientes está funcionando
   - Produtos são adicionados corretamente ao pedido

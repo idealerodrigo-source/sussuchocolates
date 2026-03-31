@@ -62,9 +62,16 @@ export default function ProducaoPage() {
       setAllPedidos(pedidosRes.data);
       setRelatorioPendente(relatorioRes.data);
       
-      const pedidosPendentes = pedidosRes.data.filter(
-        (p) => p.status === 'pendente' || p.status === 'em_producao'
-      );
+      // Filtrar pedidos pendentes ou em produção
+      // Excluir pedidos onde TODOS os itens já foram entregues
+      const pedidosPendentes = pedidosRes.data.filter((p) => {
+        if (p.status !== 'pendente' && p.status !== 'em_producao') {
+          return false;
+        }
+        // Verificar se há pelo menos um item que NÃO foi entregue
+        const temItensParaProduzir = p.items?.some(item => !item.ja_entregue);
+        return temItensParaProduzir;
+      });
       setPedidos(pedidosPendentes);
       setProdutos(produtosRes.data);
     } catch (error) {
@@ -381,12 +388,15 @@ export default function ProducaoPage() {
                   <div className="bg-[#F5E6D3]/50 rounded-lg p-4 max-h-[200px] overflow-y-auto">
                     <p className="text-xs font-medium text-[#6B4423] mb-2">Pedidos que serão iniciados:</p>
                     <div className="space-y-2">
-                      {pedidosApenasNovos.map(pedido => (
-                        <div key={pedido.id} className="flex justify-between items-center text-sm">
-                          <span className="text-[#3E2723] font-medium">{pedido.numero}</span>
-                          <span className="text-[#705A4D]">{pedido.cliente_nome} - {pedido.items?.length || 0} itens</span>
-                        </div>
-                      ))}
+                      {pedidosApenasNovos.map(pedido => {
+                        const itensAProduzir = pedido.items?.filter(i => !i.ja_entregue)?.length || 0;
+                        return (
+                          <div key={pedido.id} className="flex justify-between items-center text-sm">
+                            <span className="text-[#3E2723] font-medium">{pedido.numero}</span>
+                            <span className="text-[#705A4D]">{pedido.cliente_nome} - {itensAProduzir} itens</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -483,11 +493,15 @@ export default function ProducaoPage() {
                     className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
                   >
                     <option value="">Selecione um pedido...</option>
-                    {pedidos.map((pedido) => (
-                      <option key={pedido.id} value={pedido.id}>
-                        {pedido.numero} - {pedido.cliente_nome} ({pedido.items?.length || 0} itens)
-                      </option>
-                    ))}
+                    {pedidos.map((pedido) => {
+                      // Contar apenas itens que NÃO foram entregues
+                      const itensAProduzir = pedido.items?.filter(i => !i.ja_entregue)?.length || 0;
+                      return (
+                        <option key={pedido.id} value={pedido.id}>
+                          {pedido.numero} - {pedido.cliente_nome} ({itensAProduzir} itens a produzir)
+                        </option>
+                      );
+                    })}
                   </select>
                   {formData.pedido_id && (
                     <p className="text-xs text-[#2F855A] mt-1 font-sans">
