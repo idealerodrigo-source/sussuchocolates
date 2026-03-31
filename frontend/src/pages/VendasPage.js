@@ -35,6 +35,15 @@ export default function VendasPage() {
   const [quantidadePendenteSabores, setQuantidadePendenteSabores] = useState(1);
   const [tipoEntregaPendente, setTipoEntregaPendente] = useState('imediata');
   
+  // Quantidade inicial ao adicionar produto
+  const [quantidadeInicial, setQuantidadeInicial] = useState(1);
+  
+  // Função para formatar quantidade
+  const formatarQuantidade = (qtd) => {
+    if (Number.isInteger(qtd)) return `${qtd}x`;
+    return `${qtd.toFixed(1).replace('.', ',')}kg`;
+  };
+  
   // Filtrar vendas pelo termo de pesquisa
   const filteredVendas = useMemo(() => {
     if (!searchTerm.trim()) return vendas;
@@ -603,47 +612,73 @@ export default function VendasPage() {
                         : 'Será criado um pedido de produção para entrega posterior'}
                     </p>
                     
-                    <SearchableInput
-                      options={produtos.map(p => ({
-                        id: p.id, label: p.nome, subtitle: p.categoria, extra: formatCurrency(p.preco), preco: p.preco
-                      }))}
-                      onSelect={(produto) => {
-                        const produtoCompleto = produtos.find(p => p.id === produto.id);
-                        if (produtoCompleto) {
-                          if (produtoPermiteMultiplosSabores(produtoCompleto.nome)) {
-                            setProdutoPendenteSabores(produtoCompleto);
-                            setQuantidadePendenteSabores(1);
-                            setSaboresModalOpen(true);
-                          } else {
-                            const existente = formData.items.find(
-                              item => item.produto_id === produtoCompleto.id && item.tipo_entrega === tipoEntregaPendente && !item.sabores
-                            );
-                            if (existente) {
-                              const newItems = formData.items.map(item => 
-                                item.produto_id === produtoCompleto.id && item.tipo_entrega === tipoEntregaPendente && !item.sabores
-                                  ? { ...item, quantidade: item.quantidade + 1, subtotal: (item.quantidade + 1) * item.preco_unitario }
-                                  : item
-                              );
-                              setFormData({ ...formData, items: newItems });
-                              toast.success(`${produtoCompleto.nome} - quantidade aumentada`);
-                            } else {
-                              const newItem = {
-                                produto_id: produtoCompleto.id,
-                                produto_nome: produtoCompleto.nome,
-                                quantidade: 1,
-                                preco_unitario: produtoCompleto.preco,
-                                subtotal: produtoCompleto.preco,
-                                tipo_entrega: tipoEntregaPendente
-                              };
-                              setFormData({ ...formData, items: [...formData.items, newItem] });
-                              toast.success(`${produtoCompleto.nome} adicionado`);
+                    {/* Busca de produtos com campo de quantidade */}
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <SearchableInput
+                          options={produtos.map(p => ({
+                            id: p.id, label: p.nome, subtitle: p.categoria, extra: formatCurrency(p.preco), preco: p.preco
+                          }))}
+                          onSelect={(produto) => {
+                            const produtoCompleto = produtos.find(p => p.id === produto.id);
+                            if (produtoCompleto) {
+                              if (produtoPermiteMultiplosSabores(produtoCompleto.nome)) {
+                                setProdutoPendenteSabores(produtoCompleto);
+                                setQuantidadePendenteSabores(quantidadeInicial);
+                                setSaboresModalOpen(true);
+                              } else {
+                                // Adicionar com a quantidade inicial definida
+                                const newItem = {
+                                  produto_id: produtoCompleto.id,
+                                  produto_nome: produtoCompleto.nome,
+                                  quantidade: quantidadeInicial,
+                                  preco_unitario: produtoCompleto.preco,
+                                  subtotal: quantidadeInicial * produtoCompleto.preco,
+                                  tipo_entrega: tipoEntregaPendente
+                                };
+                                setFormData({ ...formData, items: [...formData.items, newItem] });
+                                toast.success(`${produtoCompleto.nome} adicionado (${formatarQuantidade(quantidadeInicial)})`);
+                                // Resetar quantidade inicial para 1
+                                setQuantidadeInicial(1);
+                              }
                             }
-                          }
-                        }
-                      }}
-                      placeholder="Buscar produto para adicionar..."
-                      emptyMessage="Nenhum produto encontrado"
-                    />
+                          }}
+                          placeholder="Buscar produto para adicionar..."
+                          emptyMessage="Nenhum produto encontrado"
+                        />
+                      </div>
+                      <div className="flex flex-col">
+                        <label className="text-xs text-[#705A4D] mb-1">Qtd</label>
+                        <div className="flex items-center gap-1 bg-[#F5E6D3] rounded-lg p-1">
+                          <button
+                            type="button"
+                            onClick={() => setQuantidadeInicial(Math.max(0.1, Math.round((quantidadeInicial - 0.5) * 10) / 10))}
+                            disabled={quantidadeInicial <= 0.1}
+                            className="w-6 h-6 flex items-center justify-center rounded bg-[#FFFDF8] hover:bg-[#E8D5C4] disabled:opacity-50 text-[#6B4423] font-bold text-sm"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min="0.1"
+                            step="0.1"
+                            value={quantidadeInicial}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 0.1;
+                              setQuantidadeInicial(Math.max(0.1, val));
+                            }}
+                            className="w-12 text-center bg-[#FFFDF8] border-0 text-[#3E2723] font-semibold text-sm rounded focus:ring-1 focus:ring-[#6B4423]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setQuantidadeInicial(Math.round((quantidadeInicial + 0.5) * 10) / 10)}
+                            className="w-6 h-6 flex items-center justify-center rounded bg-[#6B4423] hover:bg-[#8B5A3C] text-white font-bold text-sm"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    </div>
 
                     {/* Lista de itens */}
                     {formData.items.length > 0 && (

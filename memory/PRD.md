@@ -83,6 +83,12 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 ## Changelog
 
 ### 2025-03-31 (Sessão 10)
+- **Melhoria**: Campo de quantidade ANTES de adicionar produto
+  - Novo campo "Qtd" ao lado da busca de produtos em Pedidos e Vendas
+  - Permite definir quantidade (incluindo decimais como 0.5) antes de adicionar
+  - Botões +/- para ajustar em 0.5
+  - Quantidade é resetada para 1 após adicionar o produto
+  - Resolve problema de sempre adicionar com quantidade 1
 - **Nova Feature**: Export Excel "Resumo de Produção" nos Relatórios
   - Novo botão "Resumo Produção" na aba "Por Data de Entrega"
   - Exporta apenas dados agregados: Data | Produto | Sabores | Quantidade Total

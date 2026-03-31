@@ -63,6 +63,9 @@ export default function PedidosPage() {
   const [produtoPendenteSabores, setProdutoPendenteSabores] = useState(null);
   const [quantidadePendenteSabores, setQuantidadePendenteSabores] = useState(1);
   
+  // Quantidade inicial ao adicionar produto
+  const [quantidadeInicial, setQuantidadeInicial] = useState(1);
+  
   const [formData, setFormData] = useState({
     cliente_id: '',
     items: [],
@@ -643,65 +646,90 @@ Obrigado pela preferência! 🙏
                   />
                 </div>
                 
-                <div className="mb-3">
-                  <SearchableInput
-                    options={produtos.map(p => ({
-                      id: p.id,
-                      label: p.nome,
-                      subtitle: p.categoria,
-                      extra: formatCurrency(p.preco),
-                      preco: p.preco
-                    }))}
-                    onSelect={(produto) => {
-                      const produtoCompleto = produtos.find(p => p.id === produto.id);
-                      if (produtoCompleto) {
-                        // Verificar se o produto permite múltiplos sabores
-                        if (produtoPermiteMultiplosSabores(produtoCompleto.nome)) {
-                          // Abrir modal de seleção de sabores
-                          setProdutoPendenteSabores(produtoCompleto);
-                          setQuantidadePendenteSabores(1);
-                          setSaboresModalOpen(true);
-                        } else {
-                          // Adicionar normalmente
-                          const existente = formData.items.find(item => item.produto_id === produtoCompleto.id && !item.sabores);
-                          if (existente) {
-                            const newItems = formData.items.map(item => 
-                              item.produto_id === produtoCompleto.id && !item.sabores
-                                ? { ...item, quantidade: item.quantidade + 1, subtotal: (item.quantidade + 1) * item.preco_unitario }
-                                : item
-                            );
-                            setFormData({ ...formData, items: newItems });
-                            toast.success(`${produtoCompleto.nome} - quantidade aumentada`);
+                {/* Busca de produtos com campo de quantidade */}
+                <div className="mb-3 flex gap-2 items-end">
+                  <div className="flex-1">
+                    <SearchableInput
+                      options={produtos.map(p => ({
+                        id: p.id,
+                        label: p.nome,
+                        subtitle: p.categoria,
+                        extra: formatCurrency(p.preco),
+                        preco: p.preco
+                      }))}
+                      onSelect={(produto) => {
+                        const produtoCompleto = produtos.find(p => p.id === produto.id);
+                        if (produtoCompleto) {
+                          // Verificar se o produto permite múltiplos sabores
+                          if (produtoPermiteMultiplosSabores(produtoCompleto.nome)) {
+                            // Abrir modal de seleção de sabores
+                            setProdutoPendenteSabores(produtoCompleto);
+                            setQuantidadePendenteSabores(quantidadeInicial);
+                            setSaboresModalOpen(true);
                           } else {
+                            // Adicionar com a quantidade inicial definida
                             const newItem = {
                               produto_id: produtoCompleto.id,
                               produto_nome: produtoCompleto.nome,
-                              quantidade: 1,
+                              quantidade: quantidadeInicial,
                               preco_unitario: produtoCompleto.preco,
-                              subtotal: produtoCompleto.preco
+                              subtotal: quantidadeInicial * produtoCompleto.preco
                             };
                             setFormData({ ...formData, items: [...formData.items, newItem] });
-                            toast.success(`${produtoCompleto.nome} adicionado`);
+                            toast.success(`${produtoCompleto.nome} adicionado (${formatarQuantidade(quantidadeInicial)})`);
+                            // Resetar quantidade inicial para 1
+                            setQuantidadeInicial(1);
                           }
                         }
+                      }}
+                      placeholder="Buscar produto para adicionar..."
+                      emptyMessage="Nenhum produto encontrado"
+                      actionButton={
+                        <QuickCreateProdutoModal
+                          onProdutoCreated={(novoProduto) => {
+                            setProdutos([...produtos, novoProduto]);
+                          }}
+                          trigger={
+                            <Button type="button" variant="ghost" size="sm" className="w-full text-[#6B4423] justify-start">
+                              <Package size={16} className="mr-2" />
+                              Cadastrar novo produto
+                            </Button>
+                          }
+                        />
                       }
-                    }}
-                    placeholder="Buscar produto para adicionar..."
-                    emptyMessage="Nenhum produto encontrado"
-                    actionButton={
-                      <QuickCreateProdutoModal
-                        onProdutoCreated={(novoProduto) => {
-                          setProdutos([...produtos, novoProduto]);
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs text-[#705A4D] mb-1">Qtd</label>
+                    <div className="flex items-center gap-1 bg-[#F5E6D3] rounded-lg p-1">
+                      <button
+                        type="button"
+                        onClick={() => setQuantidadeInicial(Math.max(0.1, Math.round((quantidadeInicial - 0.5) * 10) / 10))}
+                        disabled={quantidadeInicial <= 0.1}
+                        className="w-7 h-7 flex items-center justify-center rounded bg-[#FFFDF8] hover:bg-[#E8D5C4] disabled:opacity-50 text-[#6B4423] font-bold"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min="0.1"
+                        step="0.1"
+                        value={quantidadeInicial}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0.1;
+                          setQuantidadeInicial(Math.max(0.1, val));
                         }}
-                        trigger={
-                          <Button type="button" variant="ghost" size="sm" className="w-full text-[#6B4423] justify-start">
-                            <Package size={16} className="mr-2" />
-                            Cadastrar novo produto
-                          </Button>
-                        }
+                        className="w-14 text-center bg-[#FFFDF8] border-0 text-[#3E2723] font-semibold text-sm rounded focus:ring-1 focus:ring-[#6B4423]"
                       />
-                    }
-                  />
+                      <button
+                        type="button"
+                        onClick={() => setQuantidadeInicial(Math.round((quantidadeInicial + 0.5) * 10) / 10)}
+                        className="w-7 h-7 flex items-center justify-center rounded bg-[#6B4423] hover:bg-[#8B5A3C] text-white font-bold"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 
                 {/* Modal de seleção de sabores */}
