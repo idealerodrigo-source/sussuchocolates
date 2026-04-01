@@ -537,5 +537,9 @@ export function SelecionarSaboresModal({
  */
 export function formatarSabores(sabores) {
   if (!sabores || sabores.length === 0) return null;
-  return sabores.map(s => `${s.quantidade}x ${s.sabor}`).join(' + ');
+  return sabores.map(s => {
+    const qtd = s.quantidade === 0.5 ? '½' : s.quantidade;
+    const nome = s.sabor || s.nome || 'Sem nome';
+    return `${qtd} ${nome}`;
+  }).join(' + ');
 }

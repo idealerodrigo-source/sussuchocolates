@@ -1147,7 +1147,7 @@ Obrigado pela preferência! 🙏
                         <p className="text-sm text-[#705A4D]">{item.quantidade}x {formatCurrency(item.preco_unitario)}</p>
                         {item.sabores && item.sabores.length > 0 && (
                           <p className="text-xs text-[#8B5A3C]">
-                            Sabores: {item.sabores.map(s => `${s.quantidade === 0.5 ? '½' : s.quantidade} ${s.nome}`).join(' + ')}
+                            Sabores: {item.sabores.map(s => `${s.quantidade === 0.5 ? '½' : s.quantidade} ${s.sabor || s.nome}`).join(' + ')}
                           </p>
                         )}
                       </div>
