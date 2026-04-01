@@ -172,16 +172,16 @@ async def marcar_item_entregue(pedido_id: str, item_index: int, current_user: di
     # Dar baixa no estoque
     produto = await db.produtos.find_one({"nome": produto_nome}, {"_id": 0})
     if produto:
-        movimento = MovimentoEstoque(
-            produto_id=produto['id'],
-            produto_nome=produto_nome,
-            tipo_movimento='saida',
-            quantidade=quantidade,
-            responsavel=current_user.get('nome', 'Sistema'),
-            observacoes=f"Entrega antecipada - Pedido {pedido.get('numero')}"
-        )
-        movimento_doc = movimento.model_dump()
-        movimento_doc['data_movimento'] = movimento_doc['data_movimento'].isoformat()
+        movimento_doc = {
+            "id": str(uuid.uuid4()),
+            "produto_id": produto['id'],
+            "produto_nome": produto_nome,
+            "tipo_movimento": "saida",
+            "quantidade": quantidade,
+            "data_movimento": datetime.now(timezone.utc).isoformat(),
+            "responsavel": current_user.get('nome', 'Sistema'),
+            "observacoes": f"Entrega antecipada - Pedido {pedido.get('numero')}"
+        }
         await db.estoque.insert_one(movimento_doc)
         acoes.append(f"Baixa de {quantidade} {produto_nome} no estoque")
     
