@@ -511,29 +511,180 @@ export default function VendasPage() {
               </div>
 
               {tipoVenda === 'pedido' ? (
-                <div>
-                  <label className="block text-sm font-medium text-[#6B4423] mb-1">Pedido *</label>
-                  <select
-                    required
-                    value={formData.pedido_id}
-                    onChange={(e) => setFormData({ ...formData, pedido_id: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
-                  >
-                    <option value="">Selecione um pedido...</option>
-                    {pedidosConcluidos.map((pedido) => {
-                      // Verificar se é um pedido com todos itens já entregues ou separados (do estoque)
-                      const todosProntos = pedido.items?.length > 0 && pedido.items.every(item => item.ja_entregue === true || item.ja_separado === true);
-                      const todosEntregues = pedido.items?.length > 0 && pedido.items.every(item => item.ja_entregue === true);
-                      const statusLabel = todosEntregues ? '[Entregues]' : todosProntos ? '[Separados]' : '';
-                      return (
-                        <option key={pedido.id} value={pedido.id}>
-                          {pedido.numero} - {pedido.cliente_nome} - {formatCurrency(pedido.valor_total)} {statusLabel}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  <p className="text-xs text-[#705A4D] mt-1">Pedidos concluídos, em embalagem, ou com todos itens já entregues/separados</p>
-                </div>
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-[#6B4423] mb-1">Pedido *</label>
+                    <select
+                      required
+                      value={formData.pedido_id}
+                      onChange={(e) => setFormData({ ...formData, pedido_id: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                    >
+                      <option value="">Selecione um pedido...</option>
+                      {pedidosConcluidos.map((pedido) => {
+                        // Verificar se é um pedido com todos itens já entregues ou separados (do estoque)
+                        const todosProntos = pedido.items?.length > 0 && pedido.items.every(item => item.ja_entregue === true || item.ja_separado === true);
+                        const todosEntregues = pedido.items?.length > 0 && pedido.items.every(item => item.ja_entregue === true);
+                        const statusLabel = todosEntregues ? '[Entregues]' : todosProntos ? '[Separados]' : '';
+                        return (
+                          <option key={pedido.id} value={pedido.id}>
+                            {pedido.numero} - {pedido.cliente_nome} - {formatCurrency(pedido.valor_total)} {statusLabel}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <p className="text-xs text-[#705A4D] mt-1">Pedidos concluídos, em embalagem, ou com todos itens já entregues/separados</p>
+                  </div>
+
+                  {/* RESUMO DO PEDIDO SELECIONADO */}
+                  {formData.pedido_id && (() => {
+                    const pedidoSelecionado = pedidosConcluidos.find(p => p.id === formData.pedido_id);
+                    if (!pedidoSelecionado) return null;
+                    
+                    const itensEntregues = pedidoSelecionado.items?.filter(i => i.ja_entregue) || [];
+                    const itensSeparados = pedidoSelecionado.items?.filter(i => i.ja_separado && !i.ja_entregue) || [];
+                    const itensPendentes = pedidoSelecionado.items?.filter(i => !i.ja_entregue && !i.ja_separado) || [];
+                    
+                    const valorPago = pedidoSelecionado.valor_pago || 0;
+                    const valorTotal = pedidoSelecionado.valor_total || 0;
+                    const saldoRestante = valorTotal - valorPago;
+                    
+                    return (
+                      <div className="bg-[#F5E6D3]/40 rounded-xl p-4 border border-[#8B5A3C]/20 space-y-4">
+                        {/* Cabeçalho */}
+                        <div className="flex items-center justify-between border-b border-[#8B5A3C]/20 pb-3">
+                          <div>
+                            <h3 className="text-lg font-serif font-bold text-[#3E2723]">
+                              {pedidoSelecionado.numero}
+                            </h3>
+                            <p className="text-sm text-[#705A4D]">{pedidoSelecionado.cliente_nome}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xl font-bold text-[#3E2723]">{formatCurrency(valorTotal)}</p>
+                            <p className="text-xs text-[#705A4D]">
+                              {pedidoSelecionado.data_entrega 
+                                ? `Entrega: ${new Date(pedidoSelecionado.data_entrega).toLocaleDateString('pt-BR')}`
+                                : 'Sem data de entrega'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Status de Pagamento */}
+                        <div className="bg-white rounded-lg p-3 border border-[#8B5A3C]/10">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-semibold text-[#6B4423]">💰 Pagamento</h4>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              pedidoSelecionado.status_pagamento === 'pago' ? 'bg-green-100 text-green-700' :
+                              pedidoSelecionado.status_pagamento === 'parcial' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>
+                              {pedidoSelecionado.status_pagamento === 'pago' ? '✓ Pago Integralmente' :
+                               pedidoSelecionado.status_pagamento === 'parcial' ? '◐ Adiantamento' : 
+                               '○ Pendente'}
+                            </span>
+                          </div>
+                          
+                          {valorPago > 0 && (
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div>
+                                <span className="text-[#705A4D]">Já pago:</span>
+                                <span className="ml-1 font-semibold text-green-600">{formatCurrency(valorPago)}</span>
+                                {pedidoSelecionado.pagamento_forma && (
+                                  <span className="ml-1 text-xs text-[#8B5A3C]">
+                                    ({pedidoSelecionado.pagamento_forma}
+                                    {pedidoSelecionado.pagamento_parcelas > 1 && ` ${pedidoSelecionado.pagamento_parcelas}x`})
+                                  </span>
+                                )}
+                              </div>
+                              {saldoRestante > 0 && (
+                                <div>
+                                  <span className="text-[#705A4D]">Saldo restante:</span>
+                                  <span className="ml-1 font-semibold text-[#D97706]">{formatCurrency(saldoRestante)}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
+                          {valorPago === 0 && (
+                            <p className="text-sm text-[#705A4D]">Nenhum pagamento registrado</p>
+                          )}
+                        </div>
+
+                        {/* Itens do Pedido */}
+                        <div className="bg-white rounded-lg p-3 border border-[#8B5A3C]/10">
+                          <h4 className="text-sm font-semibold text-[#6B4423] mb-2">📦 Itens do Pedido</h4>
+                          <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {pedidoSelecionado.items?.map((item, idx) => (
+                              <div key={idx} className={`flex items-center justify-between p-2 rounded ${
+                                item.ja_entregue ? 'bg-green-50 border border-green-200' :
+                                item.ja_separado ? 'bg-blue-50 border border-blue-200' :
+                                'bg-gray-50 border border-gray-200'
+                              }`}>
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-[#3E2723]">{item.produto_nome}</p>
+                                  {item.sabores && item.sabores.length > 0 && (
+                                    <p className="text-xs text-[#8B5A3C]">
+                                      {formatarSabores(item.sabores)}
+                                    </p>
+                                  )}
+                                  <p className="text-xs text-[#705A4D]">
+                                    {formatarQuantidade(item.quantidade)} × {formatCurrency(item.preco_unitario)}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                                    item.ja_entregue ? 'bg-green-500 text-white' :
+                                    item.ja_separado ? 'bg-blue-500 text-white' :
+                                    'bg-gray-400 text-white'
+                                  }`}>
+                                    {item.ja_entregue ? '✓ Entregue' : item.ja_separado ? '◎ Separado' : '○ Pendente'}
+                                  </span>
+                                  <span className="text-sm font-semibold text-[#3E2723]">{formatCurrency(item.subtotal)}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          {/* Resumo de itens */}
+                          <div className="mt-2 pt-2 border-t border-[#8B5A3C]/10 flex flex-wrap gap-2 text-xs">
+                            {itensEntregues.length > 0 && (
+                              <span className="px-2 py-1 rounded bg-green-100 text-green-700">
+                                ✓ {itensEntregues.length} entregue(s)
+                              </span>
+                            )}
+                            {itensSeparados.length > 0 && (
+                              <span className="px-2 py-1 rounded bg-blue-100 text-blue-700">
+                                ◎ {itensSeparados.length} separado(s)
+                              </span>
+                            )}
+                            {itensPendentes.length > 0 && (
+                              <span className="px-2 py-1 rounded bg-gray-100 text-gray-600">
+                                ○ {itensPendentes.length} pendente(s)
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Observações */}
+                        {pedidoSelecionado.observacoes && (
+                          <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                            <h4 className="text-sm font-semibold text-yellow-800 mb-1">📝 Observações</h4>
+                            <p className="text-sm text-yellow-700">{pedidoSelecionado.observacoes}</p>
+                          </div>
+                        )}
+
+                        {/* Informação sobre saldo */}
+                        {saldoRestante > 0 && (
+                          <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
+                            <p className="text-sm text-orange-700">
+                              <strong>⚠️ Atenção:</strong> Este pedido possui saldo de <strong>{formatCurrency(saldoRestante)}</strong> a receber na finalização.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </>
               ) : etapaVendaDireta === 1 ? (
                 /* ETAPA 1: Montar a venda */
                 <>
@@ -777,15 +928,86 @@ export default function VendasPage() {
                     </div>
                   </div>
 
-                  <div className="bg-[#F5E6D3]/30 rounded-lg p-4">
-                    <h3 className="font-medium text-[#6B4423] mb-2">Resumo da Venda</h3>
-                    <p className="text-sm text-[#705A4D]">
-                      Cliente: <span className="font-medium text-[#3E2723]">
-                        {clientes.find(c => c.id === formData.cliente_id)?.nome}
-                      </span>
-                    </p>
-                    <p className="text-sm text-[#705A4D]">{formData.items.length} item(ns)</p>
-                    <p className="text-lg font-bold text-[#3E2723] mt-2">{formatCurrency(calcularSubtotalItens())}</p>
+                  {/* RESUMO COMPLETO DA VENDA DIRETA */}
+                  <div className="bg-[#F5E6D3]/40 rounded-xl p-4 border border-[#8B5A3C]/20 space-y-4">
+                    {/* Cabeçalho */}
+                    <div className="flex items-center justify-between border-b border-[#8B5A3C]/20 pb-3">
+                      <div>
+                        <h3 className="text-lg font-serif font-bold text-[#3E2723]">Venda Direta</h3>
+                        <p className="text-sm text-[#705A4D]">
+                          {clientes.find(c => c.id === formData.cliente_id)?.nome}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-[#3E2723]">{formatCurrency(calcularSubtotalItens())}</p>
+                        <p className="text-xs text-[#705A4D]">{formData.items.length} item(ns)</p>
+                      </div>
+                    </div>
+
+                    {/* Itens da Venda */}
+                    <div className="bg-white rounded-lg p-3 border border-[#8B5A3C]/10">
+                      <h4 className="text-sm font-semibold text-[#6B4423] mb-2">📦 Itens da Venda</h4>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {formData.items.map((item, idx) => (
+                          <div key={idx} className={`flex items-center justify-between p-2 rounded ${
+                            item.tipo_entrega === 'imediata' 
+                              ? 'bg-green-50 border border-green-200' 
+                              : 'bg-yellow-50 border border-yellow-200'
+                          }`}>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-[#3E2723]">{item.produto_nome}</p>
+                              {item.sabores && item.sabores.length > 0 && (
+                                <p className="text-xs text-[#8B5A3C]">
+                                  {formatarSabores(item.sabores)}
+                                </p>
+                              )}
+                              <p className="text-xs text-[#705A4D]">
+                                {formatarQuantidade(item.quantidade)} × {formatCurrency(item.preco_unitario)}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                                item.tipo_entrega === 'imediata' 
+                                  ? 'bg-green-500 text-white' 
+                                  : 'bg-yellow-500 text-white'
+                              }`}>
+                                {item.tipo_entrega === 'imediata' ? '✓ Imediata' : '⏱ A Produzir'}
+                              </span>
+                              <span className="text-sm font-semibold text-[#3E2723]">{formatCurrency(item.subtotal)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Resumo por tipo de entrega */}
+                      {(() => {
+                        const imediatos = formData.items.filter(i => i.tipo_entrega === 'imediata');
+                        const aProduzir = formData.items.filter(i => i.tipo_entrega === 'a_produzir');
+                        return (
+                          <div className="mt-2 pt-2 border-t border-[#8B5A3C]/10 flex flex-wrap gap-2 text-xs">
+                            {imediatos.length > 0 && (
+                              <span className="px-2 py-1 rounded bg-green-100 text-green-700">
+                                ✓ {imediatos.length} entrega imediata
+                              </span>
+                            )}
+                            {aProduzir.length > 0 && (
+                              <span className="px-2 py-1 rounded bg-yellow-100 text-yellow-700">
+                                ⏱ {aProduzir.length} a produzir
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Aviso sobre itens a produzir */}
+                    {formData.items.some(i => i.tipo_entrega === 'a_produzir') && (
+                      <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                        <p className="text-sm text-yellow-700">
+                          <strong>⏱ Atenção:</strong> Esta venda possui itens "A Produzir". Um pedido de produção será criado automaticamente.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </>
               )}

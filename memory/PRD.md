@@ -96,6 +96,14 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
   - Atualizado `ProdutosPage.js` para usar campo correto `custo`
   - Atualizado `dashboard.py` para buscar `custo` (com fallback para `custo_producao`)
   - Custo agora é salvo e exibido corretamente na lista de produtos
+- **Nova Feature**: Resumo Completo do Pedido na Área de Vendas
+  - Ao selecionar "Venda de Pedido": exibe resumo completo antes de finalizar
+  - Mostra: número do pedido, cliente, valor total, data de entrega
+  - **Status de Pagamento**: Badge visual (Pago/Adiantamento/Pendente) + valor já pago + saldo restante
+  - **Itens do Pedido**: Lista com status de cada item (✓ Entregue / ◎ Separado / ○ Pendente)
+  - **Observações**: Se existirem, são exibidas em destaque
+  - **Alerta de saldo**: Aviso quando há valor pendente a receber
+  - Para "Venda Direta": Resumo na etapa 2 com itens, tipo de entrega (Imediata/A Produzir)
 
 ### 2025-03-31 / 2025-04-01 (Sessão 10)
 - **Nova Feature**: Opção "Já Separado" em itens do pedido
