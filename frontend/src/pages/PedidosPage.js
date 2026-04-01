@@ -72,6 +72,11 @@ export default function PedidosPage() {
     observacoes: '',
     data_entrega: '',
     forma_pagamento: '',
+    // Campos de pagamento antecipado
+    pagamento_tipo: 'nenhum', // 'nenhum', 'total', 'parcial'
+    valor_pago: 0,
+    pagamento_forma: 'Dinheiro',
+    pagamento_parcelas: 1,
   });
   const [itemTemp, setItemTemp] = useState({
     produto_id: '',
@@ -187,11 +192,21 @@ export default function PedidosPage() {
     }
 
     try {
+      const payload = {
+        ...formData,
+        // Campos de pagamento antecipado
+        status_pagamento: formData.pagamento_tipo === 'nenhum' ? 'pendente' : 
+                          formData.pagamento_tipo === 'total' ? 'pago' : 'parcial',
+        valor_pago: formData.valor_pago || 0,
+        pagamento_forma: formData.pagamento_tipo !== 'nenhum' ? formData.pagamento_forma : null,
+        pagamento_parcelas: formData.pagamento_parcelas || 1,
+      };
+      
       if (editMode && editingPedidoId) {
-        await pedidosAPI.atualizar(editingPedidoId, formData);
+        await pedidosAPI.atualizar(editingPedidoId, payload);
         toast.success('Pedido atualizado com sucesso');
       } else {
-        await pedidosAPI.criar(formData);
+        await pedidosAPI.criar(payload);
         toast.success('Pedido criado com sucesso');
       }
       setDialogOpen(false);
@@ -205,6 +220,15 @@ export default function PedidosPage() {
   const handleEdit = (pedido) => {
     setEditMode(true);
     setEditingPedidoId(pedido.id);
+    
+    // Determinar tipo de pagamento com base no status
+    let pagamentoTipo = 'nenhum';
+    if (pedido.status_pagamento === 'pago') {
+      pagamentoTipo = 'total';
+    } else if (pedido.status_pagamento === 'parcial' || (pedido.valor_pago && pedido.valor_pago > 0)) {
+      pagamentoTipo = 'parcial';
+    }
+    
     setFormData({
       cliente_id: pedido.cliente_id,
       items: pedido.items.map(item => ({
@@ -217,6 +241,10 @@ export default function PedidosPage() {
       observacoes: pedido.observacoes || '',
       data_entrega: pedido.data_entrega ? pedido.data_entrega.split('T')[0] : '',
       forma_pagamento: pedido.forma_pagamento || '',
+      pagamento_tipo: pagamentoTipo,
+      valor_pago: pedido.valor_pago || 0,
+      pagamento_forma: pedido.pagamento_forma || 'Dinheiro',
+      pagamento_parcelas: pedido.pagamento_parcelas || 1,
     });
     setDialogOpen(true);
   };
@@ -595,10 +623,15 @@ Obrigado pela preferência! 🙏
       observacoes: '',
       data_entrega: '',
       forma_pagamento: '',
+      pagamento_tipo: 'nenhum',
+      valor_pago: 0,
+      pagamento_forma: 'Dinheiro',
+      pagamento_parcelas: 1,
     });
     setItemTemp({ produto_id: '', produto_busca: '', quantidade: 1, desconto: 0, tipo_desconto: 'percentual' });
     setEditMode(false);
     setEditingPedidoId(null);
+    setQuantidadeInicial(1);
   };
 
   if (loading) {
@@ -967,6 +1000,129 @@ Obrigado pela preferência! 🙏
                 />
               </div>
 
+              {/* Seção de Pagamento Antecipado */}
+              <div className="bg-[#F5E6D3]/30 rounded-lg p-4 border border-[#8B5A3C]/20">
+                <label className="block text-sm font-semibold text-[#6B4423] mb-3">Pagamento Antecipado</label>
+                
+                <div className="space-y-3">
+                  {/* Tipo de pagamento */}
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="pagamento_tipo"
+                        value="nenhum"
+                        checked={formData.pagamento_tipo === 'nenhum'}
+                        onChange={(e) => setFormData({ ...formData, pagamento_tipo: e.target.value, valor_pago: 0 })}
+                        className="w-4 h-4 text-[#6B4423] focus:ring-[#6B4423]"
+                      />
+                      <span className="text-sm text-[#3E2723]">Não pago</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="pagamento_tipo"
+                        value="total"
+                        checked={formData.pagamento_tipo === 'total'}
+                        onChange={(e) => setFormData({ ...formData, pagamento_tipo: e.target.value, valor_pago: totalPedido })}
+                        className="w-4 h-4 text-[#6B4423] focus:ring-[#6B4423]"
+                      />
+                      <span className="text-sm text-[#3E2723]">Pago Total</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="pagamento_tipo"
+                        value="parcial"
+                        checked={formData.pagamento_tipo === 'parcial'}
+                        onChange={(e) => setFormData({ ...formData, pagamento_tipo: e.target.value })}
+                        className="w-4 h-4 text-[#6B4423] focus:ring-[#6B4423]"
+                      />
+                      <span className="text-sm text-[#3E2723]">Adiantamento</span>
+                    </label>
+                  </div>
+                  
+                  {/* Campos de pagamento (visíveis quando pago total ou parcial) */}
+                  {formData.pagamento_tipo !== 'nenhum' && (
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                      {/* Valor pago */}
+                      <div>
+                        <label className="block text-xs text-[#705A4D] mb-1">
+                          {formData.pagamento_tipo === 'total' ? 'Valor Total' : 'Valor do Adiantamento'}
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={formData.valor_pago}
+                          onChange={(e) => setFormData({ ...formData, valor_pago: parseFloat(e.target.value) || 0 })}
+                          disabled={formData.pagamento_tipo === 'total'}
+                          className="w-full px-3 py-2 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg text-sm focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none disabled:bg-[#F5E6D3]"
+                        />
+                      </div>
+                      
+                      {/* Forma de pagamento */}
+                      <div>
+                        <label className="block text-xs text-[#705A4D] mb-1">Forma de Pagamento</label>
+                        <select
+                          value={formData.pagamento_forma}
+                          onChange={(e) => setFormData({ ...formData, pagamento_forma: e.target.value })}
+                          className="w-full px-3 py-2 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg text-sm focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none"
+                        >
+                          <option value="Dinheiro">Dinheiro</option>
+                          <option value="PIX">PIX</option>
+                          <option value="Cartão de Crédito">Cartão de Crédito</option>
+                          <option value="Cartão de Débito">Cartão de Débito</option>
+                          <option value="Transferência">Transferência</option>
+                        </select>
+                      </div>
+                      
+                      {/* Parcelas (se cartão de crédito) */}
+                      {formData.pagamento_forma === 'Cartão de Crédito' && (
+                        <div>
+                          <label className="block text-xs text-[#705A4D] mb-1">Parcelas</label>
+                          <select
+                            value={formData.pagamento_parcelas}
+                            onChange={(e) => setFormData({ ...formData, pagamento_parcelas: parseInt(e.target.value) })}
+                            className="w-full px-3 py-2 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg text-sm focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none"
+                          >
+                            {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => (
+                              <option key={n} value={n}>{n}x</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      
+                      {/* Saldo restante (se adiantamento) */}
+                      {formData.pagamento_tipo === 'parcial' && (
+                        <div>
+                          <label className="block text-xs text-[#705A4D] mb-1">Saldo na Retirada</label>
+                          <div className="px-3 py-2 bg-[#FEF3C7] border border-[#D97706]/30 rounded-lg text-sm font-semibold text-[#D97706]">
+                            {formatCurrency(Math.max(0, totalPedido - (formData.valor_pago || 0)))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Resumo do pagamento */}
+                  {formData.pagamento_tipo !== 'nenhum' && formData.valor_pago > 0 && (
+                    <div className="pt-2 mt-2 border-t border-[#8B5A3C]/20">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-[#705A4D]">Valor pago agora:</span>
+                        <span className="font-semibold text-green-600">{formatCurrency(formData.valor_pago)}</span>
+                      </div>
+                      {formData.pagamento_tipo === 'parcial' && totalPedido > formData.valor_pago && (
+                        <div className="flex justify-between text-sm mt-1">
+                          <span className="text-[#705A4D]">Saldo a pagar na retirada:</span>
+                          <span className="font-semibold text-[#D97706]">{formatCurrency(totalPedido - formData.valor_pago)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="flex gap-3 justify-end pt-4">
                 <Button type="button" onClick={() => { setDialogOpen(false); resetForm(); }} variant="outline">
                   Cancelar
@@ -1149,6 +1305,49 @@ Obrigado pela preferência! 🙏
                   <p className="font-medium text-[#3E2723]">
                     {viewingPedido.data_entrega ? formatDateTime(viewingPedido.data_entrega) : 'Não definida'}
                   </p>
+                </div>
+              </div>
+
+              {/* Informações de Pagamento */}
+              <div className="bg-[#F5E6D3]/30 rounded-lg p-4 border border-[#8B5A3C]/20">
+                <h3 className="text-sm font-semibold text-[#6B4423] mb-3">Pagamento</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-[#705A4D]">Status</p>
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
+                      viewingPedido.status_pagamento === 'pago' ? 'bg-green-100 text-green-700' :
+                      viewingPedido.status_pagamento === 'parcial' ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}>
+                      {viewingPedido.status_pagamento === 'pago' ? 'Pago' :
+                       viewingPedido.status_pagamento === 'parcial' ? 'Adiantamento' : 'Pendente'}
+                    </span>
+                  </div>
+                  {viewingPedido.valor_pago > 0 && (
+                    <>
+                      <div>
+                        <p className="text-xs text-[#705A4D]">Valor Pago</p>
+                        <p className="font-semibold text-green-600">{formatCurrency(viewingPedido.valor_pago)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-[#705A4D]">Forma</p>
+                        <p className="font-medium text-[#3E2723]">
+                          {viewingPedido.pagamento_forma}
+                          {viewingPedido.pagamento_parcelas > 1 && ` (${viewingPedido.pagamento_parcelas}x)`}
+                        </p>
+                      </div>
+                      {viewingPedido.status_pagamento === 'parcial' && (
+                        <div>
+                          <p className="text-xs text-[#705A4D]">Saldo na Retirada</p>
+                          <p className="font-semibold text-[#D97706]">
+                            {formatCurrency((viewingPedido.valor_saldo !== null && viewingPedido.valor_saldo !== undefined) 
+                              ? viewingPedido.valor_saldo 
+                              : viewingPedido.valor_total - viewingPedido.valor_pago)}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
 

@@ -145,6 +145,13 @@ class Pedido(BaseModel):
     origem: Optional[str] = "manual"  # 'manual', 'venda_mista', etc.
     data_cancelamento: Optional[datetime] = None
     motivo_cancelamento: Optional[str] = None
+    # Campos de pagamento antecipado
+    status_pagamento: Optional[str] = "pendente"  # 'pendente', 'parcial', 'pago'
+    valor_pago: Optional[float] = 0.0  # Valor já pago (adiantamento)
+    valor_saldo: Optional[float] = None  # Saldo restante (calculado)
+    pagamento_forma: Optional[str] = None  # Forma de pagamento do adiantamento
+    pagamento_parcelas: Optional[int] = 1  # Número de parcelas
+    data_pagamento: Optional[datetime] = None  # Data do pagamento/adiantamento
 
 
 class PedidoCreate(BaseModel):
@@ -155,6 +162,11 @@ class PedidoCreate(BaseModel):
     observacoes: Optional[str] = None
     venda_vinculada_id: Optional[str] = None  # ID da venda que gerou este pedido (venda mista)
     origem: Optional[str] = None  # 'manual', 'venda_mista', etc.
+    # Campos de pagamento antecipado
+    status_pagamento: Optional[str] = "pendente"
+    valor_pago: Optional[float] = 0.0
+    pagamento_forma: Optional[str] = None
+    pagamento_parcelas: Optional[int] = 1
 
 
 class PedidoUpdate(BaseModel):
@@ -164,6 +176,11 @@ class PedidoUpdate(BaseModel):
     data_entrega: Optional[str] = None
     observacoes: Optional[str] = None
     status: Optional[PedidoStatus] = None
+    # Campos de pagamento antecipado
+    status_pagamento: Optional[str] = None
+    valor_pago: Optional[float] = None
+    pagamento_forma: Optional[str] = None
+    pagamento_parcelas: Optional[int] = None
 
 
 # Producao Models

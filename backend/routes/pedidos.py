@@ -21,6 +21,19 @@ async def criar_pedido(pedido_data: PedidoCreate, current_user: dict = Depends(g
     
     valor_total = sum(item.subtotal for item in pedido_data.items)
     
+    # Calcular saldo restante
+    valor_pago = pedido_data.valor_pago or 0.0
+    valor_saldo = valor_total - valor_pago
+    
+    # Determinar status de pagamento
+    if valor_pago >= valor_total:
+        status_pagamento = "pago"
+        valor_saldo = 0
+    elif valor_pago > 0:
+        status_pagamento = "parcial"
+    else:
+        status_pagamento = "pendente"
+    
     count = await db.pedidos.count_documents({})
     numero_pedido = f"PED-{count + 1:06d}"
     
@@ -35,13 +48,22 @@ async def criar_pedido(pedido_data: PedidoCreate, current_user: dict = Depends(g
         observacoes=pedido_data.observacoes,
         data_entrega=datetime.fromisoformat(pedido_data.data_entrega) if pedido_data.data_entrega else None,
         venda_vinculada_id=pedido_data.venda_vinculada_id,
-        origem=pedido_data.origem or "manual"
+        origem=pedido_data.origem or "manual",
+        # Campos de pagamento
+        status_pagamento=status_pagamento,
+        valor_pago=valor_pago,
+        valor_saldo=valor_saldo,
+        pagamento_forma=pedido_data.pagamento_forma,
+        pagamento_parcelas=pedido_data.pagamento_parcelas or 1,
+        data_pagamento=datetime.now(timezone.utc) if valor_pago > 0 else None
     )
     
     doc = pedido.model_dump()
     doc['data_pedido'] = doc['data_pedido'].isoformat()
     if doc.get('data_entrega'):
         doc['data_entrega'] = doc['data_entrega'].isoformat()
+    if doc.get('data_pagamento'):
+        doc['data_pagamento'] = doc['data_pagamento'].isoformat()
     await db.pedidos.insert_one(doc)
     return pedido
 
