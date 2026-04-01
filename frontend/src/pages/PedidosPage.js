@@ -317,7 +317,7 @@ Obrigado pela preferência! 🙏
   };
 
   const handleMarcarEntregue = async (pedidoId, itemIndex) => {
-    if (!window.confirm('Marcar este item como entregue?\n\nIsso indica que o produto foi retirado do estoque e não precisará ser produzido.')) {
+    if (!window.confirm('Marcar este item como ENTREGUE ao cliente?\n\nIsso indica que o produto já foi entregue ao cliente.')) {
       return;
     }
     
@@ -335,6 +335,28 @@ Obrigado pela preferência! 🙏
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Erro ao marcar item como entregue');
+    }
+  };
+
+  const handleMarcarSeparado = async (pedidoId, itemIndex) => {
+    if (!window.confirm('Marcar este item como SEPARADO?\n\nIsso indica que o produto foi retirado do estoque e está pronto para entrega.\nO pedido ficará disponível para finalizar a venda.')) {
+      return;
+    }
+    
+    try {
+      await pedidosAPI.marcarItemSeparado(pedidoId, itemIndex);
+      toast.success('Item marcado como separado!');
+      
+      // Atualizar viewingPedido localmente
+      if (viewingPedido && viewingPedido.id === pedidoId) {
+        const updatedItems = [...viewingPedido.items];
+        updatedItems[itemIndex] = { ...updatedItems[itemIndex], ja_separado: true };
+        setViewingPedido({ ...viewingPedido, items: updatedItems });
+      }
+      
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erro ao marcar item como separado');
     }
   };
 
@@ -1143,6 +1165,11 @@ Obrigado pela preferência! 🙏
                               Já Entregue
                             </span>
                           )}
+                          {item.ja_separado && !item.ja_entregue && (
+                            <span className="px-2 py-0.5 bg-blue-500 text-white text-xs rounded-full font-medium">
+                              Separado
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm text-[#705A4D]">{item.quantidade}x {formatCurrency(item.preco_unitario)}</p>
                         {item.sabores && item.sabores.length > 0 && (
@@ -1151,15 +1178,39 @@ Obrigado pela preferência! 🙏
                           </p>
                         )}
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <p className="font-medium text-[#3E2723]">{formatCurrency(item.subtotal)}</p>
-                        {!item.ja_entregue && viewingPedido.status !== 'cancelado' && viewingPedido.status !== 'entregue' && (
+                        {!item.ja_entregue && !item.ja_separado && viewingPedido.status !== 'cancelado' && viewingPedido.status !== 'entregue' && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-blue-600 border-blue-500 hover:bg-blue-50 text-xs"
+                              onClick={() => handleMarcarSeparado(viewingPedido.id, index)}
+                              title="Separar do estoque (pronto para entrega)"
+                            >
+                              <Package size={14} className="mr-1" />
+                              Separar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-green-600 border-green-500 hover:bg-green-50 text-xs"
+                              onClick={() => handleMarcarEntregue(viewingPedido.id, index)}
+                              title="Marcar como já entregue ao cliente"
+                            >
+                              <Package size={14} className="mr-1" />
+                              Entregar
+                            </Button>
+                          </>
+                        )}
+                        {item.ja_separado && !item.ja_entregue && viewingPedido.status !== 'cancelado' && viewingPedido.status !== 'entregue' && (
                           <Button
                             size="sm"
                             variant="outline"
                             className="text-green-600 border-green-500 hover:bg-green-50 text-xs"
                             onClick={() => handleMarcarEntregue(viewingPedido.id, index)}
-                            title="Marcar como já entregue (retirado do estoque)"
+                            title="Marcar como já entregue ao cliente"
                           >
                             <Package size={14} className="mr-1" />
                             Entregar

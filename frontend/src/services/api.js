@@ -42,6 +42,7 @@ export const pedidosAPI = {
   cancelar: (id) => api.delete(`/pedidos/${id}/cancelar`),
   excluir: (id) => api.delete(`/pedidos/${id}`),
   marcarItemEntregue: (pedidoId, itemIndex) => api.patch(`/pedidos/${pedidoId}/item/${itemIndex}/entregue`),
+  marcarItemSeparado: (pedidoId, itemIndex) => api.patch(`/pedidos/${pedidoId}/item/${itemIndex}/separado`),
 };
 
 export const producaoAPI = {

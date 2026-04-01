@@ -82,7 +82,14 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 
 ## Changelog
 
-### 2025-03-31 (Sessão 10)
+### 2025-03-31 / 2025-04-01 (Sessão 10)
+- **Nova Feature**: Opção "Já Separado" em itens do pedido
+  - Novo botão "Separar" (azul) ao lado de "Entregar" (verde)
+  - Item separado: retirado do estoque, pronto para entrega, mas ainda não entregue ao cliente
+  - Badge azul "Separado" indica status do item
+  - Itens separados não aparecem na lista de produção
+  - Pedidos com todos itens separados aparecem em Vendas para finalização
+  - Após separar, botão "Entregar" continua disponível para finalizar a entrega
 - **Melhoria**: Campo de quantidade ANTES de adicionar produto
   - Novo campo "Qtd" ao lado da busca de produtos em Pedidos e Vendas
   - Permite definir quantidade (incluindo decimais como 0.5) antes de adicionar

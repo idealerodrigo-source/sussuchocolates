@@ -105,16 +105,16 @@ export default function VendasPage() {
       setVendas(vendasRes.data);
       // Filtrar pedidos que estão prontos para venda:
       // 1. Status 'concluido' ou 'em_embalagem'
-      // 2. OU pedidos onde TODOS os itens estão marcados como 'já entregue'
+      // 2. OU pedidos onde TODOS os itens estão marcados como 'já entregue' OU 'já separado'
       const pedidosFinalizados = pedidosRes.data.filter((p) => {
         // Condição tradicional: status concluido ou em_embalagem
         if (p.status === 'concluido' || p.status === 'em_embalagem') {
           return true;
         }
-        // Nova condição: todos os itens do pedido estão marcados como 'já entregue'
+        // Nova condição: todos os itens do pedido estão marcados como 'já entregue' ou 'já separado'
         if (p.items && p.items.length > 0) {
-          const todosEntregues = p.items.every(item => item.ja_entregue === true);
-          if (todosEntregues) {
+          const todosProntos = p.items.every(item => item.ja_entregue === true || item.ja_separado === true);
+          if (todosProntos) {
             return true;
           }
         }
@@ -521,9 +521,10 @@ export default function VendasPage() {
                   >
                     <option value="">Selecione um pedido...</option>
                     {pedidosConcluidos.map((pedido) => {
-                      // Verificar se é um pedido com todos itens já entregues (do estoque)
+                      // Verificar se é um pedido com todos itens já entregues ou separados (do estoque)
+                      const todosProntos = pedido.items?.length > 0 && pedido.items.every(item => item.ja_entregue === true || item.ja_separado === true);
                       const todosEntregues = pedido.items?.length > 0 && pedido.items.every(item => item.ja_entregue === true);
-                      const statusLabel = todosEntregues ? '[Itens Entregues]' : '';
+                      const statusLabel = todosEntregues ? '[Entregues]' : todosProntos ? '[Separados]' : '';
                       return (
                         <option key={pedido.id} value={pedido.id}>
                           {pedido.numero} - {pedido.cliente_nome} - {formatCurrency(pedido.valor_total)} {statusLabel}
@@ -531,7 +532,7 @@ export default function VendasPage() {
                       );
                     })}
                   </select>
-                  <p className="text-xs text-[#705A4D] mt-1">Pedidos concluídos, em embalagem, ou com todos itens já entregues</p>
+                  <p className="text-xs text-[#705A4D] mt-1">Pedidos concluídos, em embalagem, ou com todos itens já entregues/separados</p>
                 </div>
               ) : etapaVendaDireta === 1 ? (
                 /* ETAPA 1: Montar a venda */

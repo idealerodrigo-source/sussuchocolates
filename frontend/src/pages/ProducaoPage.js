@@ -63,13 +63,13 @@ export default function ProducaoPage() {
       setRelatorioPendente(relatorioRes.data);
       
       // Filtrar pedidos pendentes ou em produção
-      // Excluir pedidos onde TODOS os itens já foram entregues
+      // Excluir pedidos onde TODOS os itens já foram entregues ou separados
       const pedidosPendentes = pedidosRes.data.filter((p) => {
         if (p.status !== 'pendente' && p.status !== 'em_producao') {
           return false;
         }
-        // Verificar se há pelo menos um item que NÃO foi entregue
-        const temItensParaProduzir = p.items?.some(item => !item.ja_entregue);
+        // Verificar se há pelo menos um item que NÃO foi entregue nem separado
+        const temItensParaProduzir = p.items?.some(item => !item.ja_entregue && !item.ja_separado);
         return temItensParaProduzir;
       });
       setPedidos(pedidosPendentes);
@@ -83,7 +83,7 @@ export default function ProducaoPage() {
 
   // Função para carregar itens do pedido selecionado
   // Desmembra itens com múltiplos sabores em itens separados para produção
-  // IGNORA itens já entregues (ja_entregue = true)
+  // IGNORA itens já entregues ou separados (ja_entregue = true ou ja_separado = true)
   const handlePedidoChange = (pedidoId) => {
     setFormData({ ...formData, pedido_id: pedidoId });
     
@@ -96,8 +96,8 @@ export default function ProducaoPage() {
         const itensFromPedido = [];
         
         pedido.items.forEach(item => {
-          // Pular itens já entregues
-          if (item.ja_entregue) {
+          // Pular itens já entregues ou separados
+          if (item.ja_entregue || item.ja_separado) {
             return;
           }
           
@@ -250,8 +250,8 @@ export default function ProducaoPage() {
       pedidosPendentes.forEach(pedido => {
         if (pedido.items && pedido.items.length > 0) {
           pedido.items.forEach(item => {
-            // Pular itens já entregues
-            if (item.ja_entregue) {
+            // Pular itens já entregues ou separados
+            if (item.ja_entregue || item.ja_separado) {
               return;
             }
             todasProducoes.push({
@@ -267,7 +267,7 @@ export default function ProducaoPage() {
       });
       
       if (todasProducoes.length === 0) {
-        toast.error('Nenhum item para produzir (todos já foram entregues)');
+        toast.error('Nenhum item para produzir (todos já foram entregues ou separados)');
         setSubmitting(false);
         return;
       }
@@ -289,9 +289,9 @@ export default function ProducaoPage() {
 
   // Obter pedidos apenas pendentes (não em produção)
   const pedidosApenasNovos = pedidos.filter(p => p.status === 'pendente');
-  // Contar apenas itens não entregues
+  // Contar apenas itens não entregues nem separados
   const totalItensPendentes = pedidosApenasNovos.reduce((acc, p) => {
-    const itensNaoEntregues = p.items?.filter(i => !i.ja_entregue) || [];
+    const itensNaoEntregues = p.items?.filter(i => !i.ja_entregue && !i.ja_separado) || [];
     return acc + itensNaoEntregues.length;
   }, 0);
 
@@ -389,7 +389,7 @@ export default function ProducaoPage() {
                     <p className="text-xs font-medium text-[#6B4423] mb-2">Pedidos que serão iniciados:</p>
                     <div className="space-y-2">
                       {pedidosApenasNovos.map(pedido => {
-                        const itensAProduzir = pedido.items?.filter(i => !i.ja_entregue)?.length || 0;
+                        const itensAProduzir = pedido.items?.filter(i => !i.ja_entregue && !i.ja_separado)?.length || 0;
                         return (
                           <div key={pedido.id} className="flex justify-between items-center text-sm">
                             <span className="text-[#3E2723] font-medium">{pedido.numero}</span>
@@ -494,8 +494,8 @@ export default function ProducaoPage() {
                   >
                     <option value="">Selecione um pedido...</option>
                     {pedidos.map((pedido) => {
-                      // Contar apenas itens que NÃO foram entregues
-                      const itensAProduzir = pedido.items?.filter(i => !i.ja_entregue)?.length || 0;
+                      // Contar apenas itens que NÃO foram entregues nem separados
+                      const itensAProduzir = pedido.items?.filter(i => !i.ja_entregue && !i.ja_separado)?.length || 0;
                       return (
                         <option key={pedido.id} value={pedido.id}>
                           {pedido.numero} - {pedido.cliente_nome} ({itensAProduzir} itens a produzir)
