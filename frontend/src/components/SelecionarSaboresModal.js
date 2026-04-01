@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Minus, Trash, Cookie, MagnifyingGlass } from '@phosphor-icons/react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Plus, Minus, Trash, Cookie, MagnifyingGlass, X } from '@phosphor-icons/react';
 import { Button } from './ui/button';
 
 // Lista de sabores disponíveis para recheio (fallback)
@@ -204,9 +203,24 @@ export function SelecionarSaboresModal({
   }, [open]);
 
   const handleAdicionarSabor = () => {
-    if (!produtoSelecionado && !buscaSabor) return;
-    if (qtdSaborAtual <= 0) return;
-    if (qtdSaborAtual > restante) return;
+    console.log('=== handleAdicionarSabor ===');
+    console.log('produtoSelecionado:', produtoSelecionado);
+    console.log('buscaSabor:', buscaSabor);
+    console.log('qtdSaborAtual:', qtdSaborAtual);
+    console.log('restante:', restante);
+    
+    if (!produtoSelecionado && !buscaSabor) {
+      console.log('Retornando: sem produto selecionado ou busca');
+      return;
+    }
+    if (qtdSaborAtual <= 0) {
+      console.log('Retornando: quantidade <= 0');
+      return;
+    }
+    if (qtdSaborAtual > restante) {
+      console.log('Retornando: quantidade > restante');
+      return;
+    }
 
     let saborParaAdicionar;
     let nomeCompleto;
@@ -296,17 +310,45 @@ export function SelecionarSaboresModal({
     );
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#FFFDF8] max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-serif text-[#3E2723] flex items-center gap-2">
-            <Cookie size={24} className="text-[#6B4423]" />
-            Selecionar Sabores do Recheio
-          </DialogTitle>
-        </DialogHeader>
+  // Modal customizado para evitar conflitos com Dialog aninhados
+  if (!open) return null;
 
-        <div className="space-y-4">
+  return (
+    <div 
+      className="fixed inset-0 flex items-center justify-center pointer-events-auto"
+      style={{ zIndex: 9999 }}
+      onClick={(e) => {
+        // Fechar apenas se clicar no fundo (não no conteúdo)
+        if (e.target === e.currentTarget) {
+          onOpenChange(false);
+        }
+      }}
+    >
+      {/* Overlay - apenas visual, sem interceptar eventos */}
+      <div 
+        className="absolute inset-0 bg-black/60 pointer-events-none"
+      />
+      
+      {/* Content */}
+      <div 
+        className="relative bg-[#FFFDF8] max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto rounded-lg shadow-xl pointer-events-auto"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-[#8B5A3C]/20">
+          <div className="flex items-center gap-2 text-[#3E2723]">
+            <Cookie size={24} className="text-[#6B4423]" />
+            <h2 className="text-xl font-serif">Selecionar Sabores do Recheio</h2>
+          </div>
+          <button
+            onClick={() => onOpenChange(false)}
+            className="rounded-full p-1 hover:bg-[#F5E6D3] text-[#6B4423]"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        
+        {/* Body */}
+        <div className="p-4 space-y-4">
           {/* Info do produto */}
           <div className="bg-[#F5E6D3]/50 rounded-lg p-3">
             <p className="font-medium text-[#3E2723]">{produto?.nome}</p>
@@ -357,7 +399,11 @@ export function SelecionarSaboresModal({
                     <button
                       key={usandoProdutosReais ? opcao.id : index}
                       type="button"
-                      onClick={() => handleSelecionarProduto(opcao)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleSelecionarProduto(opcao);
+                      }}
                       className="w-full px-3 py-2 text-left hover:bg-[#F5E6D3] text-sm border-b border-[#8B5A3C]/10 last:border-b-0"
                     >
                       <span className="font-medium text-[#3E2723]">{sabor}</span>
@@ -393,7 +439,11 @@ export function SelecionarSaboresModal({
               />
               <Button
                 type="button"
-                onClick={handleAdicionarSabor}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  handleAdicionarSabor();
+                }}
                 disabled={!produtoSelecionado || qtdSaborAtual <= 0 || qtdSaborAtual > restante}
                 className="bg-[#6B4423] text-white hover:bg-[#8B5A3C]"
               >
@@ -527,8 +577,8 @@ export function SelecionarSaboresModal({
             </Button>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
 
