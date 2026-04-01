@@ -53,7 +53,7 @@ async def analise_lucratividade(current_user: dict = Depends(get_current_user)):
     
     for produto in produtos:
         pid = produto['id']
-        custo = produto.get('custo_producao') or 0
+        custo = produto.get('custo') or produto.get('custo_producao') or 0
         preco = produto.get('preco', 0)
         lucro = preco - custo
         margem = (lucro / preco * 100) if preco > 0 else 0

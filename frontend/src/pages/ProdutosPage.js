@@ -31,7 +31,7 @@ export default function ProdutosPage() {
     descricao: '',
     categoria: '',
     preco: '',
-    custo_producao: '',
+    custo: '',
     ncm_code: '18063210',
     unidade: 'UN',
   });
@@ -74,7 +74,7 @@ export default function ProdutosPage() {
       const data = {
         ...formData,
         preco: parseFloat(formData.preco),
-        custo_producao: parseFloat(formData.custo_producao || 0),
+        custo: parseFloat(formData.custo || 0),
       };
 
       // Verificar duplicatas apenas em novos cadastros
@@ -138,7 +138,7 @@ export default function ProdutosPage() {
       descricao: produto.descricao || '',
       categoria: produto.categoria,
       preco: produto.preco.toString(),
-      custo_producao: (produto.custo_producao || 0).toString(),
+      custo: (produto.custo || 0).toString(),
       ncm_code: produto.ncm_code || '18063210',
       unidade: produto.unidade || 'UN',
     });
@@ -151,7 +151,7 @@ export default function ProdutosPage() {
       descricao: '',
       categoria: '',
       preco: '',
-      custo_producao: '',
+      custo: '',
       ncm_code: '18063210',
       unidade: 'UN',
     });
@@ -254,8 +254,8 @@ export default function ProdutosPage() {
                   <input
                     type="number"
                     step="0.01"
-                    value={formData.custo_producao}
-                    onChange={(e) => setFormData({ ...formData, custo_producao: e.target.value })}
+                    value={formData.custo}
+                    onChange={(e) => setFormData({ ...formData, custo: e.target.value })}
                     className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
                   />
                 </div>
@@ -311,7 +311,7 @@ export default function ProdutosPage() {
                 <SortableHeader label="Categoria" sortKey="categoria" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
                 <SortableHeader label="Descrição" sortKey="descricao" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
                 <SortableHeader label="Preço" sortKey="preco" sortConfig={sortConfig} onSort={requestSort} className="text-right" />
-                <SortableHeader label="Custo" sortKey="custo_producao" sortConfig={sortConfig} onSort={requestSort} className="text-right" />
+                <SortableHeader label="Custo" sortKey="custo" sortConfig={sortConfig} onSort={requestSort} className="text-right" />
                 <th className="text-right px-6 py-4 text-sm font-sans font-semibold text-[#3E2723]">Ações</th>
               </tr>
             </thead>
@@ -329,7 +329,7 @@ export default function ProdutosPage() {
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{produto.categoria}</td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{produto.descricao || '-'}</td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans text-right">{formatCurrency(produto.preco)}</td>
-                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans text-right">{formatCurrency(produto.custo_producao || 0)}</td>
+                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans text-right">{formatCurrency(produto.custo || 0)}</td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex gap-2 justify-end">
                         <button

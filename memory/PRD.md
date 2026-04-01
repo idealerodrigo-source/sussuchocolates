@@ -72,6 +72,7 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 
 ### P0 - Concluído ✅
 - [x] Venda Mista (Entrega Imediata + A Produzir) - VendasPage.js
+- [x] Informações de Pagamento na Criação de Pedidos
 
 ### P1 - Próximas
 - [ ] Alertas automáticos de estoque baixo
@@ -81,6 +82,20 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 - [x] ~~Refatorar VendasPage.js~~ ✅ Completo (1812 → 831 linhas)
 
 ## Changelog
+
+### 2026-04-01 (Sessão 11)
+- **Nova Feature COMPLETA**: Informações de Pagamento na Criação de Pedidos
+  - Opções: "Não pago", "Pago Total", "Adiantamento"
+  - Campos: valor pago, forma de pagamento (Dinheiro, PIX, Cartão, etc.)
+  - Parcelas para cartão de crédito (1-12x)
+  - Cálculo automático do saldo restante na retirada
+  - Status visual: "Pendente" (cinza), "Adiantamento" (amarelo), "Pago" (verde)
+  - Visualização completa na modal de detalhes do pedido
+- **Bug Fix**: Corrigido problema de custo de produção zerado em produtos
+  - Frontend usava campo `custo_producao` mas backend usa `custo`
+  - Atualizado `ProdutosPage.js` para usar campo correto `custo`
+  - Atualizado `dashboard.py` para buscar `custo` (com fallback para `custo_producao`)
+  - Custo agora é salvo e exibido corretamente na lista de produtos
 
 ### 2025-03-31 / 2025-04-01 (Sessão 10)
 - **Nova Feature**: Opção "Já Separado" em itens do pedido
