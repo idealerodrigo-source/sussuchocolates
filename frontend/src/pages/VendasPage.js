@@ -157,10 +157,26 @@ export default function VendasPage() {
     return Math.max(0, subtotal - desconto);
   };
 
+  // Calcular adiantamento do pedido (se existir)
+  const calcularAdiantamentoPedido = () => {
+    if (tipoVenda === 'pedido' && formData.pedido_id) {
+      const pedidoSelecionado = pedidosConcluidos.find(p => p.id === formData.pedido_id);
+      return pedidoSelecionado?.valor_pago || 0;
+    }
+    return 0;
+  };
+
+  // Calcular o saldo a pagar (total - adiantamento)
+  const calcularSaldoAPagar = () => {
+    const totalComDesconto = calcularTotalComDesconto();
+    const adiantamento = calcularAdiantamentoPedido();
+    return Math.max(0, totalComDesconto - adiantamento);
+  };
+
   const calcularRestantePagamento = () => {
-    const totalVenda = calcularTotalComDesconto();
+    const saldoAPagar = calcularSaldoAPagar();
     const totalPago = calcularTotalFormasPagamento();
-    return Math.max(0, totalVenda - totalPago);
+    return Math.max(0, saldoAPagar - totalPago);
   };
 
   // Handler para adicionar forma de pagamento
@@ -177,15 +193,15 @@ export default function VendasPage() {
     }
     
     const totalAtual = formData.formas_pagamento.reduce((acc, fp) => acc + fp.valor, 0);
-    const totalVenda = calcularTotalComDesconto();
+    const saldoAPagar = calcularSaldoAPagar(); // Usa saldo considerando adiantamento
     
-    if (totalVenda <= 0) {
-      toast.error('Selecione um pedido ou adicione produtos primeiro');
+    if (saldoAPagar <= 0) {
+      toast.error('Este pedido já foi pago integralmente');
       return;
     }
     
-    if (totalAtual + valor > totalVenda + 0.01) {
-      toast.error(`O total das formas de pagamento não pode exceder ${formatCurrency(totalVenda)}`);
+    if (totalAtual + valor > saldoAPagar + 0.01) {
+      toast.error(`O total das formas de pagamento não pode exceder ${formatCurrency(saldoAPagar)}`);
       return;
     }
     
@@ -240,9 +256,21 @@ export default function VendasPage() {
       let formaPagamentoFinal = formData.forma_pagamento;
       let formasPagamentoFinal = formData.formas_pagamento;
       
-      if (formasPagamentoFinal.length === 0 && !formData.entrega_posterior) {
-        toast.error('Adicione pelo menos uma forma de pagamento');
+      // Calcular saldo a pagar considerando adiantamento
+      const saldoAPagar = calcularSaldoAPagar();
+      const totalPagoAgora = calcularTotalFormasPagamento();
+      
+      // Se há saldo a pagar e não há formas de pagamento E não é entrega posterior, exigir pagamento
+      if (saldoAPagar > 0.01 && formasPagamentoFinal.length === 0 && !formData.entrega_posterior) {
+        toast.error('Adicione pelo menos uma forma de pagamento para o saldo restante');
         return;
+      }
+      
+      // Se o pedido já foi pago integralmente (saldo = 0), não precisa de forma de pagamento adicional
+      if (saldoAPagar === 0) {
+        // Marcar como já pago no pedido
+        formaPagamentoFinal = 'Pago Antecipadamente';
+        formasPagamentoFinal = []; // Não precisa adicionar formas de pagamento
       }
       
       if (formasPagamentoFinal.length === 1) {
@@ -1029,6 +1057,80 @@ export default function VendasPage() {
               {/* Forma de pagamento */}
               {(tipoVenda === 'pedido' || etapaVendaDireta === 2) && (
                 <>
+                  {/* Resumo do Cálculo - Adiantamento e Saldo */}
+                  {tipoVenda === 'pedido' && formData.pedido_id && (() => {
+                    const pedidoSelecionado = pedidosConcluidos.find(p => p.id === formData.pedido_id);
+                    const adiantamento = calcularAdiantamentoPedido();
+                    const totalComDesconto = calcularTotalComDesconto();
+                    const saldoAPagar = calcularSaldoAPagar();
+                    
+                    return (
+                      <div className="bg-gradient-to-r from-[#F5E6D3] to-[#E8D5C4] rounded-xl p-4 border border-[#8B5A3C]/30">
+                        <h4 className="text-sm font-bold text-[#6B4423] mb-3 flex items-center gap-2">
+                          💵 Resumo do Pagamento
+                        </h4>
+                        
+                        <div className="space-y-2">
+                          {/* Total do Pedido */}
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-[#705A4D]">Total do Pedido:</span>
+                            <span className="font-semibold text-[#3E2723]">{formatCurrency(calcularSubtotalItens())}</span>
+                          </div>
+                          
+                          {/* Desconto (se houver) */}
+                          {formData.desconto_valor > 0 && (
+                            <div className="flex justify-between items-center text-orange-600">
+                              <span className="text-sm">Desconto:</span>
+                              <span className="font-semibold">-{formatCurrency(calcularValorDesconto())}</span>
+                            </div>
+                          )}
+                          
+                          {/* Total com desconto (se houver desconto) */}
+                          {formData.desconto_valor > 0 && (
+                            <div className="flex justify-between items-center border-t border-[#8B5A3C]/20 pt-2">
+                              <span className="text-sm text-[#705A4D]">Subtotal:</span>
+                              <span className="font-semibold text-[#3E2723]">{formatCurrency(totalComDesconto)}</span>
+                            </div>
+                          )}
+                          
+                          {/* Adiantamento */}
+                          {adiantamento > 0 && (
+                            <div className="flex justify-between items-center bg-green-50 -mx-4 px-4 py-2 border-y border-green-200">
+                              <div>
+                                <span className="text-sm font-medium text-green-700">✓ Adiantamento Pago</span>
+                                {pedidoSelecionado?.pagamento_forma && (
+                                  <span className="text-xs text-green-600 ml-2">
+                                    ({pedidoSelecionado.pagamento_forma})
+                                  </span>
+                                )}
+                              </div>
+                              <span className="font-bold text-green-700">-{formatCurrency(adiantamento)}</span>
+                            </div>
+                          )}
+                          
+                          {/* Saldo a Pagar */}
+                          <div className={`flex justify-between items-center pt-2 ${adiantamento > 0 ? 'border-t border-[#8B5A3C]/20' : ''}`}>
+                            <span className="text-base font-bold text-[#3E2723]">
+                              {adiantamento > 0 ? '💰 Saldo a Pagar Agora:' : '💰 Total a Pagar:'}
+                            </span>
+                            <span className={`text-xl font-bold ${saldoAPagar > 0 ? 'text-[#D97706]' : 'text-green-600'}`}>
+                              {formatCurrency(saldoAPagar)}
+                            </span>
+                          </div>
+                          
+                          {/* Aviso se já foi pago integralmente */}
+                          {saldoAPagar === 0 && (
+                            <div className="bg-green-100 rounded-lg p-2 mt-2 text-center">
+                              <span className="text-sm font-medium text-green-700">
+                                ✓ Pedido já pago integralmente! Apenas confirme a entrega.
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <FormasPagamentoSection
                     formasPagamento={formData.formas_pagamento}
                     novaFormaPagamento={novaFormaPagamento}
@@ -1037,6 +1139,7 @@ export default function VendasPage() {
                     onRemoverFormaPagamento={handleRemoverFormaPagamento}
                     calcularTotalFormasPagamento={calcularTotalFormasPagamento}
                     calcularRestantePagamento={calcularRestantePagamento}
+                    calcularSaldoAPagar={calcularSaldoAPagar}
                     entregaPosterior={formData.entrega_posterior}
                     dataPrevisaoPagamento={formData.data_previsao_pagamento}
                     observacoesPagamento={formData.observacoes_pagamento}

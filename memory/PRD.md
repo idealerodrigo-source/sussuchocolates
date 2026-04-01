@@ -104,6 +104,12 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
   - **Observações**: Se existirem, são exibidas em destaque
   - **Alerta de saldo**: Aviso quando há valor pendente a receber
   - Para "Venda Direta": Resumo na etapa 2 com itens, tipo de entrega (Imediata/A Produzir)
+- **Nova Feature**: Cálculo Automático de Adiantamento e Saldo na Venda
+  - Ao finalizar venda de pedido: sistema calcula automaticamente o saldo considerando adiantamento
+  - Mostra resumo visual: Total do Pedido → Desconto (se houver) → Adiantamento Pago → Saldo a Pagar
+  - Se pedido já foi pago integralmente (saldo = 0): exibe mensagem "Pedido Pago Integralmente" e não exige forma de pagamento
+  - Formas de pagamento agora são aplicadas sobre o SALDO restante, não sobre o total
+  - Validação impede adicionar pagamento maior que o saldo pendente
 
 ### 2025-03-31 / 2025-04-01 (Sessão 10)
 - **Nova Feature**: Opção "Já Separado" em itens do pedido
