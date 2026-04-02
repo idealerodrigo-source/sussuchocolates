@@ -54,10 +54,13 @@ export default function RelatoriosPage() {
     }
   }, [activeTab]);
 
-  const buscarProducaoPorDataEntrega = async () => {
+  const buscarProducaoPorDataEntrega = async (dataInicio = null, dataFim = null) => {
     setLoading(true);
     try {
-      const response = await producaoAPI.relatorioPorDataEntrega();
+      const params = {};
+      if (dataInicio) params.data_inicio = dataInicio;
+      if (dataFim) params.data_fim = dataFim;
+      const response = await producaoAPI.relatorioPorDataEntrega(params);
       setProducaoPorDataEntrega(response.data);
     } catch (error) {
       toast.error('Erro ao carregar relatório');
@@ -555,12 +558,133 @@ export default function RelatoriosPage() {
         <div className="space-y-6">
           <div className="flex justify-between items-center flex-wrap gap-3">
             <h2 className="text-2xl font-serif font-semibold text-[#3E2723]">Itens a Produzir por Data de Entrega</h2>
-            <div className="flex gap-2">
-              <Button onClick={buscarProducaoPorDataEntrega} disabled={loading} variant="outline" className="text-[#6B4423] border-[#6B4423]">
-                <MagnifyingGlass size={18} className="mr-2" />
-                Atualizar
-              </Button>
-              {producaoPorDataEntrega?.por_data_entrega?.length > 0 && (
+          </div>
+
+          {/* Filtros de Período */}
+          <div className="bg-[#F5E6D3]/50 rounded-xl p-4 border border-[#8B5A3C]/20">
+            <div className="flex flex-wrap items-end gap-4">
+              <div>
+                <label className="block text-sm font-medium text-[#6B4423] mb-1">
+                  <CalendarBlank size={16} className="inline mr-1" />
+                  Data Inicial
+                </label>
+                <input
+                  type="date"
+                  value={filtros.data_inicio}
+                  onChange={(e) => setFiltros({ ...filtros, data_inicio: e.target.value })}
+                  className="px-4 py-2 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#6B4423] mb-1">
+                  <CalendarBlank size={16} className="inline mr-1" />
+                  Data Final
+                </label>
+                <input
+                  type="date"
+                  value={filtros.data_fim}
+                  onChange={(e) => setFiltros({ ...filtros, data_fim: e.target.value })}
+                  className="px-4 py-2 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723]"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => buscarProducaoPorDataEntrega(filtros.data_inicio, filtros.data_fim)} 
+                  disabled={loading}
+                  className="bg-[#6B4423] text-white hover:bg-[#8B5A3C]"
+                >
+                  <MagnifyingGlass size={18} className="mr-2" />
+                  Buscar
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setFiltros({ data_inicio: '', data_fim: '' });
+                    buscarProducaoPorDataEntrega();
+                  }} 
+                  disabled={loading}
+                  variant="outline"
+                  className="text-[#6B4423] border-[#6B4423]"
+                >
+                  Limpar
+                </Button>
+              </div>
+              {/* Atalhos de período */}
+              <div className="flex gap-2 ml-auto">
+                <Button 
+                  onClick={() => {
+                    const hoje = new Date().toISOString().split('T')[0];
+                    setFiltros({ data_inicio: hoje, data_fim: hoje });
+                    buscarProducaoPorDataEntrega(hoje, hoje);
+                  }} 
+                  size="sm"
+                  variant="outline"
+                  className="text-[#6B4423] border-[#6B4423]/50 text-xs"
+                >
+                  Hoje
+                </Button>
+                <Button 
+                  onClick={() => {
+                    const hoje = new Date();
+                    const amanha = new Date(hoje);
+                    amanha.setDate(amanha.getDate() + 1);
+                    const amanhaStr = amanha.toISOString().split('T')[0];
+                    setFiltros({ data_inicio: amanhaStr, data_fim: amanhaStr });
+                    buscarProducaoPorDataEntrega(amanhaStr, amanhaStr);
+                  }} 
+                  size="sm"
+                  variant="outline"
+                  className="text-[#6B4423] border-[#6B4423]/50 text-xs"
+                >
+                  Amanhã
+                </Button>
+                <Button 
+                  onClick={() => {
+                    const hoje = new Date();
+                    const inicioSemana = new Date(hoje);
+                    inicioSemana.setDate(hoje.getDate() - hoje.getDay());
+                    const fimSemana = new Date(inicioSemana);
+                    fimSemana.setDate(fimSemana.getDate() + 6);
+                    const inicioStr = inicioSemana.toISOString().split('T')[0];
+                    const fimStr = fimSemana.toISOString().split('T')[0];
+                    setFiltros({ data_inicio: inicioStr, data_fim: fimStr });
+                    buscarProducaoPorDataEntrega(inicioStr, fimStr);
+                  }} 
+                  size="sm"
+                  variant="outline"
+                  className="text-[#6B4423] border-[#6B4423]/50 text-xs"
+                >
+                  Esta Semana
+                </Button>
+                <Button 
+                  onClick={() => {
+                    const hoje = new Date();
+                    const proximaSemana = new Date(hoje);
+                    proximaSemana.setDate(hoje.getDate() + 7);
+                    const hojeStr = hoje.toISOString().split('T')[0];
+                    const proxSemanaStr = proximaSemana.toISOString().split('T')[0];
+                    setFiltros({ data_inicio: hojeStr, data_fim: proxSemanaStr });
+                    buscarProducaoPorDataEntrega(hojeStr, proxSemanaStr);
+                  }} 
+                  size="sm"
+                  variant="outline"
+                  className="text-[#6B4423] border-[#6B4423]/50 text-xs"
+                >
+                  Próximos 7 dias
+                </Button>
+              </div>
+            </div>
+            {(filtros.data_inicio || filtros.data_fim) && (
+              <p className="text-sm text-[#6B4423] mt-2">
+                Período: {filtros.data_inicio ? new Date(filtros.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR') : 'Início'} 
+                {' → '} 
+                {filtros.data_fim ? new Date(filtros.data_fim + 'T12:00:00').toLocaleDateString('pt-BR') : 'Fim'}
+              </p>
+            )}
+          </div>
+
+          {/* Botões de exportação */}
+          <div className="flex gap-2 justify-end">
+            {producaoPorDataEntrega?.por_data_entrega?.length > 0 && (
                 <>
                   <Button 
                     onClick={() => {
@@ -719,7 +843,6 @@ export default function RelatoriosPage() {
                   </Button>
                 </>
               )}
-            </div>
           </div>
 
           {loading && (

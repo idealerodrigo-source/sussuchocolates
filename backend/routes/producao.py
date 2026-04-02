@@ -2,7 +2,7 @@
 Producao routes
 """
 from fastapi import APIRouter, HTTPException, Depends
-from typing import List
+from typing import List, Optional
 from datetime import datetime, timezone
 import uuid
 
@@ -122,15 +122,46 @@ async def concluir_producao(producao_id: str, current_user: dict = Depends(get_c
 
 
 @router.get("/relatorio/por-data-entrega")
-async def relatorio_por_data_entrega(current_user: dict = Depends(get_current_user)):
+async def relatorio_por_data_entrega(
+    data_inicio: Optional[str] = None,
+    data_fim: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
     """
     Retorna relatório de itens a produzir agrupados por data de entrega.
+    Parâmetros opcionais:
+    - data_inicio: Data inicial (formato YYYY-MM-DD)
+    - data_fim: Data final (formato YYYY-MM-DD)
     Inclui:
     - Resumo agregado por produto (ex: "20.5 Ovo 05 recheado PRESTÍGIO")
     - Detalhes por pedido
     """
     # Estrutura para agrupar por data de entrega
     por_data_entrega = {}
+    
+    # Função auxiliar para verificar se data está no período
+    def data_no_periodo(data_str):
+        if not data_str or data_str == "sem_data":
+            return True  # Incluir itens sem data
+        if not data_inicio and not data_fim:
+            return True  # Sem filtro
+        
+        try:
+            data = datetime.strptime(data_str, '%Y-%m-%d').date()
+            
+            if data_inicio:
+                inicio = datetime.strptime(data_inicio, '%Y-%m-%d').date()
+                if data < inicio:
+                    return False
+            
+            if data_fim:
+                fim = datetime.strptime(data_fim, '%Y-%m-%d').date()
+                if data > fim:
+                    return False
+            
+            return True
+        except:
+            return True
     
     # Função auxiliar para formatar sabores
     def formatar_sabores(sabores_list):
@@ -235,6 +266,10 @@ async def relatorio_por_data_entrega(current_user: dict = Depends(get_current_us
         else:
             data_key = "sem_data"
         
+        # Verificar se está no período filtrado
+        if not data_no_periodo(data_key):
+            continue
+        
         sabores_texto = formatar_sabores(prod.get('sabores'))
         adicionar_item(data_key, data_entrega, pedido, prod['produto_nome'], prod['quantidade'], sabores_texto, "em_producao")
     
@@ -246,6 +281,10 @@ async def relatorio_por_data_entrega(current_user: dict = Depends(get_current_us
             data_key = data_entrega[:10] if isinstance(data_entrega, str) else data_entrega.strftime('%Y-%m-%d')
         else:
             data_key = "sem_data"
+        
+        # Verificar se está no período filtrado
+        if not data_no_periodo(data_key):
+            continue
         
         for item in pedido.get('items', []):
             # Pular itens já entregues
