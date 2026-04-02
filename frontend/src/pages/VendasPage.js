@@ -35,6 +35,27 @@ export default function VendasPage() {
   const [quantidadePendenteSabores, setQuantidadePendenteSabores] = useState(1);
   const [tipoEntregaPendente, setTipoEntregaPendente] = useState('imediata');
   
+  // Estado para pesquisa de pedidos
+  const [pesquisaPedido, setPesquisaPedido] = useState('');
+  
+  // Filtrar pedidos pelo termo de pesquisa
+  const pedidosFiltrados = useMemo(() => {
+    if (!pesquisaPedido.trim()) return pedidosConcluidos;
+    const termo = pesquisaPedido.toLowerCase().trim();
+    return pedidosConcluidos.filter(pedido => {
+      const numero = (pedido.numero || '').toLowerCase();
+      const cliente = (pedido.cliente_nome || '').toLowerCase();
+      const cpf = (pedido.cliente_cpf || '').replace(/\D/g, '');
+      const telefone = (pedido.cliente_telefone || '').replace(/\D/g, '');
+      const termoLimpo = termo.replace(/\D/g, '');
+      
+      return numero.includes(termo) || 
+             cliente.includes(termo) ||
+             (termoLimpo && cpf.includes(termoLimpo)) ||
+             (termoLimpo && telefone.includes(termoLimpo));
+    });
+  }, [pedidosConcluidos, pesquisaPedido]);
+
   // Quantidade inicial ao adicionar produto
   const [quantidadeInicial, setQuantidadeInicial] = useState(1);
   
@@ -541,27 +562,92 @@ export default function VendasPage() {
               {tipoVenda === 'pedido' ? (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-[#6B4423] mb-1">Pedido *</label>
-                    <select
-                      required
-                      value={formData.pedido_id}
-                      onChange={(e) => setFormData({ ...formData, pedido_id: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
-                    >
-                      <option value="">Selecione um pedido...</option>
-                      {pedidosConcluidos.map((pedido) => {
-                        // Verificar se é um pedido com todos itens já entregues ou separados (do estoque)
-                        const todosProntos = pedido.items?.length > 0 && pedido.items.every(item => item.ja_entregue === true || item.ja_separado === true);
-                        const todosEntregues = pedido.items?.length > 0 && pedido.items.every(item => item.ja_entregue === true);
-                        const statusLabel = todosEntregues ? '[Entregues]' : todosProntos ? '[Separados]' : '';
-                        return (
-                          <option key={pedido.id} value={pedido.id}>
-                            {pedido.numero} - {pedido.cliente_nome} - {formatCurrency(pedido.valor_total)} {statusLabel}
-                          </option>
-                        );
-                      })}
-                    </select>
-                    <p className="text-xs text-[#705A4D] mt-1">Pedidos concluídos, em embalagem, ou com todos itens já entregues/separados</p>
+                    <label className="block text-sm font-medium text-[#6B4423] mb-2">Buscar Pedido *</label>
+                    
+                    {/* Campo de pesquisa */}
+                    <div className="relative mb-3">
+                      <MagnifyingGlass size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8B5A3C]" />
+                      <input
+                        type="text"
+                        value={pesquisaPedido}
+                        onChange={(e) => setPesquisaPedido(e.target.value)}
+                        placeholder="Pesquisar por nome, CPF, telefone ou número do pedido..."
+                        className="w-full pl-10 pr-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                      />
+                      {pesquisaPedido && (
+                        <button
+                          type="button"
+                          onClick={() => setPesquisaPedido('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8B5A3C] hover:text-[#6B4423]"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    
+                    {/* Lista de pedidos filtrados */}
+                    <div className="bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg max-h-64 overflow-y-auto">
+                      {pedidosFiltrados.length === 0 ? (
+                        <div className="p-4 text-center text-[#705A4D]">
+                          {pesquisaPedido ? 'Nenhum pedido encontrado' : 'Nenhum pedido disponível'}
+                        </div>
+                      ) : (
+                        pedidosFiltrados.map((pedido) => {
+                          const todosProntos = pedido.items?.length > 0 && pedido.items.every(item => item.ja_entregue === true || item.ja_separado === true);
+                          const todosEntregues = pedido.items?.length > 0 && pedido.items.every(item => item.ja_entregue === true);
+                          const isSelected = formData.pedido_id === pedido.id;
+                          
+                          return (
+                            <button
+                              key={pedido.id}
+                              type="button"
+                              onClick={() => setFormData({ ...formData, pedido_id: pedido.id })}
+                              className={`w-full p-3 text-left border-b border-[#8B5A3C]/10 last:border-0 transition-colors ${
+                                isSelected 
+                                  ? 'bg-[#6B4423]/10 border-l-4 border-l-[#6B4423]' 
+                                  : 'hover:bg-[#F5E6D3]/50'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-[#3E2723]">{pedido.numero}</span>
+                                    {todosEntregues && (
+                                      <span className="px-1.5 py-0.5 text-[10px] font-medium bg-green-100 text-green-700 rounded">Entregue</span>
+                                    )}
+                                    {todosProntos && !todosEntregues && (
+                                      <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-100 text-blue-700 rounded">Separado</span>
+                                    )}
+                                    {pedido.status_pagamento === 'pago' && (
+                                      <span className="px-1.5 py-0.5 text-[10px] font-medium bg-green-100 text-green-700 rounded">Pago</span>
+                                    )}
+                                    {pedido.status_pagamento === 'parcial' && (
+                                      <span className="px-1.5 py-0.5 text-[10px] font-medium bg-yellow-100 text-yellow-700 rounded">Adiant.</span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-[#705A4D]">{pedido.cliente_nome}</p>
+                                  {pedido.cliente_cpf && (
+                                    <p className="text-xs text-[#8B5A3C]">CPF: {pedido.cliente_cpf}</p>
+                                  )}
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-bold text-[#3E2723]">{formatCurrency(pedido.valor_total)}</p>
+                                  {pedido.data_entrega && (
+                                    <p className="text-xs text-[#705A4D]">
+                                      {new Date(pedido.data_entrega).toLocaleDateString('pt-BR')}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                    
+                    <p className="text-xs text-[#705A4D] mt-2">
+                      {pedidosFiltrados.length} pedido(s) encontrado(s) • Clique para selecionar
+                    </p>
                   </div>
 
                   {/* RESUMO DO PEDIDO SELECIONADO */}
