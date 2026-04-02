@@ -103,22 +103,37 @@ export default function ProducaoPage() {
           
           if (item.sabores && item.sabores.length > 0) {
             // Desmembrar por sabor - cada sabor vira um item de produção separado
+            // MAS mantém o produto original (ex: Ovo 07) em vez de trocar por outro (ex: Ovo 03)
             item.sabores.forEach(sabor => {
-              // Buscar o produto correspondente ao sabor pelo nome
-              const produtoCorrespondente = produtos.find(p => {
-                const nomeNormalizado = p.nome.toLowerCase();
-                const saborNormalizado = sabor.sabor.toLowerCase();
-                return nomeNormalizado.includes(saborNormalizado) && 
-                       !nomeNormalizado.includes('sabores');
-              });
+              // Tentar encontrar um produto do MESMO TIPO/TAMANHO com o sabor específico
+              // Extrair o tipo base do produto (ex: "Ovo 07" de "Ovo 07 recheado 2 SABORES 610g")
+              const nomeOriginal = item.produto_nome.toLowerCase();
+              const tipoBase = nomeOriginal.match(/(ovo \d+|coração \d+|barra [pg])/i)?.[0] || '';
+              
+              let produtoCorrespondente = null;
+              
+              if (tipoBase) {
+                // Buscar produto do mesmo tipo com o sabor específico
+                produtoCorrespondente = produtos.find(p => {
+                  const nomeProduto = p.nome.toLowerCase();
+                  const saborNormalizado = sabor.sabor.toLowerCase();
+                  return nomeProduto.includes(tipoBase.toLowerCase()) && 
+                         nomeProduto.includes(saborNormalizado) && 
+                         !nomeProduto.includes('sabores');
+                });
+              }
+              
+              // Se não encontrar produto correspondente do mesmo tipo, usar o original
+              const produtoIdFinal = produtoCorrespondente?.id || item.produto_id;
+              const produtoNomeFinal = produtoCorrespondente?.nome || `${item.produto_nome} (${sabor.sabor})`;
               
               itensFromPedido.push({
-                produto_id: produtoCorrespondente?.id || item.produto_id,
+                produto_id: produtoIdFinal,
                 produto_nome_original: item.produto_nome,
                 quantidade: sabor.quantidade.toString(),
                 sabor_info: sabor.sabor,
                 sabores: null, // Já está desmembrado
-                produto_nome_completo: sabor.produto_nome_completo || `${item.produto_nome} - ${sabor.sabor}`
+                produto_nome_completo: produtoNomeFinal
               });
             });
           } else {
