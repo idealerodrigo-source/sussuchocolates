@@ -16,6 +16,7 @@ import {
   NFCePreviewModal,
   NFCeViewModal 
 } from '../components/vendas';
+import CupomVendaModal from '../components/vendas/CupomVendaModal';
 
 export default function VendasPage() {
   // Estados principais
@@ -55,6 +56,10 @@ export default function VendasPage() {
              (termoLimpo && telefone.includes(termoLimpo));
     });
   }, [pedidosConcluidos, pesquisaPedido]);
+
+  // Estado para o modal de cupom
+  const [cupomModalOpen, setCupomModalOpen] = useState(false);
+  const [vendaParaCupom, setVendaParaCupom] = useState(null);
 
   // Quantidade inicial ao adicionar produto
   const [quantidadeInicial, setQuantidadeInicial] = useState(1);
@@ -458,8 +463,8 @@ export default function VendasPage() {
   };
 
   const imprimirCupom = (venda) => {
-    window.print();
-    toast.info('Função de impressão em desenvolvimento');
+    setVendaParaCupom(venda);
+    setCupomModalOpen(true);
   };
 
   const handleCancelarNFCe = async (venda) => {
@@ -1316,6 +1321,13 @@ export default function VendasPage() {
         onQuantidadeChange={setQuantidadePendenteSabores}
         onConfirm={handleAddItemComSabores}
         produtos={produtos}
+      />
+
+      {/* Modal de Cupom de Venda */}
+      <CupomVendaModal
+        open={cupomModalOpen}
+        onClose={() => setCupomModalOpen(false)}
+        venda={vendaParaCupom}
       />
     </div>
   );

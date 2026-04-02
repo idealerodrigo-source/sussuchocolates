@@ -133,6 +133,17 @@ export default function VendasTable({
                               NFC-e
                             </Button>
                           )}
+                          {!venda.nfce_emitida && (
+                            <Button
+                              onClick={() => onImprimirCupom(venda)}
+                              size="sm"
+                              variant="outline"
+                              className="text-blue-600 border-blue-300 hover:bg-blue-50 text-xs"
+                              title="Imprimir Cupom de Venda"
+                            >
+                              <Printer size={16} weight="bold" />
+                            </Button>
+                          )}
                           {venda.nfce_emitida && (
                             <div className="flex gap-1">
                               <Button
