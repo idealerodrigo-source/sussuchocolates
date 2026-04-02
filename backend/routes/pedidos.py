@@ -500,3 +500,47 @@ async def sincronizar_itens_producao(pedido_id: str, current_user: dict = Depend
         "novo_valor_total": novo_valor_total
     }
 
+
+
+@router.delete("/{pedido_id}/item/{item_index}")
+async def remover_item_pedido(pedido_id: str, item_index: int, current_user: dict = Depends(get_current_user)):
+    """
+    Remove um item específico do pedido pelo índice.
+    Recalcula o valor total automaticamente.
+    """
+    pedido = await db.pedidos.find_one({"id": pedido_id}, {"_id": 0})
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    
+    items = pedido.get('items', [])
+    if item_index < 0 or item_index >= len(items):
+        raise HTTPException(status_code=400, detail="Índice de item inválido")
+    
+    # Obter item a ser removido
+    item_removido = items[item_index]
+    subtotal_removido = item_removido.get('subtotal', 0)
+    
+    # Remover item
+    items.pop(item_index)
+    
+    # Recalcular valor total
+    novo_valor_total = sum(item.get('subtotal', 0) for item in items)
+    
+    # Atualizar pedido
+    await db.pedidos.update_one(
+        {"id": pedido_id},
+        {
+            "$set": {
+                "items": items,
+                "valor_total": novo_valor_total
+            }
+        }
+    )
+    
+    return {
+        "message": f"Item '{item_removido.get('produto_nome')}' removido com sucesso",
+        "item_removido": item_removido.get('produto_nome'),
+        "valor_removido": subtotal_removido,
+        "novo_valor_total": novo_valor_total
+    }
+
