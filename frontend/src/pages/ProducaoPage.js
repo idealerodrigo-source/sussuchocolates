@@ -545,8 +545,8 @@ export default function ProducaoPage() {
                       <div className="w-28">
                         <input
                           type="number"
-                          step="1"
-                          min="1"
+                          step="0.1"
+                          min="0.1"
                           required
                           placeholder="Qtd"
                           value={item.quantidade}

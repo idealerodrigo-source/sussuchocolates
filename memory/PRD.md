@@ -83,7 +83,7 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 
 ## Changelog
 
-### 2026-04-01 (Sessão 11)
+### 2026-04-01 / 2026-04-02 (Sessão 11)
 - **Nova Feature COMPLETA**: Informações de Pagamento na Criação de Pedidos
   - Opções: "Não pago", "Pago Total", "Adiantamento"
   - Campos: valor pago, forma de pagamento (Dinheiro, PIX, Cartão, etc.)
@@ -115,6 +115,9 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
   - **Solução 1**: Criado endpoint `PATCH /api/pedidos/{id}/sincronizar-producao` para sincronizar itens faltantes
   - **Solução 2**: Modificado `criar_producao` para adicionar automaticamente novos itens ao pedido quando criados na produção
   - Itens sincronizados incluem: produto, quantidade, preço, subtotal e sabores
+- **Bug Fix**: Quantidades decimais não permitidas na Produção
+  - **Problema**: Campo de quantidade na produção tinha `min="1"` e `step="1"`, impedindo valores como 0.5
+  - **Solução**: Alterado para `min="0.1"` e `step="0.1"` em `ProducaoPage.js`
 
 ### 2025-03-31 / 2025-04-01 (Sessão 10)
 - **Nova Feature**: Opção "Já Separado" em itens do pedido
