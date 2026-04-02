@@ -31,10 +31,72 @@ async def criar_producao(producao_data: ProducaoCreate, current_user: dict = Dep
         pedido_id = producao_data.pedido_id
         tipo_producao = "pedido"
         
-        await db.pedidos.update_one(
-            {"id": producao_data.pedido_id},
-            {"$set": {"status": PedidoStatus.EM_PRODUCAO}}
-        )
+        # Verificar se o item já existe no pedido
+        items_existentes = pedido.get('items', [])
+        item_existente = None
+        for item in items_existentes:
+            if item.get('produto_id') == producao_data.produto_id:
+                # Verificar sabores também se existirem
+                sabores_iguais = True
+                if producao_data.sabores:
+                    sabores_existentes = item.get('sabores', [])
+                    if len(sabores_existentes) != len(producao_data.sabores):
+                        sabores_iguais = False
+                    else:
+                        for s in producao_data.sabores:
+                            found = any(se.get('sabor') == s.sabor for se in sabores_existentes)
+                            if not found:
+                                sabores_iguais = False
+                                break
+                elif item.get('sabores'):
+                    sabores_iguais = False
+                
+                if sabores_iguais:
+                    item_existente = item
+                    break
+        
+        if not item_existente:
+            # Adicionar novo item ao pedido
+            preco_unitario = produto.get('preco', 0)
+            subtotal = preco_unitario * producao_data.quantidade
+            
+            # Preparar sabores para o item do pedido
+            sabores_item = None
+            if producao_data.sabores:
+                sabores_item = [{"sabor": s.sabor, "proporcao": s.proporcao} for s in producao_data.sabores]
+            
+            novo_item = {
+                "produto_id": producao_data.produto_id,
+                "produto_nome": produto['nome'],
+                "quantidade": producao_data.quantidade,
+                "preco_unitario": preco_unitario,
+                "subtotal": subtotal,
+                "sabores": sabores_item,
+                "ja_entregue": False,
+                "ja_separado": False
+            }
+            
+            # Calcular novo valor total
+            valor_total_atual = pedido.get('valor_total', 0)
+            novo_valor_total = valor_total_atual + subtotal
+            
+            # Atualizar pedido com novo item e novo valor total
+            await db.pedidos.update_one(
+                {"id": producao_data.pedido_id},
+                {
+                    "$push": {"items": novo_item},
+                    "$set": {
+                        "status": PedidoStatus.EM_PRODUCAO,
+                        "valor_total": novo_valor_total
+                    }
+                }
+            )
+        else:
+            # Item já existe, apenas atualizar status
+            await db.pedidos.update_one(
+                {"id": producao_data.pedido_id},
+                {"$set": {"status": PedidoStatus.EM_PRODUCAO}}
+            )
     else:
         count = await db.producao.count_documents({"tipo_producao": "estoque"})
         pedido_numero = f"EST-{count + 1:06d}"

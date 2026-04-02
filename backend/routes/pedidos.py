@@ -415,3 +415,88 @@ async def excluir_pedido(pedido_id: str, current_user: dict = Depends(get_curren
     await db.pedidos.delete_one({"id": pedido_id})
     return {"message": f"Pedido {pedido.get('numero', pedido_id)} excluído com sucesso"}
 
+
+
+@router.patch("/{pedido_id}/sincronizar-producao")
+async def sincronizar_itens_producao(pedido_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Sincroniza os itens do pedido com os itens que estão na produção.
+    Adiciona ao pedido qualquer item que esteja na produção mas não esteja no pedido.
+    """
+    pedido = await db.pedidos.find_one({"id": pedido_id}, {"_id": 0})
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    
+    pedido_numero = pedido.get('numero')
+    
+    # Buscar itens de produção deste pedido
+    producoes = await db.producao.find({"pedido_id": pedido_id}, {"_id": 0}).to_list(100)
+    
+    if not producoes:
+        return {"message": "Nenhum item de produção encontrado para este pedido", "itens_adicionados": 0}
+    
+    # Identificar itens existentes no pedido
+    items_pedido = pedido.get('items', [])
+    items_existentes = {}
+    for item in items_pedido:
+        key = item.get('produto_id')
+        items_existentes[key] = True
+    
+    # Identificar itens que faltam
+    itens_para_adicionar = []
+    for prod in producoes:
+        produto_id = prod.get('produto_id')
+        if produto_id not in items_existentes:
+            # Buscar preço do produto
+            produto = await db.produtos.find_one({"id": produto_id}, {"_id": 0})
+            if not produto:
+                continue
+            
+            preco = produto.get('preco', 0)
+            quantidade = prod.get('quantidade', 1)
+            
+            # Preparar sabores se existirem
+            sabores_item = None
+            if prod.get('sabores'):
+                sabores_item = [{"sabor": s.get('sabor'), "proporcao": s.get('proporcao')} for s in prod.get('sabores')]
+            
+            novo_item = {
+                "produto_id": produto_id,
+                "produto_nome": prod.get('produto_nome', produto.get('nome')),
+                "quantidade": quantidade,
+                "preco_unitario": preco,
+                "subtotal": preco * quantidade,
+                "sabores": sabores_item,
+                "ja_entregue": False,
+                "ja_separado": False
+            }
+            
+            itens_para_adicionar.append(novo_item)
+            items_existentes[produto_id] = True  # Marcar como adicionado para evitar duplicatas
+    
+    if not itens_para_adicionar:
+        return {"message": "Todos os itens da produção já estão no pedido", "itens_adicionados": 0}
+    
+    # Calcular novo valor total
+    valor_adicional = sum(item['subtotal'] for item in itens_para_adicionar)
+    novo_valor_total = pedido.get('valor_total', 0) + valor_adicional
+    
+    # Atualizar pedido
+    await db.pedidos.update_one(
+        {"id": pedido_id},
+        {
+            "$push": {"items": {"$each": itens_para_adicionar}},
+            "$set": {"valor_total": novo_valor_total}
+        }
+    )
+    
+    nomes_adicionados = [item['produto_nome'] for item in itens_para_adicionar]
+    
+    return {
+        "message": f"Sincronizado! {len(itens_para_adicionar)} item(ns) adicionado(s) ao pedido",
+        "itens_adicionados": len(itens_para_adicionar),
+        "itens": nomes_adicionados,
+        "valor_adicional": valor_adicional,
+        "novo_valor_total": novo_valor_total
+    }
+

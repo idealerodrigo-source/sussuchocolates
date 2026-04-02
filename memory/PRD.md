@@ -110,6 +110,11 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
   - Se pedido já foi pago integralmente (saldo = 0): exibe mensagem "Pedido Pago Integralmente" e não exige forma de pagamento
   - Formas de pagamento agora são aplicadas sobre o SALDO restante, não sobre o total
   - Validação impede adicionar pagamento maior que o saldo pendente
+- **Bug Fix**: Itens adicionados na produção não apareciam no pedido
+  - **Problema**: Ao adicionar itens na produção para um pedido existente, os itens não eram sincronizados com o pedido
+  - **Solução 1**: Criado endpoint `PATCH /api/pedidos/{id}/sincronizar-producao` para sincronizar itens faltantes
+  - **Solução 2**: Modificado `criar_producao` para adicionar automaticamente novos itens ao pedido quando criados na produção
+  - Itens sincronizados incluem: produto, quantidade, preço, subtotal e sabores
 
 ### 2025-03-31 / 2025-04-01 (Sessão 10)
 - **Nova Feature**: Opção "Já Separado" em itens do pedido
