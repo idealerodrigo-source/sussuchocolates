@@ -544,3 +544,38 @@ async def remover_item_pedido(pedido_id: str, item_index: int, current_user: dic
         "novo_valor_total": novo_valor_total
     }
 
+
+@router.patch("/{pedido_id}/item/{item_index}/sabores")
+async def atualizar_sabores_item(
+    pedido_id: str, 
+    item_index: int, 
+    sabores: List[dict],
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Atualiza os sabores de um item específico do pedido.
+    Formato: [{"sabor": "PRESTÍGIO", "proporcao": 0.5}, {"sabor": "CEREJA", "proporcao": 0.5}]
+    """
+    pedido = await db.pedidos.find_one({"id": pedido_id}, {"_id": 0})
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    
+    items = pedido.get('items', [])
+    if item_index < 0 or item_index >= len(items):
+        raise HTTPException(status_code=400, detail="Índice de item inválido")
+    
+    # Atualizar sabores do item
+    items[item_index]['sabores'] = sabores
+    
+    # Atualizar pedido
+    await db.pedidos.update_one(
+        {"id": pedido_id},
+        {"$set": {"items": items}}
+    )
+    
+    return {
+        "message": f"Sabores do item '{items[item_index].get('produto_nome')}' atualizados",
+        "sabores": sabores
+    }
+
+

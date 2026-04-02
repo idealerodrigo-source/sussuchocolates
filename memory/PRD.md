@@ -101,6 +101,7 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
   - Mostra: número do pedido, cliente, valor total, data de entrega
   - **Status de Pagamento**: Badge visual (Pago/Adiantamento/Pendente) + valor já pago + saldo restante
   - **Itens do Pedido**: Lista com status de cada item (✓ Entregue / ◎ Separado / ○ Pendente)
+  - **Sabores**: Itens de 2 sabores agora exibem "½ SABOR1 + ½ SABOR2" corretamente
   - **Observações**: Se existirem, são exibidas em destaque
   - **Alerta de saldo**: Aviso quando há valor pendente a receber
   - Para "Venda Direta": Resumo na etapa 2 com itens, tipo de entrega (Imediata/A Produzir)
@@ -110,14 +111,17 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
   - Se pedido já foi pago integralmente (saldo = 0): exibe mensagem "Pedido Pago Integralmente" e não exige forma de pagamento
   - Formas de pagamento agora são aplicadas sobre o SALDO restante, não sobre o total
   - Validação impede adicionar pagamento maior que o saldo pendente
-- **Bug Fix**: Itens adicionados na produção não apareciam no pedido
-  - **Problema**: Ao adicionar itens na produção para um pedido existente, os itens não eram sincronizados com o pedido
-  - **Solução 1**: Criado endpoint `PATCH /api/pedidos/{id}/sincronizar-producao` para sincronizar itens faltantes
-  - **Solução 2**: Modificado `criar_producao` para adicionar automaticamente novos itens ao pedido quando criados na produção
-  - Itens sincronizados incluem: produto, quantidade, preço, subtotal e sabores
+- **Bug Fix CRÍTICO**: Itens de 2 SABORES geravam cobrança duplicada
+  - **Problema**: Ao criar produção para itens "2 SABORES", o sistema criava itens separados no pedido (ex: Ovo 03 PRESTÍGIO 0.5x R$ 38 + Ovo 03 CEREJA 0.5x R$ 38) além do item original
+  - **Causa**: Lógica de sincronização automática de produção adicionava itens incorretamente ao pedido
+  - **Solução**: Removida a adição automática de itens de produção ao pedido. Itens de produção são apenas para controle interno
+  - Os itens de produção podem ser diferentes dos itens do pedido (ex: um "2 SABORES" pode gerar 2 itens de produção separados para facilitar a fabricação)
 - **Bug Fix**: Quantidades decimais não permitidas na Produção
   - **Problema**: Campo de quantidade na produção tinha `min="1"` e `step="1"`, impedindo valores como 0.5
   - **Solução**: Alterado para `min="0.1"` e `step="0.1"` em `ProducaoPage.js`
+- **Novos Endpoints**:
+  - `DELETE /api/pedidos/{id}/item/{index}` - Remove item específico do pedido
+  - `PATCH /api/pedidos/{id}/item/{index}/sabores` - Atualiza sabores de um item
 
 ### 2025-03-31 / 2025-04-01 (Sessão 10)
 - **Nova Feature**: Opção "Já Separado" em itens do pedido
