@@ -83,6 +83,20 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 
 ## Changelog
 
+### 2026-04-03 (Sessão 12)
+- **Nova Feature**: Adicionar Produtos Extras na Venda de Pedido
+  - Ao fazer venda de um pedido existente, agora é possível adicionar produtos que não estavam no pedido original
+  - Nova seção "Adicionar Produtos Extras" com visual diferenciado (roxo/indigo)
+  - Busca de produtos com autocompletion
+  - Seleção de tipo de entrega (Imediata ou A Produzir) para cada item extra
+  - Controle de quantidade com botões +/- e input direto
+  - Lista de itens extras com total calculado separadamente
+  - **Backend**: Modelo `VendaCreate` recebe `itens_extras` para vendas de pedido
+  - **Backend**: Modelo `ItemPedido` com campo `is_extra` para identificar itens adicionados na venda
+  - **Backend**: Modelo `Venda` com campo `tem_itens_extras` para flag
+  - Cálculo total: valor do pedido + valor dos extras - desconto
+  - Itens extras de entrega imediata dão baixa no estoque automaticamente
+
 ### 2026-04-01 / 2026-04-02 (Sessão 11)
 - **Nova Feature COMPLETA**: Informações de Pagamento na Criação de Pedidos
   - Opções: "Não pago", "Pago Total", "Adiantamento"

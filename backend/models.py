@@ -126,6 +126,7 @@ class ItemPedido(BaseModel):
     tipo_entrega: Optional[str] = "imediata"  # 'imediata' ou 'a_produzir'
     ja_entregue: Optional[bool] = False  # Indica se o item já foi entregue ao cliente
     ja_separado: Optional[bool] = False  # Indica se o item foi separado do estoque (pronto para entrega)
+    is_extra: Optional[bool] = False  # Indica se é item extra adicionado na venda
 
 
 class Pedido(BaseModel):
@@ -295,6 +296,7 @@ class Venda(BaseModel):
     data_cancelamento: Optional[datetime] = None
     motivo_cancelamento: Optional[str] = None
     tem_itens_a_produzir: bool = False  # Indica se há itens para produção
+    tem_itens_extras: bool = False  # Indica se há itens extras na venda de pedido
     pedido_producao_id: Optional[str] = None  # ID do pedido gerado para produção
 
 
@@ -302,6 +304,7 @@ class VendaCreate(BaseModel):
     pedido_id: Optional[str] = None
     cliente_id: Optional[str] = None
     items: Optional[List[ItemPedido]] = None
+    itens_extras: Optional[List[ItemPedido]] = None  # Itens extras para vendas de pedido
     forma_pagamento: str  # Mantido para compatibilidade
     formas_pagamento: Optional[List[FormaPagamentoItem]] = None  # Múltiplas formas
     parcelas: int = 1

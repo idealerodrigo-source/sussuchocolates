@@ -23,19 +23,44 @@ async def criar_venda(venda_data: VendaCreate, current_user: dict = Depends(get_
         if not pedido:
             raise HTTPException(status_code=404, detail="Pedido não encontrado")
         
+        # Preparar itens do pedido original
+        itens_pedido = [ItemPedido(**item) if isinstance(item, dict) else item for item in pedido['items']]
+        
+        # Processar itens extras (se houver)
+        itens_extras = []
+        valor_extras = 0
+        if venda_data.itens_extras:
+            for item_extra in venda_data.itens_extras:
+                itens_extras.append(item_extra)
+                valor_extras += item_extra.subtotal or 0
+        
+        # Calcular valor total incluindo extras
+        valor_total_pedido = pedido['valor_total']
+        valor_desconto = venda_data.valor_desconto or 0
+        valor_total_final = max(0, valor_total_pedido + valor_extras - valor_desconto)
+        
+        # Combinar todos os itens
+        todos_itens = itens_pedido + itens_extras
+        
         venda = Venda(
             pedido_id=venda_data.pedido_id,
             cliente_id=pedido['cliente_id'],
             cliente_nome=pedido['cliente_nome'],
-            items=[ItemPedido(**item) if isinstance(item, dict) else item for item in pedido['items']],
-            valor_total=pedido['valor_total'],
+            items=todos_itens,
+            subtotal=valor_total_pedido + valor_extras,
+            desconto_tipo=venda_data.desconto_tipo,
+            desconto_valor=venda_data.desconto_valor,
+            valor_desconto=valor_desconto,
+            valor_total=valor_total_final,
             forma_pagamento=venda_data.forma_pagamento,
+            formas_pagamento=venda_data.formas_pagamento,
             parcelas=venda_data.parcelas,
             tipo_venda="pedido",
             entrega_posterior=venda_data.entrega_posterior,
             status_pagamento=venda_data.status_pagamento,
             data_previsao_pagamento=venda_data.data_previsao_pagamento,
-            observacoes_pagamento=venda_data.observacoes_pagamento
+            observacoes_pagamento=venda_data.observacoes_pagamento,
+            tem_itens_extras=len(itens_extras) > 0
         )
         
         await db.pedidos.update_one(
