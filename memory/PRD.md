@@ -96,6 +96,12 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
   - **Backend**: Modelo `Venda` com campo `tem_itens_extras` para flag
   - Cálculo total: valor do pedido + valor dos extras - desconto
   - Itens extras de entrega imediata dão baixa no estoque automaticamente
+- **Nova Feature**: Barra de Pesquisa ao Iniciar Produção de Pedido
+  - Ao clicar em "Iniciar Produção" e selecionar "Produção com Pedido", agora há uma barra de pesquisa
+  - Permite buscar por número do pedido ou nome do cliente
+  - Lista de pedidos clicáveis com informações: número, quantidade de itens, nome do cliente, telefone e data de entrega
+  - Filtro em tempo real conforme digita
+  - Contador de pedidos encontrados
 
 ### 2026-04-01 / 2026-04-02 (Sessão 11)
 - **Nova Feature COMPLETA**: Informações de Pagamento na Criação de Pedidos
