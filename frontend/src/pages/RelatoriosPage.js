@@ -5,20 +5,17 @@ import { MagnifyingGlass, Factory, Package, Users, ShoppingCart, CheckCircle, Fi
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
-
-const COLORS = ['#6B4423', '#8B5A3C', '#A67C5B', '#C4A77D', '#D4B896', '#E8D5C4'];
-
-// Dados da empresa para cabeçalho dos relatórios
-const EMPRESA = {
-  nome: 'SUSSU CHOCOLATES',
-  telefone: '(43) 99967-6206',
-  endereco: 'Rua Quintino Bocaiuva, 737, Jacarezinho - PR, CEP: 86400-000',
-  email: 'sussuchocolates@hotmail.com'
-};
+import {
+  COLORS,
+  exportarPdfProducaoPendente,
+  exportarExcelProducaoPendente,
+  exportarPdfProducaoConcluida,
+  exportarExcelProducaoConcluida,
+  exportarPdfProducaoPorDataEntrega,
+  exportarExcelProducaoPorDataEntrega,
+  exportarPdfPedidosResumo,
+  exportarExcelPedidosResumo
+} from '../components/relatorios';
 
 export default function RelatoriosPage() {
   const [activeTab, setActiveTab] = useState('por-data-entrega');

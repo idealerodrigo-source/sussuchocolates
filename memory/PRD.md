@@ -123,10 +123,14 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
   - Criado `/app/frontend/src/components/vendas/ProdutosExtrasSection.js` com componentes:
     - `ProdutosExtrasSection`: Seção de adicionar produtos extras
     - `ItensExtrasList`: Lista de itens extras adicionados
+  - Criado `/app/frontend/src/components/relatorios/exportUtils.js` com funções:
+    - Funções utilitárias de exportação PDF/Excel
+    - `addPdfHeader`: Cabeçalho padrão da empresa nos PDFs
+    - `EMPRESA` e `COLORS`: Constantes reutilizáveis
   - **Redução de código**:
     - `VendasPage.js`: 1544 → 1410 linhas (-134 linhas, -9%)
-    - `ProducaoPage.js`: 1149 → 1001 linhas (-148 linhas, -13%)
-    - Total reduzido: 282 linhas de código
+    - `ProducaoPage.js`: 1149 → 1025 linhas (-124 linhas, -11%)
+    - Total reduzido: ~258 linhas de código inline
 
 ### 2026-04-01 / 2026-04-02 (Sessão 11)
 - **Nova Feature COMPLETA**: Informações de Pagamento na Criação de Pedidos
