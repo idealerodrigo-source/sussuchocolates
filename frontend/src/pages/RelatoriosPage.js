@@ -17,6 +17,9 @@ import {
   exportarExcelPedidosResumo
 } from '../components/relatorios';
 
+// Função utilitária para arredondar números com problemas de ponto flutuante
+const arredondar = (num, casas = 1) => Math.round((num || 0) * Math.pow(10, casas)) / Math.pow(10, casas);
+
 export default function RelatoriosPage() {
   const [activeTab, setActiveTab] = useState('por-data-entrega');
   const [relatorioVendas, setRelatorioVendas] = useState(null);
@@ -1068,15 +1071,15 @@ export default function RelatoriosPage() {
                 </div>
                 <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-5 shadow-sm">
                   <p className="text-xs font-sans uppercase tracking-wider font-semibold text-[#8B5A3C] mb-2">Total Solicitado</p>
-                  <p className="text-3xl font-serif font-bold text-[#3E2723]">{producaoPendente.quantidade_total_solicitada || 0}</p>
+                  <p className="text-3xl font-serif font-bold text-[#3E2723]">{arredondar(producaoPendente.quantidade_total_solicitada)}</p>
                 </div>
                 <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-5 shadow-sm">
                   <p className="text-xs font-sans uppercase tracking-wider font-semibold text-[#2F855A] mb-2">Total Produzido</p>
-                  <p className="text-3xl font-serif font-bold text-[#2F855A]">{producaoPendente.quantidade_total_produzida || 0}</p>
+                  <p className="text-3xl font-serif font-bold text-[#2F855A]">{arredondar(producaoPendente.quantidade_total_produzida)}</p>
                 </div>
                 <div className="bg-[#FFFDF8] border border-[#D97706]/20 rounded-xl p-5 shadow-sm">
                   <p className="text-xs font-sans uppercase tracking-wider font-semibold text-[#D97706] mb-2">Total Faltante</p>
-                  <p className="text-3xl font-serif font-bold text-[#D97706]">{producaoPendente.quantidade_total_faltante || 0}</p>
+                  <p className="text-3xl font-serif font-bold text-[#D97706]">{arredondar(producaoPendente.quantidade_total_faltante)}</p>
                 </div>
               </div>
 
@@ -1122,23 +1125,23 @@ export default function RelatoriosPage() {
                               <td className="px-4 py-3 text-sm text-[#4A3B32] font-sans font-medium">{item.produto_nome}</td>
                               <td className="px-4 py-3 text-center">
                                 <span className="text-[#3E2723] text-sm font-semibold">
-                                  {item.quantidade_solicitada || 0}
+                                  {arredondar(item.quantidade_solicitada)}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <span className="bg-[#2F855A]/20 text-[#2F855A] px-3 py-1 rounded-full text-sm font-bold">
-                                  {item.quantidade_produzida || 0}
+                                  {arredondar(item.quantidade_produzida)}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <span className="bg-[#D97706]/20 text-[#D97706] px-3 py-1 rounded-full text-sm font-bold">
-                                  {item.quantidade_faltante || 0}
+                                  {arredondar(item.quantidade_faltante)}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-xs text-[#705A4D]">
                                 {item.pedidos?.map((p, i) => (
                                   <span key={i} className="inline-block bg-[#8B5A3C]/10 px-2 py-1 rounded mr-1 mb-1">
-                                    {p.pedido_numero}: faltam {p.quantidade_faltante} ({p.cliente_nome})
+                                    {p.pedido_numero}: faltam {arredondar(p.quantidade_faltante)} ({p.cliente_nome})
                                   </span>
                                 ))}
                               </td>
