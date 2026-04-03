@@ -86,6 +86,8 @@ async def concluir_embalagem(embalagem_id: str, request: ConcluirEmbalagemReques
     }
     if responsavel_conclusao:
         update_data["responsavel_conclusao"] = responsavel_conclusao
+    if localizacao:
+        update_data["localizacao"] = localizacao
     
     await db.embalagem.update_one(
         {"id": embalagem_id},
@@ -93,6 +95,13 @@ async def concluir_embalagem(embalagem_id: str, request: ConcluirEmbalagemReques
     )
     
     producao = await db.producao.find_one({"id": embalagem['producao_id']}, {"_id": 0})
+    
+    # Atualizar localização no pedido também
+    if localizacao and producao and producao.get('pedido_id'):
+        await db.pedidos.update_one(
+            {"id": producao['pedido_id']},
+            {"$set": {"localizacao_estoque": localizacao}}
+        )
     
     estoque = {
         "id": str(uuid.uuid4()),

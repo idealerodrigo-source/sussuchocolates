@@ -152,6 +152,8 @@ class Pedido(BaseModel):
     pagamento_forma: Optional[str] = None  # Forma de pagamento do adiantamento
     pagamento_parcelas: Optional[int] = 1  # Número de parcelas
     data_pagamento: Optional[datetime] = None  # Data do pagamento/adiantamento
+    # Localização no estoque após embalagem
+    localizacao_estoque: Optional[str] = None  # Ex: "Prateleira A", "Gaveta 3", "Geladeira 1"
 
 
 class PedidoCreate(BaseModel):

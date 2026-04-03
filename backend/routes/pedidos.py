@@ -579,3 +579,28 @@ async def atualizar_sabores_item(
     }
 
 
+@router.patch("/{pedido_id}/localizacao")
+async def atualizar_localizacao_pedido(
+    pedido_id: str, 
+    localizacao: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Atualiza a localização no estoque de um pedido.
+    """
+    pedido = await db.pedidos.find_one({"id": pedido_id}, {"_id": 0})
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    
+    await db.pedidos.update_one(
+        {"id": pedido_id},
+        {"$set": {"localizacao_estoque": localizacao}}
+    )
+    
+    return {
+        "message": f"Localização do pedido {pedido.get('numero')} atualizada",
+        "localizacao_estoque": localizacao
+    }
+
+
+
