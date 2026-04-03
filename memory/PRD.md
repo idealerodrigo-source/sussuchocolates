@@ -102,6 +102,22 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
   - Lista de pedidos clicáveis com informações: número, quantidade de itens, nome do cliente, telefone e data de entrega
   - Filtro em tempo real conforme digita
   - Contador de pedidos encontrados
+- **Nova Feature**: Filtro por Data de Entrega na Produção
+  - Filtro por data de entrega ao lado da pesquisa de texto
+  - Botões de acesso rápido: "Hoje", "Amanhã", "Depois de amanhã"
+  - Botão "Limpar filtro" quando data selecionada
+  - Combinação de filtros: texto + data funcionam juntos
+- **Refatoração**: Extração de Componentes Reutilizáveis
+  - Criado `/app/frontend/src/components/producao/PedidoSearchFilter.js` com componentes:
+    - `PedidoSearchFilter`: Filtros de busca e data
+    - `PedidosList`: Lista de pedidos clicáveis
+  - Criado `/app/frontend/src/components/vendas/ProdutosExtrasSection.js` com componentes:
+    - `ProdutosExtrasSection`: Seção de adicionar produtos extras
+    - `ItensExtrasList`: Lista de itens extras adicionados
+  - **Redução de código**:
+    - `VendasPage.js`: 1544 → 1410 linhas (-134 linhas, -9%)
+    - `ProducaoPage.js`: 1149 → 1001 linhas (-148 linhas, -13%)
+    - Total reduzido: 282 linhas de código
 
 ### 2026-04-01 / 2026-04-02 (Sessão 11)
 - **Nova Feature COMPLETA**: Informações de Pagamento na Criação de Pedidos
