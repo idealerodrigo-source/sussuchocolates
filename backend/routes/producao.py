@@ -121,6 +121,45 @@ async def concluir_producao(producao_id: str, current_user: dict = Depends(get_c
     return {"message": "Produção concluída e enviada para embalagem"}
 
 
+@router.patch("/{producao_id}/retornar")
+async def retornar_producao(producao_id: str, current_user: dict = Depends(get_current_user)):
+    """Retorna uma produção concluída de volta ao status de produção"""
+    producao = await db.producao.find_one({"id": producao_id}, {"_id": 0})
+    if not producao:
+        raise HTTPException(status_code=404, detail="Produção não encontrada")
+    
+    # Verificar se a produção já foi concluída
+    if not producao.get('data_conclusao'):
+        raise HTTPException(status_code=400, detail="Esta produção ainda não foi concluída")
+    
+    # Verificar se a embalagem associada já foi concluída
+    embalagem = await db.embalagem.find_one({"producao_id": producao_id}, {"_id": 0})
+    if embalagem and embalagem.get('data_conclusao'):
+        raise HTTPException(
+            status_code=400, 
+            detail="Não é possível retornar. A embalagem já foi concluída."
+        )
+    
+    # Remover o registro de embalagem pendente (se existir)
+    if embalagem:
+        await db.embalagem.delete_one({"producao_id": producao_id})
+    
+    # Limpar a data de conclusão da produção
+    await db.producao.update_one(
+        {"id": producao_id},
+        {"$set": {"data_conclusao": None}}
+    )
+    
+    # Atualizar o status do pedido de volta para "em_producao"
+    if producao.get('pedido_id'):
+        await db.pedidos.update_one(
+            {"id": producao['pedido_id']},
+            {"$set": {"status": PedidoStatus.EM_PRODUCAO}}
+        )
+    
+    return {"message": "Produção retornada com sucesso. O item voltou para produção."}
+
+
 @router.get("/relatorio/por-data-entrega")
 async def relatorio_por_data_entrega(
     data_inicio: Optional[str] = None,

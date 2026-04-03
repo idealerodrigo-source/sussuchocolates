@@ -107,6 +107,15 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
   - Botões de acesso rápido: "Hoje", "Amanhã", "Depois de amanhã"
   - Botão "Limpar filtro" quando data selecionada
   - Combinação de filtros: texto + data funcionam juntos
+- **Nova Feature**: Retornar Produção Concluída
+  - Permite retornar uma produção já concluída de volta ao status "Pendente"
+  - Botão "Retornar" (laranja) aparece para produções concluídas
+  - Remove a embalagem pendente associada
+  - Atualiza o status do pedido de volta para "em_producao"
+  - Inclui confirmação antes de executar a ação
+  - Valida se a embalagem já foi concluída (não permite retorno nesse caso)
+  - **Backend**: Novo endpoint `PATCH /api/producao/{id}/retornar`
+  - **Frontend**: Novo método `producaoAPI.retornar(id)` e handler `handleRetornarProducao`
 - **Refatoração**: Extração de Componentes Reutilizáveis
   - Criado `/app/frontend/src/components/producao/PedidoSearchFilter.js` com componentes:
     - `PedidoSearchFilter`: Filtros de busca e data

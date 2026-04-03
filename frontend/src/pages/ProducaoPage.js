@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { producaoAPI, pedidosAPI, produtosAPI } from '../services/api';
 import { formatDateTime } from '../utils/formatters';
-import { Plus, CheckCircle, Package, ShoppingCart, Trash, PlusCircle, ClipboardText, Factory, Printer, Lightning, MagnifyingGlass } from '@phosphor-icons/react';
+import { Plus, CheckCircle, Package, ShoppingCart, Trash, PlusCircle, ClipboardText, Factory, Printer, Lightning, MagnifyingGlass, ArrowCounterClockwise } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -268,6 +268,20 @@ export default function ProducaoPage() {
       fetchData();
     } catch (error) {
       toast.error('Erro ao concluir produção');
+    }
+  };
+
+  const handleRetornarProducao = async (producaoId) => {
+    if (!window.confirm('Deseja retornar esta produção? O item voltará para o status de produção e a embalagem pendente será removida.')) {
+      return;
+    }
+    try {
+      const result = await producaoAPI.retornar(producaoId);
+      toast.success(result.data.message || 'Produção retornada com sucesso!');
+      fetchData();
+    } catch (error) {
+      const errorMsg = error.response?.data?.detail || 'Erro ao retornar produção';
+      toast.error(errorMsg);
     }
   };
 
@@ -838,7 +852,7 @@ export default function ProducaoPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        {!producao.data_conclusao && (
+                        {!producao.data_conclusao ? (
                           <Button
                             onClick={() => handleConcluir(producao.id)}
                             size="sm"
@@ -846,6 +860,16 @@ export default function ProducaoPage() {
                           >
                             <CheckCircle size={16} weight="bold" className="mr-1" />
                             Concluir
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={() => handleRetornarProducao(producao.id)}
+                            size="sm"
+                            variant="outline"
+                            className="border-orange-400 text-orange-600 hover:bg-orange-50 text-xs"
+                          >
+                            <ArrowCounterClockwise size={16} weight="bold" className="mr-1" />
+                            Retornar
                           </Button>
                         )}
                       </td>
