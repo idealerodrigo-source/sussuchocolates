@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { relatoriosAPI, producaoAPI } from '../services/api';
+import { relatoriosAPI, producaoAPI, estoqueAPI } from '../services/api';
 import { formatCurrency } from '../utils/formatters';
-import { MagnifyingGlass, Factory, Package, Users, ShoppingCart, CheckCircle, FilePdf, FileXls, DownloadSimple, CalendarBlank, Phone, Warning } from '@phosphor-icons/react';
+import { MagnifyingGlass, Factory, Package, Users, ShoppingCart, CheckCircle, FilePdf, FileXls, DownloadSimple, CalendarBlank, Phone, Warning, WarningCircle, Cube } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
@@ -28,8 +28,11 @@ export default function RelatoriosPage() {
   const [producaoPendente, setProducaoPendente] = useState(null);
   const [producaoConcluida, setProducaoConcluida] = useState(null);
   const [pedidosResumo, setPedidosResumo] = useState(null);
+  const [alertasEstoque, setAlertasEstoque] = useState(null);
+  const [relatorioSaldos, setRelatorioSaldos] = useState(null);
   const [producaoPorDataEntrega, setProducaoPorDataEntrega] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [itensSelecionados, setItensSelecionados] = useState([]);
   const [filtros, setFiltros] = useState({
     data_inicio: '',
     data_fim: '',
@@ -51,6 +54,9 @@ export default function RelatoriosPage() {
       buscarRelatorioProducao();
     } else if (activeTab === 'clientes') {
       buscarRelatorioClientes();
+    } else if (activeTab === 'estoque') {
+      buscarAlertasEstoque();
+      buscarRelatorioSaldos();
     }
   }, [activeTab]);
 
@@ -142,6 +148,84 @@ export default function RelatoriosPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const buscarAlertasEstoque = async () => {
+    setLoading(true);
+    try {
+      const response = await estoqueAPI.alertas();
+      setAlertasEstoque(response.data);
+      toast.success('Alertas de estoque carregados');
+    } catch (error) {
+      toast.error('Erro ao carregar alertas de estoque');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const buscarRelatorioSaldos = async () => {
+    setLoading(true);
+    try {
+      const response = await estoqueAPI.relatorioSaldos();
+      setRelatorioSaldos(response.data);
+      toast.success('Relatório de saldos carregado');
+    } catch (error) {
+      toast.error('Erro ao carregar relatório de saldos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const enviarParaProducao = async () => {
+    if (itensSelecionados.length === 0) {
+      toast.error('Selecione pelo menos um item para produzir');
+      return;
+    }
+    
+    const responsavel = prompt('Nome do responsável pela produção:', 'Sistema');
+    if (!responsavel) return;
+    
+    setLoading(true);
+    try {
+      const itensParaProduzir = itensSelecionados.map(item => ({
+        produto_id: item.produto_id,
+        quantidade: item.quantidade_faltante,
+        estoque_minimo: item.estoque_minimo
+      }));
+      
+      const response = await estoqueAPI.produzirFaltantes(itensParaProduzir, responsavel);
+      const data = response.data;
+      
+      if (data.sucesso > 0) {
+        toast.success(`${data.sucesso} produção(ões) criada(s) com sucesso!`);
+        setItensSelecionados([]);
+        buscarAlertasEstoque();
+        buscarRelatorioSaldos();
+      }
+      
+      if (data.erros > 0) {
+        toast.warning(`${data.erros} erro(s) ao criar produções`);
+      }
+    } catch (error) {
+      toast.error('Erro ao criar produções');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleSelecionarItem = (item) => {
+    const jaExiste = itensSelecionados.find(i => i.produto_id === item.produto_id);
+    if (jaExiste) {
+      setItensSelecionados(itensSelecionados.filter(i => i.produto_id !== item.produto_id));
+    } else {
+      setItensSelecionados([...itensSelecionados, item]);
+    }
+  };
+
+  const selecionarTodosFaltantes = () => {
+    if (!relatorioSaldos?.itens) return;
+    const faltantes = relatorioSaldos.itens.filter(i => i.quantidade_faltante > 0);
+    setItensSelecionados(faltantes);
   };
 
   // ============ FUNÇÕES DE EXPORTAÇÃO ============
@@ -524,6 +608,7 @@ export default function RelatoriosPage() {
     { id: 'pedidos-resumo', label: 'Resumo Pedidos', icon: ShoppingCart },
     { id: 'vendas', label: 'Vendas', icon: Package },
     { id: 'producao', label: 'Produção Geral', icon: Factory },
+    { id: 'estoque', label: 'Estoque', icon: Cube },
     { id: 'clientes', label: 'Clientes', icon: Users },
   ];
 
@@ -1600,6 +1685,231 @@ export default function RelatoriosPage() {
                 </div>
               )}
             </>
+          )}
+        </div>
+      )}
+
+      {/* TAB: ESTOQUE */}
+      {activeTab === 'estoque' && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center flex-wrap gap-3">
+            <h2 className="text-2xl font-serif font-semibold text-[#3E2723]">Alertas e Saldos de Estoque</h2>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => { buscarAlertasEstoque(); buscarRelatorioSaldos(); }} 
+                variant="outline"
+                className="border-[#8B5A3C]/30 text-[#6B4423] hover:bg-[#F5E6D3]"
+              >
+                <MagnifyingGlass size={18} weight="bold" className="mr-2" />
+                Atualizar
+              </Button>
+            </div>
+          </div>
+
+          {/* Cards de Alertas */}
+          {alertasEstoque && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-5 shadow-sm">
+                <p className="text-xs font-sans uppercase tracking-wider font-semibold text-[#8B5A3C] mb-2">Total de Alertas</p>
+                <p className="text-3xl font-serif font-bold text-[#3E2723]">{alertasEstoque.total_alertas}</p>
+              </div>
+              <div className="bg-red-50 border border-red-200 rounded-xl p-5 shadow-sm">
+                <p className="text-xs font-sans uppercase tracking-wider font-semibold text-red-600 mb-2">Estoque Zerado</p>
+                <p className="text-3xl font-serif font-bold text-red-600">{alertasEstoque.criticos}</p>
+              </div>
+              <div className="bg-orange-50 border border-orange-200 rounded-xl p-5 shadow-sm">
+                <p className="text-xs font-sans uppercase tracking-wider font-semibold text-orange-600 mb-2">Estoque Baixo</p>
+                <p className="text-3xl font-serif font-bold text-orange-600">{alertasEstoque.baixos}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Lista de Alertas */}
+          {alertasEstoque?.alertas?.length > 0 && (
+            <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-[#8B5A3C]/15 flex justify-between items-center">
+                <h3 className="text-xl font-serif font-semibold text-[#3E2723] flex items-center gap-2">
+                  <WarningCircle size={24} weight="fill" className="text-orange-500" />
+                  Produtos com Estoque Crítico
+                </h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-[#E8D5C4]">
+                    <tr>
+                      <th className="text-left px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Produto</th>
+                      <th className="text-center px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Saldo Atual</th>
+                      <th className="text-center px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Mínimo</th>
+                      <th className="text-center px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Faltante</th>
+                      <th className="text-center px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {alertasEstoque.alertas.map((alerta, index) => (
+                      <tr key={index} className={`border-t border-[#8B5A3C]/10 ${alerta.status === 'critico' ? 'bg-red-50' : 'bg-orange-50/50'}`}>
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-medium text-[#3E2723]">{alerta.produto_nome}</p>
+                          <p className="text-xs text-[#705A4D]">{alerta.categoria}</p>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`font-bold text-lg ${alerta.saldo_atual <= 0 ? 'text-red-600' : 'text-orange-600'}`}>
+                            {arredondar(alerta.saldo_atual)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center text-sm text-[#705A4D]">
+                          {alerta.estoque_minimo}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded-full text-sm font-bold">
+                            {arredondar(alerta.quantidade_faltante)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            alerta.status === 'critico' 
+                              ? 'bg-red-100 text-red-700' 
+                              : 'bg-orange-100 text-orange-700'
+                          }`}>
+                            {alerta.status === 'critico' ? 'ZERADO' : 'BAIXO'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Relatório Completo de Saldos */}
+          {relatorioSaldos && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-5 shadow-sm">
+                  <p className="text-xs font-sans uppercase tracking-wider font-semibold text-[#8B5A3C] mb-2">Total Produtos</p>
+                  <p className="text-3xl font-serif font-bold text-[#3E2723]">{relatorioSaldos.total_produtos}</p>
+                </div>
+                <div className="bg-red-50 border border-red-200 rounded-xl p-5 shadow-sm">
+                  <p className="text-xs font-sans uppercase tracking-wider font-semibold text-red-600 mb-2">Zerados</p>
+                  <p className="text-3xl font-serif font-bold text-red-600">{relatorioSaldos.produtos_zerados}</p>
+                </div>
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-5 shadow-sm">
+                  <p className="text-xs font-sans uppercase tracking-wider font-semibold text-orange-600 mb-2">Abaixo do Mínimo</p>
+                  <p className="text-3xl font-serif font-bold text-orange-600">{relatorioSaldos.produtos_abaixo_minimo}</p>
+                </div>
+                <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-5 shadow-sm">
+                  <p className="text-xs font-sans uppercase tracking-wider font-semibold text-[#2F855A] mb-2">Valor Total Estoque</p>
+                  <p className="text-2xl font-serif font-bold text-[#2F855A]">{formatCurrency(relatorioSaldos.valor_total_estoque)}</p>
+                </div>
+              </div>
+
+              {/* Tabela Completa de Saldos */}
+              <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-[#8B5A3C]/15 flex justify-between items-center flex-wrap gap-3">
+                  <h3 className="text-xl font-serif font-semibold text-[#3E2723]">Saldos por Produto</h3>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={selecionarTodosFaltantes}
+                      variant="outline"
+                      size="sm"
+                      className="border-orange-300 text-orange-600 hover:bg-orange-50"
+                    >
+                      Selecionar Faltantes
+                    </Button>
+                    {itensSelecionados.length > 0 && (
+                      <Button
+                        onClick={enviarParaProducao}
+                        size="sm"
+                        className="bg-[#6B4423] text-white hover:bg-[#5a3a1d]"
+                        disabled={loading}
+                      >
+                        <Factory size={16} weight="bold" className="mr-1" />
+                        Produzir {itensSelecionados.length} item(ns)
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="overflow-x-auto max-h-[500px]">
+                  <table className="w-full">
+                    <thead className="bg-[#E8D5C4] sticky top-0">
+                      <tr>
+                        <th className="w-10 px-2 py-3"></th>
+                        <th className="text-left px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Produto</th>
+                        <th className="text-center px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Saldo</th>
+                        <th className="text-center px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Mínimo</th>
+                        <th className="text-center px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Faltante</th>
+                        <th className="text-right px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Valor Est.</th>
+                        <th className="text-center px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {relatorioSaldos.itens?.map((item, index) => {
+                        const isSelected = itensSelecionados.find(i => i.produto_id === item.produto_id);
+                        return (
+                        <tr key={index} className={`border-t border-[#8B5A3C]/10 ${
+                          isSelected ? 'bg-[#6B4423]/10' :
+                          item.status === 'zerado' ? 'bg-red-50' : 
+                          item.status === 'baixo' ? 'bg-orange-50/50' : 'hover:bg-[#F5E6D3]/50'
+                        }`}>
+                          <td className="px-2 py-3 text-center">
+                            {item.quantidade_faltante > 0 && (
+                              <input
+                                type="checkbox"
+                                checked={!!isSelected}
+                                onChange={() => toggleSelecionarItem(item)}
+                                className="w-4 h-4 rounded border-[#8B5A3C] text-[#6B4423] focus:ring-[#6B4423]"
+                              />
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="text-sm font-medium text-[#3E2723]">{item.produto_nome}</p>
+                            <p className="text-xs text-[#705A4D]">{item.categoria}</p>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`font-bold ${
+                              item.status === 'zerado' ? 'text-red-600' : 
+                              item.status === 'baixo' ? 'text-orange-600' : 'text-[#3E2723]'
+                            }`}>
+                              {arredondar(item.saldo_atual)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center text-sm text-[#705A4D]">
+                            {item.estoque_minimo || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {item.quantidade_faltante > 0 ? (
+                              <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-xs font-bold">
+                                {arredondar(item.quantidade_faltante)}
+                              </span>
+                            ) : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-right text-sm text-[#3E2723]">
+                            {formatCurrency(item.valor_estoque)}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                              item.status === 'zerado' ? 'bg-red-100 text-red-700' : 
+                              item.status === 'baixo' ? 'bg-orange-100 text-orange-700' : 
+                              'bg-green-100 text-green-700'
+                            }`}>
+                              {item.status === 'zerado' ? 'ZERADO' : 
+                               item.status === 'baixo' ? 'BAIXO' : 'OK'}
+                            </span>
+                          </td>
+                        </tr>
+                      );})}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+
+          {!alertasEstoque && !relatorioSaldos && !loading && (
+            <div className="text-center py-12 text-[#705A4D]">
+              <Cube size={48} className="mx-auto mb-4 opacity-50" />
+              <p>Clique em "Atualizar" para carregar os dados de estoque</p>
+            </div>
           )}
         </div>
       )}

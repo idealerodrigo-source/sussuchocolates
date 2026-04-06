@@ -64,6 +64,9 @@ export const estoqueAPI = {
   listar: () => api.get('/estoque'),
   criar: (data) => api.post('/estoque', data),
   saldo: () => api.get('/estoque/saldo'),
+  alertas: () => api.get('/estoque/alertas'),
+  relatorioSaldos: () => api.get('/estoque/relatorio-saldos'),
+  produzirFaltantes: (itens, responsavel) => api.post('/estoque/produzir-faltantes', itens, { params: { responsavel } }),
 };
 
 export const vendasAPI = {

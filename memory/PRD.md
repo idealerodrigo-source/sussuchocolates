@@ -116,6 +116,22 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
   - Valida se a embalagem já foi concluída (não permite retorno nesse caso)
   - **Backend**: Novo endpoint `PATCH /api/producao/{id}/retornar`
   - **Frontend**: Novo método `producaoAPI.retornar(id)` e handler `handleRetornarProducao`
+- **Nova Feature**: Sistema de Alertas e Relatório de Estoque (P1)
+  - **Nova aba "Estoque"** na página de Relatórios com:
+    - Cards de resumo: Total de Alertas, Estoque Zerado, Estoque Baixo
+    - Cards de saldos: Total Produtos, Zerados, Abaixo do Mínimo, Valor Total Estoque
+    - Lista de produtos com estoque crítico (zerados ou abaixo do mínimo)
+    - Tabela completa de saldos por produto com status visual (OK/BAIXO/ZERADO)
+  - **Funcionalidade "Produzir Faltantes"**:
+    - Checkboxes para selecionar itens com estoque faltante
+    - Botão "Selecionar Faltantes" para seleção em lote
+    - Botão "Produzir X item(ns)" para enviar selecionados para produção
+    - Solicita nome do responsável antes de criar as produções
+    - Cria produções de estoque (EST-XXXXXX) automaticamente
+  - **Backend**: Novos endpoints:
+    - `GET /api/estoque/alertas` - Retorna produtos abaixo do mínimo
+    - `GET /api/estoque/relatorio-saldos` - Relatório completo de saldos
+    - `POST /api/estoque/produzir-faltantes` - Cria produções em lote
 - **Refatoração**: Extração de Componentes Reutilizáveis
   - Criado `/app/frontend/src/components/producao/PedidoSearchFilter.js` com componentes:
     - `PedidoSearchFilter`: Filtros de busca e data
