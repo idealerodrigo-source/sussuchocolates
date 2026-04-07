@@ -288,6 +288,7 @@ async def relatorio_pedidos_status_vendas(current_user: dict = Depends(get_curre
     Relatório de pedidos separados por status de venda:
     - Pedidos pendentes de venda (ainda não vendidos)
     - Pedidos já finalizados com venda
+    - Vendas diretas (sem pedido vinculado)
     """
     # Buscar todos os pedidos não cancelados
     pedidos = await db.pedidos.find(
@@ -301,13 +302,29 @@ async def relatorio_pedidos_status_vendas(current_user: dict = Depends(get_curre
         {"_id": 0}
     ).to_list(5000)
     
-    # Criar set de pedidos que já tem venda
+    # Separar vendas de pedidos e vendas diretas
     pedidos_vendidos = set()
-    valor_total_vendido = 0
+    valor_vendas_pedidos = 0
+    vendas_diretas = []
+    valor_vendas_diretas = 0
+    
     for venda in vendas:
         if venda.get('pedido_id'):
+            # Venda vinculada a pedido
             pedidos_vendidos.add(venda['pedido_id'])
-            valor_total_vendido += venda.get('valor_total', 0)
+            valor_vendas_pedidos += venda.get('valor_total', 0)
+        else:
+            # Venda direta (sem pedido)
+            venda_info = {
+                'venda_id': venda.get('id'),
+                'cliente_nome': venda.get('cliente_nome', 'N/A'),
+                'data_venda': venda.get('data_venda'),
+                'valor_total': venda.get('valor_total', 0),
+                'forma_pagamento': venda.get('forma_pagamento', '-'),
+                'items_count': len(venda.get('items', []))
+            }
+            vendas_diretas.append(venda_info)
+            valor_vendas_diretas += venda.get('valor_total', 0)
     
     # Separar pedidos pendentes de venda e pedidos vendidos
     pedidos_sem_venda = []
@@ -337,10 +354,13 @@ async def relatorio_pedidos_status_vendas(current_user: dict = Depends(get_curre
     # Ordenar por data de entrega (mais urgentes primeiro)
     pedidos_sem_venda.sort(key=lambda x: (x.get('data_entrega') or '9999-12-31'))
     pedidos_com_venda.sort(key=lambda x: (x.get('data_pedido') or ''), reverse=True)
+    vendas_diretas.sort(key=lambda x: (x.get('data_venda') or ''), reverse=True)
     
     # Calcular totais
     valor_total_pendente = sum(p['valor_total'] for p in pedidos_sem_venda)
-    valor_total_finalizado = valor_total_vendido
+    valor_total_pedidos_finalizados = valor_vendas_pedidos
+    valor_total_vendas_diretas = valor_vendas_diretas
+    valor_total_finalizado = valor_total_pedidos_finalizados + valor_total_vendas_diretas
     
     return {
         "pedidos_pendentes_venda": {
@@ -350,14 +370,22 @@ async def relatorio_pedidos_status_vendas(current_user: dict = Depends(get_curre
         },
         "pedidos_finalizados": {
             "quantidade": len(pedidos_com_venda),
-            "valor_total": round(valor_total_finalizado, 2),
+            "valor_total": round(valor_total_pedidos_finalizados, 2),
             "pedidos": pedidos_com_venda
+        },
+        "vendas_diretas": {
+            "quantidade": len(vendas_diretas),
+            "valor_total": round(valor_total_vendas_diretas, 2),
+            "vendas": vendas_diretas
         },
         "resumo": {
             "total_pedidos": len(pedidos),
             "pendentes_venda": len(pedidos_sem_venda),
-            "finalizados": len(pedidos_com_venda),
+            "pedidos_finalizados": len(pedidos_com_venda),
+            "vendas_diretas": len(vendas_diretas),
             "valor_total_pendente": round(valor_total_pendente, 2),
+            "valor_pedidos_finalizados": round(valor_total_pedidos_finalizados, 2),
+            "valor_vendas_diretas": round(valor_total_vendas_diretas, 2),
             "valor_total_finalizado": round(valor_total_finalizado, 2),
             "valor_total_geral": round(valor_total_pendente + valor_total_finalizado, 2)
         }

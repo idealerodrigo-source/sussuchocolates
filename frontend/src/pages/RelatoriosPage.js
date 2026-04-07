@@ -1160,7 +1160,7 @@ export default function RelatoriosPage() {
           {!loading && pedidosStatusVendas && (
             <>
               {/* Cards de Resumo */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div className="bg-gradient-to-br from-[#D97706] to-[#F59E0B] text-white rounded-xl p-5 shadow-lg">
                   <div className="flex items-center justify-between">
                     <div>
@@ -1182,10 +1182,19 @@ export default function RelatoriosPage() {
                 <div className="bg-gradient-to-br from-[#2F855A] to-[#48BB78] text-white rounded-xl p-5 shadow-lg">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm opacity-80">Vendas Finalizadas</p>
-                      <p className="text-3xl font-bold">{pedidosStatusVendas.resumo?.finalizados || 0}</p>
+                      <p className="text-sm opacity-80">Pedidos Vendidos</p>
+                      <p className="text-3xl font-bold">{pedidosStatusVendas.resumo?.pedidos_finalizados || 0}</p>
                     </div>
                     <CheckCircle size={40} className="opacity-60" weight="fill" />
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-[#7C3AED] to-[#A855F7] text-white rounded-xl p-5 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm opacity-80">Vendas Diretas</p>
+                      <p className="text-3xl font-bold">{pedidosStatusVendas.resumo?.vendas_diretas || 0}</p>
+                    </div>
+                    <ShoppingCart size={40} className="opacity-60" weight="fill" />
                   </div>
                 </div>
                 <div className="bg-gradient-to-br from-[#6B4423] to-[#8B5A3C] text-white rounded-xl p-5 shadow-lg">
@@ -1367,10 +1376,79 @@ export default function RelatoriosPage() {
                 )}
               </div>
 
+              {/* Seção: Vendas Diretas */}
+              <div className="bg-[#FFFDF8] border border-[#7C3AED]/30 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-[#7C3AED]/20 bg-gradient-to-r from-[#7C3AED]/10 to-[#A855F7]/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <ShoppingCart size={28} weight="fill" className="text-[#7C3AED]" />
+                      <div>
+                        <h3 className="text-xl font-serif font-semibold text-[#3E2723]">Vendas Diretas</h3>
+                        <p className="text-sm text-[#705A4D]">{pedidosStatusVendas.vendas_diretas?.quantidade || 0} venda(s) sem pedido vinculado</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-[#7C3AED]">{formatCurrency(pedidosStatusVendas.vendas_diretas?.valor_total || 0)}</p>
+                      <p className="text-xs text-[#705A4D]">valor total vendas diretas</p>
+                    </div>
+                  </div>
+                </div>
+
+                {pedidosStatusVendas.vendas_diretas?.vendas?.length > 0 ? (
+                  <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+                    <table className="w-full">
+                      <thead className="bg-[#F5E6D3] sticky top-0">
+                        <tr>
+                          <th className="text-left px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Cliente</th>
+                          <th className="text-center px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Data</th>
+                          <th className="text-center px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Itens</th>
+                          <th className="text-center px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Pagamento</th>
+                          <th className="text-right px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Valor</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pedidosStatusVendas.vendas_diretas.vendas.slice(0, 50).map((venda, index) => (
+                          <tr key={index} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
+                            <td className="px-4 py-3 text-sm text-[#4A3B32] font-medium">{venda.cliente_nome}</td>
+                            <td className="px-4 py-3 text-center text-sm text-[#705A4D]">
+                              {venda.data_venda ? new Date(venda.data_venda).toLocaleDateString('pt-BR') : '-'}
+                            </td>
+                            <td className="px-4 py-3 text-center text-sm text-[#705A4D]">{venda.items_count}</td>
+                            <td className="px-4 py-3 text-center">
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-[#7C3AED]/10 text-[#7C3AED]">
+                                {venda.forma_pagamento || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <span className="text-sm font-semibold text-[#7C3AED]">
+                                {formatCurrency(venda.valor_total)}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-[#F5E6D3]/70 sticky bottom-0">
+                        <tr>
+                          <td colSpan="4" className="px-4 py-3 text-right font-semibold text-[#3E2723]">Total Vendas Diretas:</td>
+                          <td className="px-4 py-3 text-right font-bold text-[#7C3AED] text-lg">
+                            {formatCurrency(pedidosStatusVendas.vendas_diretas?.valor_total || 0)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center">
+                    <ShoppingCart size={48} className="mx-auto mb-3 text-[#705A4D]" weight="fill" />
+                    <p className="text-[#705A4D]">Nenhuma venda direta registrada.</p>
+                  </div>
+                )}
+              </div>
+
               {/* Resumo Geral */}
               <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm">
                 <h3 className="text-xl font-serif font-semibold text-[#3E2723] mb-4">Resumo Geral</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div className="text-center p-4 bg-[#F5E6D3]/50 rounded-lg">
                     <p className="text-sm text-[#705A4D] mb-1">Total de Pedidos</p>
                     <p className="text-3xl font-bold text-[#3E2723]">{pedidosStatusVendas.resumo?.total_pedidos || 0}</p>
@@ -1380,13 +1458,23 @@ export default function RelatoriosPage() {
                     <p className="text-3xl font-bold text-[#D97706]">{formatCurrency(pedidosStatusVendas.resumo?.valor_total_pendente || 0)}</p>
                   </div>
                   <div className="text-center p-4 bg-[#2F855A]/10 rounded-lg border border-[#2F855A]/20">
-                    <p className="text-sm text-[#705A4D] mb-1">Já Vendido</p>
-                    <p className="text-3xl font-bold text-[#2F855A]">{formatCurrency(pedidosStatusVendas.resumo?.valor_total_finalizado || 0)}</p>
+                    <p className="text-sm text-[#705A4D] mb-1">Pedidos Vendidos</p>
+                    <p className="text-3xl font-bold text-[#2F855A]">{formatCurrency(pedidosStatusVendas.resumo?.valor_pedidos_finalizados || 0)}</p>
+                  </div>
+                  <div className="text-center p-4 bg-[#7C3AED]/10 rounded-lg border border-[#7C3AED]/20">
+                    <p className="text-sm text-[#705A4D] mb-1">Vendas Diretas</p>
+                    <p className="text-3xl font-bold text-[#7C3AED]">{formatCurrency(pedidosStatusVendas.resumo?.valor_vendas_diretas || 0)}</p>
                   </div>
                 </div>
-                <div className="mt-4 pt-4 border-t border-[#8B5A3C]/15 text-center">
-                  <p className="text-sm text-[#705A4D] mb-1">Valor Total Geral (Pendente + Finalizado)</p>
-                  <p className="text-4xl font-bold text-[#6B4423]">{formatCurrency(pedidosStatusVendas.resumo?.valor_total_geral || 0)}</p>
+                <div className="mt-4 pt-4 border-t border-[#8B5A3C]/15 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="text-center p-4 bg-[#2F855A]/5 rounded-lg">
+                    <p className="text-sm text-[#705A4D] mb-1">Total Vendido (Pedidos + Diretas)</p>
+                    <p className="text-3xl font-bold text-[#2F855A]">{formatCurrency(pedidosStatusVendas.resumo?.valor_total_finalizado || 0)}</p>
+                  </div>
+                  <div className="text-center p-4 bg-[#6B4423]/10 rounded-lg">
+                    <p className="text-sm text-[#705A4D] mb-1">Valor Total Geral (Pendente + Vendido)</p>
+                    <p className="text-3xl font-bold text-[#6B4423]">{formatCurrency(pedidosStatusVendas.resumo?.valor_total_geral || 0)}</p>
+                  </div>
                 </div>
               </div>
             </>
