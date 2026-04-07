@@ -41,6 +41,7 @@ export const pedidosAPI = {
   atualizarStatus: (id, status) => api.patch(`/pedidos/${id}/status?status=${status}`),
   cancelar: (id) => api.delete(`/pedidos/${id}/cancelar`),
   excluir: (id) => api.delete(`/pedidos/${id}`),
+  excluirItem: (pedidoId, itemIndex) => api.delete(`/pedidos/${pedidoId}/item/${itemIndex}`),
   marcarItemEntregue: (pedidoId, itemIndex) => api.patch(`/pedidos/${pedidoId}/item/${itemIndex}/entregue`),
   marcarItemSeparado: (pedidoId, itemIndex) => api.patch(`/pedidos/${pedidoId}/item/${itemIndex}/separado`),
 };

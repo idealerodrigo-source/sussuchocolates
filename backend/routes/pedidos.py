@@ -142,6 +142,79 @@ async def atualizar_pedido(pedido_id: str, pedido_data: PedidoUpdate, current_us
     return updated
 
 
+@router.delete("/{pedido_id}/item/{item_index}")
+async def excluir_item_pedido(pedido_id: str, item_index: int, current_user: dict = Depends(get_current_user)):
+    """
+    Remove um item de um pedido pendente.
+    Só permite remover se o pedido estiver com status 'pendente'.
+    Recalcula o valor total do pedido após remoção.
+    """
+    pedido = await db.pedidos.find_one({"id": pedido_id}, {"_id": 0})
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    
+    # Verificar se o pedido está pendente
+    if pedido.get('status') not in ['pendente', 'em_producao']:
+        raise HTTPException(
+            status_code=400, 
+            detail="Só é possível remover itens de pedidos pendentes ou em produção"
+        )
+    
+    items = pedido.get('items', [])
+    if item_index < 0 or item_index >= len(items):
+        raise HTTPException(status_code=400, detail="Índice do item inválido")
+    
+    # Verificar se o item já foi entregue
+    item = items[item_index]
+    if item.get('ja_entregue'):
+        raise HTTPException(status_code=400, detail="Não é possível remover um item já entregue")
+    
+    # Verificar se é o último item
+    if len(items) == 1:
+        raise HTTPException(
+            status_code=400, 
+            detail="Não é possível remover o único item do pedido. Exclua o pedido inteiro."
+        )
+    
+    # Guardar nome do produto para remover da produção
+    produto_nome = item.get('produto_nome')
+    
+    # Remover o item
+    items.pop(item_index)
+    
+    # Recalcular valor total
+    novo_valor_total = sum(i.get('subtotal', 0) for i in items)
+    
+    # Atualizar pedido
+    await db.pedidos.update_one(
+        {"id": pedido_id},
+        {"$set": {
+            "items": items,
+            "valor_total": novo_valor_total
+        }}
+    )
+    
+    # Remover produção associada a este item (se houver)
+    await db.producao.delete_many({
+        "pedido_id": pedido_id,
+        "produto_nome": produto_nome,
+        "data_conclusao": None  # Só remove se ainda não foi concluída
+    })
+    
+    # Remover embalagem associada (se houver)
+    await db.embalagem.delete_many({
+        "pedido_id": pedido_id,
+        "produto_nome": produto_nome,
+        "data_conclusao": None
+    })
+    
+    return {
+        "message": f"Item '{produto_nome}' removido do pedido",
+        "novo_valor_total": novo_valor_total,
+        "itens_restantes": len(items)
+    }
+
+
 @router.patch("/{pedido_id}/item/{item_index}/entregue")
 async def marcar_item_entregue(pedido_id: str, item_index: int, current_user: dict = Depends(get_current_user)):
     """

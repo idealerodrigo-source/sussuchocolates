@@ -407,6 +407,32 @@ Obrigado pela preferência! 🙏
     }
   };
 
+  const handleExcluirItem = async (pedidoId, itemIndex, itemNome) => {
+    if (!window.confirm(`Deseja remover o item "${itemNome}" deste pedido?\n\nEsta ação não pode ser desfeita.`)) {
+      return;
+    }
+    
+    try {
+      const response = await pedidosAPI.excluirItem(pedidoId, itemIndex);
+      toast.success(response.data.message || 'Item removido com sucesso!');
+      
+      // Atualizar viewingPedido localmente
+      if (viewingPedido && viewingPedido.id === pedidoId) {
+        const updatedItems = viewingPedido.items.filter((_, i) => i !== itemIndex);
+        const novoValorTotal = updatedItems.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+        setViewingPedido({ 
+          ...viewingPedido, 
+          items: updatedItems,
+          valor_total: novoValorTotal
+        });
+      }
+      
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erro ao remover item');
+    }
+  };
+
   const generatePDF = async (pedido) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -1413,6 +1439,19 @@ Obrigado pela preferência! 🙏
                           >
                             <Package size={14} className="mr-1" />
                             Entregar
+                          </Button>
+                        )}
+                        {/* Botão de excluir item - apenas para pedidos pendentes/em produção */}
+                        {!item.ja_entregue && (viewingPedido.status === 'pendente' || viewingPedido.status === 'em_producao') && viewingPedido.items.length > 1 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 border-red-400 hover:bg-red-50 text-xs"
+                            onClick={() => handleExcluirItem(viewingPedido.id, index, item.produto_nome)}
+                            title="Remover este item do pedido"
+                          >
+                            <Trash size={14} className="mr-1" />
+                            Excluir
                           </Button>
                         )}
                       </div>
