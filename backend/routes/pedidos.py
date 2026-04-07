@@ -145,19 +145,20 @@ async def atualizar_pedido(pedido_id: str, pedido_data: PedidoUpdate, current_us
 @router.delete("/{pedido_id}/item/{item_index}")
 async def excluir_item_pedido(pedido_id: str, item_index: int, current_user: dict = Depends(get_current_user)):
     """
-    Remove um item de um pedido pendente.
-    Só permite remover se o pedido estiver com status 'pendente'.
+    Remove um item de um pedido que ainda não foi vendido.
+    Só permite remover se o pedido estiver com status 'pendente', 'em_producao' ou 'em_embalagem'.
     Recalcula o valor total do pedido após remoção.
     """
     pedido = await db.pedidos.find_one({"id": pedido_id}, {"_id": 0})
     if not pedido:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
     
-    # Verificar se o pedido está pendente
-    if pedido.get('status') not in ['pendente', 'em_producao']:
+    # Verificar se o pedido está em status editável (antes da venda)
+    status_permitidos = ['pendente', 'em_producao', 'em_embalagem']
+    if pedido.get('status') not in status_permitidos:
         raise HTTPException(
             status_code=400, 
-            detail="Só é possível remover itens de pedidos pendentes ou em produção"
+            detail="Só é possível remover itens de pedidos que ainda não foram vendidos (pendente, em produção ou em embalagem)"
         )
     
     items = pedido.get('items', [])

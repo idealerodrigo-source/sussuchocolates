@@ -1257,6 +1257,7 @@ Obrigado pela preferência! 🙏
                           variant="outline"
                           className="text-[#6B4423] border-[#6B4423] hover:bg-[#F5E6D3]"
                           title="Visualizar"
+                          data-testid={`view-pedido-${pedido.numero}`}
                         >
                           <Eye size={16} weight="bold" />
                         </Button>
@@ -1441,8 +1442,8 @@ Obrigado pela preferência! 🙏
                             Entregar
                           </Button>
                         )}
-                        {/* Botão de excluir item - apenas para pedidos pendentes/em produção */}
-                        {!item.ja_entregue && (viewingPedido.status === 'pendente' || viewingPedido.status === 'em_producao') && viewingPedido.items.length > 1 && (
+                        {/* Botão de excluir item - apenas para pedidos que ainda não foram vendidos */}
+                        {!item.ja_entregue && ['pendente', 'em_producao', 'em_embalagem'].includes(viewingPedido.status) && viewingPedido.items.length > 1 && (
                           <Button
                             size="sm"
                             variant="outline"
