@@ -164,6 +164,28 @@ export default function EmbalagemPage() {
     }
   };
 
+  // Selecionar TODAS as embalagens pendentes (de todos os pedidos)
+  const selecionarTodasPendentes = () => {
+    const todasPendentes = embalagens.filter(e => !e.data_conclusao).map(e => e.id);
+    setSelectedEmbalagens(todasPendentes);
+  };
+
+  // Limpar todas as seleções
+  const limparSelecao = () => {
+    setSelectedEmbalagens([]);
+  };
+
+  // Abrir dialog para concluir todas selecionadas
+  const handleConcluirTodasSelecionadas = () => {
+    if (selectedEmbalagens.length === 0) {
+      toast.error('Selecione pelo menos uma embalagem');
+      return;
+    }
+    setLocalizacao('');
+    setResponsavelConclusao('');
+    setConcluirPedidoDialogOpen(true);
+  };
+
   // Concluir pedido completo
   const handleConcluirPedido = (pedidoKey) => {
     const pendentes = getPendentesPorPedido(pedidoKey);
@@ -351,6 +373,50 @@ export default function EmbalagemPage() {
           <p className="text-xs text-[#705A4D] mt-1">Encontrados: {filteredEmbalagens.length} de {embalagens.length} embalagens</p>
         )}
       </div>
+
+      {/* Barra de Ações em Lote */}
+      {embalagens.filter(e => !e.data_conclusao).length > 0 && (
+        <div className="mb-4 px-4 py-3 bg-[#F5E6D3]/50 border border-[#8B5A3C]/15 rounded-xl flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-[#705A4D]">
+              {selectedEmbalagens.length > 0 
+                ? `${selectedEmbalagens.length} selecionada(s)` 
+                : `${embalagens.filter(e => !e.data_conclusao).length} pendente(s) no total`
+              }
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              onClick={selecionarTodasPendentes}
+              variant="outline"
+              size="sm"
+              className="border-[#8B5A3C]/30 text-[#6B4423] hover:bg-[#F5E6D3]"
+            >
+              Selecionar Todas Pendentes
+            </Button>
+            {selectedEmbalagens.length > 0 && (
+              <>
+                <Button
+                  onClick={limparSelecao}
+                  variant="outline"
+                  size="sm"
+                  className="border-gray-300 text-gray-600 hover:bg-gray-50"
+                >
+                  Limpar
+                </Button>
+                <Button
+                  onClick={handleConcluirTodasSelecionadas}
+                  size="sm"
+                  className="bg-[#2F855A] text-white hover:bg-[#276749]"
+                >
+                  <CheckCircle size={16} weight="bold" className="mr-1" />
+                  Concluir {selectedEmbalagens.length}
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Cards agrupados por pedido */}
       {Object.keys(embalagensPorPedido).length === 0 ? (

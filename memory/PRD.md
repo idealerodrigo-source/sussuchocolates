@@ -141,6 +141,13 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
   - Botão "Concluir X" para finalizar todas selecionadas de uma vez
   - Confirmação antes de executar a conclusão em lote
   - Feedback de sucesso/erro após processamento
+- **Nova Feature**: Seleção e Conclusão em Lote de Embalagens
+  - Barra de ações: "X selecionada(s)" ou "X pendente(s) no total"
+  - Botão "Selecionar Todas Pendentes" para selecionar todas de todos os pedidos
+  - Botão "Limpar" para deselecionar todas
+  - Botão "Concluir X" abre dialog para informar localização e responsável
+  - Botão flutuante "Concluir X Selecionado(s)" no canto inferior
+  - Mantém funcionalidade existente de "Selecionar todos" e "Concluir Pedido" por pedido individual
 - **Refatoração**: Extração de Componentes Reutilizáveis
   - Criado `/app/frontend/src/components/producao/PedidoSearchFilter.js` com componentes:
     - `PedidoSearchFilter`: Filtros de busca e data
