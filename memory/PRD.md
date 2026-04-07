@@ -91,23 +91,30 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
     - Pedidos Pendentes de Venda (quantidade + valor)
     - Valor Total Pendente (vermelho/urgente)
     - Vendas Finalizadas (quantidade)
+    - Vendas Diretas (quantidade + valor) - NOVO!
     - Valor Total Finalizado (verde)
-  - **Seção "Pedidos Pendentes de Venda"**:
-    - Lista detalhada com: Pedido, Cliente, Telefone, Data Entrega, Status, Valor
-    - Alerta visual para pedidos com data de entrega atrasada
-    - Total pendente no rodapé da tabela
-  - **Seção "Pedidos com Venda Finalizada"**:
-    - Lista com: Pedido, Cliente, Itens, Valor
-    - Scroll interno para listas grandes (máx 50 itens visíveis)
-    - Total finalizado no rodapé
-  - **Resumo Geral**:
-    - Total de Pedidos (246)
-    - Valor Aguardando Venda
-    - Valor Já Vendido
-    - **Valor Total Geral** (Pendente + Finalizado)
-  - **Backend**: Novo endpoint `GET /api/relatorios/pedidos/status-vendas`
-  - **Frontend**: Nova função `relatoriosAPI.pedidosStatusVendas()`
-  - Permite ao gestor visualizar rapidamente quanto dinheiro ainda está pendente
+  - **Seção "Pedidos Pendentes de Venda"**: Lista com cliente, telefone, data entrega, status, valor
+  - **Seção "Pedidos com Venda Finalizada"**: Lista com pedido, cliente, itens, valor
+  - **Seção "Vendas Diretas"**: Lista vendas sem pedido vinculado (cliente, data, itens, forma pagamento, valor)
+  - **Resumo Geral**: Total de Pedidos, Aguardando Venda, Pedidos Vendidos, Vendas Diretas, Total Finalizado, Total Geral
+  - **Backend**: Endpoint `GET /api/relatorios/pedidos/status-vendas`
+
+- **Melhoria**: Prevenção de Vendas Duplicadas
+  - Backend bloqueia criação de venda se pedido já tem venda ativa
+  - Frontend filtra pedidos com venda existente da lista de seleção
+
+- **Teste**: Exclusão de item de pedido pendente/em_embalagem
+  - Testado e funcionando para pedidos antes da venda
+  - Expandido suporte de `pendente`/`em_producao` para incluir `em_embalagem`
+
+- **Refatoração**: `PedidosPage.js` modularizado
+  - **Antes**: 1509 linhas
+  - **Depois**: 1050 linhas (-30%)
+  - **Novos componentes criados em `/app/frontend/src/components/pedidos/`**:
+    - `PedidoPDFGenerator.js` (254 linhas) - Geração de PDF e envio WhatsApp
+    - `PedidoViewModal.js` (232 linhas) - Modal de visualização de detalhes
+    - `PedidosTable.js` (189 linhas) - Tabela de listagem com ações
+    - `index.js` - Exportações centralizadas
 
 ### 2026-04-03 (Sessão 12)
 - **Nova Feature**: Adicionar Produtos Extras na Venda de Pedido
