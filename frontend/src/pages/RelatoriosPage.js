@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { relatoriosAPI, producaoAPI, estoqueAPI } from '../services/api';
 import { formatCurrency } from '../utils/formatters';
-import { MagnifyingGlass, Factory, Package, Users, ShoppingCart, CheckCircle, FilePdf, FileXls, DownloadSimple, CalendarBlank, Phone, Warning, WarningCircle, Cube } from '@phosphor-icons/react';
+import { MagnifyingGlass, Factory, Package, Users, ShoppingCart, CheckCircle, FilePdf, FileXls, DownloadSimple, CalendarBlank, Phone, Warning, WarningCircle, Cube, CurrencyDollar, ClockCountdown, Receipt } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
@@ -31,6 +31,7 @@ export default function RelatoriosPage() {
   const [alertasEstoque, setAlertasEstoque] = useState(null);
   const [relatorioSaldos, setRelatorioSaldos] = useState(null);
   const [producaoPorDataEntrega, setProducaoPorDataEntrega] = useState(null);
+  const [pedidosStatusVendas, setPedidosStatusVendas] = useState(null);
   const [loading, setLoading] = useState(false);
   const [itensSelecionados, setItensSelecionados] = useState([]);
   const [filtros, setFiltros] = useState({
@@ -57,6 +58,8 @@ export default function RelatoriosPage() {
     } else if (activeTab === 'estoque') {
       buscarAlertasEstoque();
       buscarRelatorioSaldos();
+    } else if (activeTab === 'status-vendas') {
+      buscarPedidosStatusVendas();
     }
   }, [activeTab]);
 
@@ -171,6 +174,19 @@ export default function RelatoriosPage() {
       toast.success('Relatório de saldos carregado');
     } catch (error) {
       toast.error('Erro ao carregar relatório de saldos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const buscarPedidosStatusVendas = async () => {
+    setLoading(true);
+    try {
+      const response = await relatoriosAPI.pedidosStatusVendas();
+      setPedidosStatusVendas(response.data);
+      toast.success('Relatório de status de vendas carregado');
+    } catch (error) {
+      toast.error('Erro ao carregar relatório');
     } finally {
       setLoading(false);
     }
@@ -603,6 +619,7 @@ export default function RelatoriosPage() {
 
   const tabs = [
     { id: 'por-data-entrega', label: 'Por Data de Entrega', icon: CalendarBlank },
+    { id: 'status-vendas', label: 'Status de Vendas', icon: Receipt },
     { id: 'a-produzir', label: 'Itens a Produzir', icon: Factory },
     { id: 'produzidos', label: 'Itens Produzidos', icon: CheckCircle },
     { id: 'pedidos-resumo', label: 'Resumo Pedidos', icon: ShoppingCart },
@@ -1117,6 +1134,261 @@ export default function RelatoriosPage() {
                   <p className="text-[#705A4D] mt-2">Todas as produções estão em dia.</p>
                 </div>
               )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* TAB: STATUS DE VENDAS */}
+      {activeTab === 'status-vendas' && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center flex-wrap gap-3">
+            <h2 className="text-2xl font-serif font-semibold text-[#3E2723]">Status de Vendas dos Pedidos</h2>
+            <Button onClick={buscarPedidosStatusVendas} disabled={loading} variant="outline" className="text-[#6B4423] border-[#6B4423]">
+              <MagnifyingGlass size={18} className="mr-2" />
+              Atualizar
+            </Button>
+          </div>
+
+          {loading && (
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[#6B4423] border-r-transparent"></div>
+              <p className="mt-3 text-[#705A4D]">Carregando relatório...</p>
+            </div>
+          )}
+
+          {!loading && pedidosStatusVendas && (
+            <>
+              {/* Cards de Resumo */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-gradient-to-br from-[#D97706] to-[#F59E0B] text-white rounded-xl p-5 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm opacity-80">Pendentes de Venda</p>
+                      <p className="text-3xl font-bold">{pedidosStatusVendas.resumo?.pendentes_venda || 0}</p>
+                    </div>
+                    <ClockCountdown size={40} className="opacity-60" weight="fill" />
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-[#DC2626] to-[#EF4444] text-white rounded-xl p-5 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm opacity-80">Valor Pendente</p>
+                      <p className="text-2xl font-bold">{formatCurrency(pedidosStatusVendas.resumo?.valor_total_pendente || 0)}</p>
+                    </div>
+                    <CurrencyDollar size={40} className="opacity-60" weight="fill" />
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-[#2F855A] to-[#48BB78] text-white rounded-xl p-5 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm opacity-80">Vendas Finalizadas</p>
+                      <p className="text-3xl font-bold">{pedidosStatusVendas.resumo?.finalizados || 0}</p>
+                    </div>
+                    <CheckCircle size={40} className="opacity-60" weight="fill" />
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-[#6B4423] to-[#8B5A3C] text-white rounded-xl p-5 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm opacity-80">Valor Finalizado</p>
+                      <p className="text-2xl font-bold">{formatCurrency(pedidosStatusVendas.resumo?.valor_total_finalizado || 0)}</p>
+                    </div>
+                    <CurrencyDollar size={40} className="opacity-60" weight="fill" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Seção: Pedidos Pendentes de Venda */}
+              <div className="bg-[#FFFDF8] border border-[#D97706]/30 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-[#D97706]/20 bg-gradient-to-r from-[#D97706]/10 to-[#F59E0B]/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <ClockCountdown size={28} weight="fill" className="text-[#D97706]" />
+                      <div>
+                        <h3 className="text-xl font-serif font-semibold text-[#3E2723]">Pedidos Pendentes de Venda</h3>
+                        <p className="text-sm text-[#705A4D]">{pedidosStatusVendas.pedidos_pendentes_venda?.quantidade || 0} pedido(s) aguardando finalização</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-[#D97706]">{formatCurrency(pedidosStatusVendas.pedidos_pendentes_venda?.valor_total || 0)}</p>
+                      <p className="text-xs text-[#705A4D]">valor total pendente</p>
+                    </div>
+                  </div>
+                </div>
+
+                {pedidosStatusVendas.pedidos_pendentes_venda?.pedidos?.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-[#F5E6D3]">
+                        <tr>
+                          <th className="text-left px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Pedido</th>
+                          <th className="text-left px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Cliente</th>
+                          <th className="text-left px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Telefone</th>
+                          <th className="text-center px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Data Entrega</th>
+                          <th className="text-center px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Status</th>
+                          <th className="text-right px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Valor</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pedidosStatusVendas.pedidos_pendentes_venda.pedidos.map((pedido, index) => {
+                          const dataEntrega = pedido.data_entrega ? new Date(pedido.data_entrega) : null;
+                          const hoje = new Date();
+                          hoje.setHours(0, 0, 0, 0);
+                          const atrasado = dataEntrega && dataEntrega < hoje;
+                          
+                          return (
+                            <tr key={index} className={`border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50 ${atrasado ? 'bg-red-50' : ''}`}>
+                              <td className="px-4 py-3">
+                                <span className="inline-block bg-[#D97706] text-white px-2 py-1 rounded-full text-xs font-bold">
+                                  {pedido.numero}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-[#4A3B32] font-medium">{pedido.cliente_nome}</td>
+                              <td className="px-4 py-3 text-sm text-[#705A4D]">
+                                {pedido.cliente_telefone && (
+                                  <span className="flex items-center gap-1">
+                                    <Phone size={14} />
+                                    {pedido.cliente_telefone}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                {dataEntrega ? (
+                                  <span className={`text-sm ${atrasado ? 'text-red-600 font-bold' : 'text-[#3E2723]'}`}>
+                                    {atrasado && <Warning size={14} className="inline mr-1" />}
+                                    {dataEntrega.toLocaleDateString('pt-BR')}
+                                  </span>
+                                ) : (
+                                  <span className="text-sm text-[#705A4D]">-</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  pedido.status === 'em_producao' ? 'bg-blue-100 text-blue-700' :
+                                  pedido.status === 'em_embalagem' ? 'bg-purple-100 text-purple-700' :
+                                  pedido.status === 'pendente' ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {pedido.status === 'em_producao' ? 'Em Produção' : 
+                                   pedido.status === 'em_embalagem' ? 'Em Embalagem' :
+                                   pedido.status === 'pendente' ? 'Pendente' : pedido.status}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <span className="text-sm font-semibold text-[#D97706]">
+                                  {formatCurrency(pedido.valor_total)}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot className="bg-[#F5E6D3]/70">
+                        <tr>
+                          <td colSpan="5" className="px-4 py-3 text-right font-semibold text-[#3E2723]">Total Pendente:</td>
+                          <td className="px-4 py-3 text-right font-bold text-[#D97706] text-lg">
+                            {formatCurrency(pedidosStatusVendas.pedidos_pendentes_venda?.valor_total || 0)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center">
+                    <CheckCircle size={48} className="mx-auto mb-3 text-[#2F855A]" weight="fill" />
+                    <p className="text-[#705A4D]">Nenhum pedido pendente de venda!</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Seção: Pedidos Finalizados */}
+              <div className="bg-[#FFFDF8] border border-[#2F855A]/30 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-[#2F855A]/20 bg-gradient-to-r from-[#2F855A]/10 to-[#48BB78]/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle size={28} weight="fill" className="text-[#2F855A]" />
+                      <div>
+                        <h3 className="text-xl font-serif font-semibold text-[#3E2723]">Pedidos com Venda Finalizada</h3>
+                        <p className="text-sm text-[#705A4D]">{pedidosStatusVendas.pedidos_finalizados?.quantidade || 0} pedido(s) vendido(s)</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-[#2F855A]">{formatCurrency(pedidosStatusVendas.pedidos_finalizados?.valor_total || 0)}</p>
+                      <p className="text-xs text-[#705A4D]">valor total finalizado</p>
+                    </div>
+                  </div>
+                </div>
+
+                {pedidosStatusVendas.pedidos_finalizados?.pedidos?.length > 0 ? (
+                  <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                    <table className="w-full">
+                      <thead className="bg-[#F5E6D3] sticky top-0">
+                        <tr>
+                          <th className="text-left px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Pedido</th>
+                          <th className="text-left px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Cliente</th>
+                          <th className="text-center px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Itens</th>
+                          <th className="text-right px-4 py-3 text-sm font-sans font-semibold text-[#3E2723]">Valor</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pedidosStatusVendas.pedidos_finalizados.pedidos.slice(0, 50).map((pedido, index) => (
+                          <tr key={index} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
+                            <td className="px-4 py-3">
+                              <span className="inline-block bg-[#2F855A] text-white px-2 py-1 rounded-full text-xs font-bold">
+                                {pedido.numero}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-[#4A3B32] font-medium">{pedido.cliente_nome}</td>
+                            <td className="px-4 py-3 text-center text-sm text-[#705A4D]">{pedido.items_count}</td>
+                            <td className="px-4 py-3 text-right">
+                              <span className="text-sm font-semibold text-[#2F855A]">
+                                {formatCurrency(pedido.valor_total)}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-[#F5E6D3]/70 sticky bottom-0">
+                        <tr>
+                          <td colSpan="3" className="px-4 py-3 text-right font-semibold text-[#3E2723]">Total Finalizado:</td>
+                          <td className="px-4 py-3 text-right font-bold text-[#2F855A] text-lg">
+                            {formatCurrency(pedidosStatusVendas.pedidos_finalizados?.valor_total || 0)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center">
+                    <Warning size={48} className="mx-auto mb-3 text-[#D97706]" weight="fill" />
+                    <p className="text-[#705A4D]">Nenhuma venda finalizada ainda.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Resumo Geral */}
+              <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm">
+                <h3 className="text-xl font-serif font-semibold text-[#3E2723] mb-4">Resumo Geral</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="text-center p-4 bg-[#F5E6D3]/50 rounded-lg">
+                    <p className="text-sm text-[#705A4D] mb-1">Total de Pedidos</p>
+                    <p className="text-3xl font-bold text-[#3E2723]">{pedidosStatusVendas.resumo?.total_pedidos || 0}</p>
+                  </div>
+                  <div className="text-center p-4 bg-[#D97706]/10 rounded-lg border border-[#D97706]/20">
+                    <p className="text-sm text-[#705A4D] mb-1">Aguardando Venda</p>
+                    <p className="text-3xl font-bold text-[#D97706]">{formatCurrency(pedidosStatusVendas.resumo?.valor_total_pendente || 0)}</p>
+                  </div>
+                  <div className="text-center p-4 bg-[#2F855A]/10 rounded-lg border border-[#2F855A]/20">
+                    <p className="text-sm text-[#705A4D] mb-1">Já Vendido</p>
+                    <p className="text-3xl font-bold text-[#2F855A]">{formatCurrency(pedidosStatusVendas.resumo?.valor_total_finalizado || 0)}</p>
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t border-[#8B5A3C]/15 text-center">
+                  <p className="text-sm text-[#705A4D] mb-1">Valor Total Geral (Pendente + Finalizado)</p>
+                  <p className="text-4xl font-bold text-[#6B4423]">{formatCurrency(pedidosStatusVendas.resumo?.valor_total_geral || 0)}</p>
+                </div>
+              </div>
             </>
           )}
         </div>

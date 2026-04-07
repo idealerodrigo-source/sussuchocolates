@@ -280,3 +280,85 @@ async def relatorio_pedidos_resumo(current_user: dict = Depends(get_current_user
         "valor_total": sum(p['valor_total'] for p in resultado),
         "itens": resultado
     }
+
+
+@router.get("/pedidos/status-vendas")
+async def relatorio_pedidos_status_vendas(current_user: dict = Depends(get_current_user)):
+    """
+    Relatório de pedidos separados por status de venda:
+    - Pedidos pendentes de venda (ainda não vendidos)
+    - Pedidos já finalizados com venda
+    """
+    # Buscar todos os pedidos não cancelados
+    pedidos = await db.pedidos.find(
+        {"status": {"$ne": "cancelado"}},
+        {"_id": 0}
+    ).to_list(5000)
+    
+    # Buscar todas as vendas para identificar pedidos vendidos
+    vendas = await db.vendas.find(
+        {"status_venda": {"$ne": "cancelada"}},
+        {"_id": 0}
+    ).to_list(5000)
+    
+    # Criar set de pedidos que já tem venda
+    pedidos_vendidos = set()
+    valor_total_vendido = 0
+    for venda in vendas:
+        if venda.get('pedido_id'):
+            pedidos_vendidos.add(venda['pedido_id'])
+            valor_total_vendido += venda.get('valor_total', 0)
+    
+    # Separar pedidos pendentes de venda e pedidos vendidos
+    pedidos_sem_venda = []
+    pedidos_com_venda = []
+    
+    for pedido in pedidos:
+        pedido_id = pedido.get('id')
+        pedido_info = {
+            'pedido_id': pedido_id,
+            'numero': pedido.get('numero', 'N/A'),
+            'cliente_nome': pedido.get('cliente_nome', 'N/A'),
+            'cliente_telefone': pedido.get('cliente_telefone'),
+            'data_pedido': pedido.get('data_pedido'),
+            'data_entrega': pedido.get('data_entrega'),
+            'valor_total': pedido.get('valor_total', 0),
+            'status': pedido.get('status', 'pendente'),
+            'items_count': len(pedido.get('items', []))
+        }
+        
+        if pedido_id in pedidos_vendidos:
+            pedidos_com_venda.append(pedido_info)
+        else:
+            # Só incluir se não for 'concluido' sem venda (casos raros)
+            if pedido.get('status') != 'concluido':
+                pedidos_sem_venda.append(pedido_info)
+    
+    # Ordenar por data de entrega (mais urgentes primeiro)
+    pedidos_sem_venda.sort(key=lambda x: (x.get('data_entrega') or '9999-12-31'))
+    pedidos_com_venda.sort(key=lambda x: (x.get('data_pedido') or ''), reverse=True)
+    
+    # Calcular totais
+    valor_total_pendente = sum(p['valor_total'] for p in pedidos_sem_venda)
+    valor_total_finalizado = valor_total_vendido
+    
+    return {
+        "pedidos_pendentes_venda": {
+            "quantidade": len(pedidos_sem_venda),
+            "valor_total": round(valor_total_pendente, 2),
+            "pedidos": pedidos_sem_venda
+        },
+        "pedidos_finalizados": {
+            "quantidade": len(pedidos_com_venda),
+            "valor_total": round(valor_total_finalizado, 2),
+            "pedidos": pedidos_com_venda
+        },
+        "resumo": {
+            "total_pedidos": len(pedidos),
+            "pendentes_venda": len(pedidos_sem_venda),
+            "finalizados": len(pedidos_com_venda),
+            "valor_total_pendente": round(valor_total_pendente, 2),
+            "valor_total_finalizado": round(valor_total_finalizado, 2),
+            "valor_total_geral": round(valor_total_pendente + valor_total_finalizado, 2)
+        }
+    }

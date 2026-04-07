@@ -92,6 +92,7 @@ export const relatoriosAPI = {
     params: { data_inicio: dataInicio, data_fim: dataFim }
   }),
   pedidosResumo: () => api.get('/relatorios/pedidos/resumo'),
+  pedidosStatusVendas: () => api.get('/relatorios/pedidos/status-vendas'),
 };
 
 export const dashboardAPI = {

@@ -73,15 +73,41 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
 ### P0 - Concluído ✅
 - [x] Venda Mista (Entrega Imediata + A Produzir) - VendasPage.js
 - [x] Informações de Pagamento na Criação de Pedidos
+- [x] Relatório de Status de Vendas dos Pedidos
 
 ### P1 - Próximas
-- [ ] Alertas automáticos de estoque baixo
+- [ ] Alertas automáticos de estoque baixo (notificações push)
 
 ### P2 - Backlog
 - [ ] Migrar NFC-e para Produção (requer CSC de produção)
 - [x] ~~Refatorar VendasPage.js~~ ✅ Completo (1812 → 831 linhas)
 
 ## Changelog
+
+### 2026-04-07 (Sessão 13)
+- **Nova Feature**: Relatório de Status de Vendas dos Pedidos
+  - Nova aba "Status de Vendas" na página de Relatórios
+  - **Cards de Resumo**:
+    - Pedidos Pendentes de Venda (quantidade + valor)
+    - Valor Total Pendente (vermelho/urgente)
+    - Vendas Finalizadas (quantidade)
+    - Valor Total Finalizado (verde)
+  - **Seção "Pedidos Pendentes de Venda"**:
+    - Lista detalhada com: Pedido, Cliente, Telefone, Data Entrega, Status, Valor
+    - Alerta visual para pedidos com data de entrega atrasada
+    - Total pendente no rodapé da tabela
+  - **Seção "Pedidos com Venda Finalizada"**:
+    - Lista com: Pedido, Cliente, Itens, Valor
+    - Scroll interno para listas grandes (máx 50 itens visíveis)
+    - Total finalizado no rodapé
+  - **Resumo Geral**:
+    - Total de Pedidos (246)
+    - Valor Aguardando Venda
+    - Valor Já Vendido
+    - **Valor Total Geral** (Pendente + Finalizado)
+  - **Backend**: Novo endpoint `GET /api/relatorios/pedidos/status-vendas`
+  - **Frontend**: Nova função `relatoriosAPI.pedidosStatusVendas()`
+  - Permite ao gestor visualizar rapidamente quanto dinheiro ainda está pendente
 
 ### 2026-04-03 (Sessão 12)
 - **Nova Feature**: Adicionar Produtos Extras na Venda de Pedido
