@@ -5,6 +5,8 @@ import { MagnifyingGlass, Factory, Package, Users, ShoppingCart, CheckCircle, Fi
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   COLORS,
   exportarPdfProducaoPendente,
