@@ -23,6 +23,18 @@ async def criar_venda(venda_data: VendaCreate, current_user: dict = Depends(get_
         if not pedido:
             raise HTTPException(status_code=404, detail="Pedido não encontrado")
         
+        # Verificar se já existe uma venda para este pedido (não cancelada)
+        venda_existente = await db.vendas.find_one({
+            "pedido_id": venda_data.pedido_id,
+            "status_venda": {"$ne": "cancelada"}
+        }, {"_id": 0})
+        
+        if venda_existente:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Este pedido já possui uma venda registrada. Não é possível criar venda duplicada."
+            )
+        
         # Preparar itens do pedido original
         itens_pedido = [ItemPedido(**item) if isinstance(item, dict) else item for item in pedido['items']]
         

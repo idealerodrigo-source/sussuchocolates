@@ -130,10 +130,24 @@ export default function VendasPage() {
         produtosAPI.listar(),
       ]);
       setVendas(vendasRes.data);
+      
+      // Criar set de pedidos que já têm venda (não cancelada)
+      const pedidosComVenda = new Set(
+        vendasRes.data
+          .filter(v => v.pedido_id && v.status_venda !== 'cancelada')
+          .map(v => v.pedido_id)
+      );
+      
       // Filtrar pedidos que estão prontos para venda:
       // 1. Status 'concluido' ou 'em_embalagem'
       // 2. OU pedidos onde TODOS os itens estão marcados como 'já entregue' OU 'já separado'
+      // 3. E que NÃO têm venda já registrada
       const pedidosFinalizados = pedidosRes.data.filter((p) => {
+        // Excluir pedidos que já têm venda
+        if (pedidosComVenda.has(p.id)) {
+          return false;
+        }
+        
         // Condição tradicional: status concluido ou em_embalagem
         if (p.status === 'concluido' || p.status === 'em_embalagem') {
           return true;
