@@ -132,6 +132,15 @@ Brigadeiro, Beijinho, Maracujá, Cereja, Morango, Limão, Ninho, Nutella, Pistac
     - `GET /api/estoque/alertas` - Retorna produtos abaixo do mínimo
     - `GET /api/estoque/relatorio-saldos` - Relatório completo de saldos
     - `POST /api/estoque/produzir-faltantes` - Cria produções em lote
+- **Nova Feature**: Seleção e Conclusão em Lote de Produções
+  - Checkboxes em cada linha de produção pendente
+  - Checkbox no cabeçalho para selecionar/deselecionar todas
+  - Barra de ações mostrando quantidade de selecionadas
+  - Botão "Selecionar Todas Pendentes" para seleção rápida
+  - Botão "Limpar" para deselecionar todas
+  - Botão "Concluir X" para finalizar todas selecionadas de uma vez
+  - Confirmação antes de executar a conclusão em lote
+  - Feedback de sucesso/erro após processamento
 - **Refatoração**: Extração de Componentes Reutilizáveis
   - Criado `/app/frontend/src/components/producao/PedidoSearchFilter.js` com componentes:
     - `PedidoSearchFilter`: Filtros de busca e data

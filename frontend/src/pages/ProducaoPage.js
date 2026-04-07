@@ -25,6 +25,7 @@ export default function ProducaoPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [pesquisaPedido, setPesquisaPedido] = useState(''); // Pesquisa de pedidos no modal
   const [filtroDataEntrega, setFiltroDataEntrega] = useState(''); // Filtro por data de entrega
+  const [producoesSelecionadas, setProducoesSelecionadas] = useState([]); // Produções selecionadas para conclusão em lote
   
   // Filtrar produções pelo termo de pesquisa
   const filteredProducoes = useMemo(() => {
@@ -282,6 +283,60 @@ export default function ProducaoPage() {
     } catch (error) {
       const errorMsg = error.response?.data?.detail || 'Erro ao retornar produção';
       toast.error(errorMsg);
+    }
+  };
+
+  // Funções de seleção em lote
+  const toggleSelecionarProducao = (producaoId) => {
+    if (producoesSelecionadas.includes(producaoId)) {
+      setProducoesSelecionadas(producoesSelecionadas.filter(id => id !== producaoId));
+    } else {
+      setProducoesSelecionadas([...producoesSelecionadas, producaoId]);
+    }
+  };
+
+  const selecionarTodasPendentes = () => {
+    const pendentes = filteredProducoes.filter(p => !p.data_conclusao).map(p => p.id);
+    setProducoesSelecionadas(pendentes);
+  };
+
+  const limparSelecao = () => {
+    setProducoesSelecionadas([]);
+  };
+
+  const handleConcluirSelecionadas = async () => {
+    if (producoesSelecionadas.length === 0) {
+      toast.error('Selecione pelo menos uma produção para concluir');
+      return;
+    }
+
+    if (!window.confirm(`Deseja concluir ${producoesSelecionadas.length} produção(ões) selecionada(s)?`)) {
+      return;
+    }
+
+    setSubmitting(true);
+    let sucesso = 0;
+    let erros = 0;
+
+    for (const producaoId of producoesSelecionadas) {
+      try {
+        await producaoAPI.concluir(producaoId);
+        sucesso++;
+      } catch (error) {
+        erros++;
+        console.error(`Erro ao concluir produção ${producaoId}:`, error);
+      }
+    }
+
+    setSubmitting(false);
+    setProducoesSelecionadas([]);
+    fetchData();
+
+    if (sucesso > 0) {
+      toast.success(`${sucesso} produção(ões) concluída(s) com sucesso!`);
+    }
+    if (erros > 0) {
+      toast.error(`${erros} produção(ões) falharam ao concluir`);
     }
   };
 
@@ -787,10 +842,67 @@ export default function ProducaoPage() {
           )}
 
         <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl shadow-sm overflow-hidden">
+          {/* Barra de ações em lote */}
+          <div className="px-4 py-3 border-b border-[#8B5A3C]/15 flex items-center justify-between flex-wrap gap-2 bg-[#F5E6D3]/30">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-[#705A4D]">
+                {producoesSelecionadas.length > 0 
+                  ? `${producoesSelecionadas.length} selecionada(s)` 
+                  : `${filteredProducoes.filter(p => !p.data_conclusao).length} pendente(s)`
+                }
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={selecionarTodasPendentes}
+                variant="outline"
+                size="sm"
+                className="border-[#8B5A3C]/30 text-[#6B4423] hover:bg-[#F5E6D3]"
+              >
+                Selecionar Todas Pendentes
+              </Button>
+              {producoesSelecionadas.length > 0 && (
+                <>
+                  <Button
+                    onClick={limparSelecao}
+                    variant="outline"
+                    size="sm"
+                    className="border-gray-300 text-gray-600 hover:bg-gray-50"
+                  >
+                    Limpar
+                  </Button>
+                  <Button
+                    onClick={handleConcluirSelecionadas}
+                    size="sm"
+                    disabled={submitting}
+                    className="bg-[#2F855A] text-white hover:bg-[#276749]"
+                  >
+                    <CheckCircle size={16} weight="bold" className="mr-1" />
+                    {submitting ? 'Concluindo...' : `Concluir ${producoesSelecionadas.length}`}
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-[#E8D5C4]">
                 <tr>
+                  <th className="w-10 px-3 py-4">
+                    <input
+                      type="checkbox"
+                      checked={producoesSelecionadas.length > 0 && producoesSelecionadas.length === filteredProducoes.filter(p => !p.data_conclusao).length}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          selecionarTodasPendentes();
+                        } else {
+                          limparSelecao();
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-[#8B5A3C] text-[#6B4423] focus:ring-[#6B4423]"
+                      title="Selecionar todas pendentes"
+                    />
+                  </th>
                   <SortableHeader label="Referência" sortKey="pedido_numero" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
                   <SortableHeader label="Tipo" sortKey="tipo_producao" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
                   <SortableHeader label="Produto" sortKey="produto_nome" sortConfig={sortConfig} onSort={requestSort} className="text-left" />
@@ -805,13 +917,26 @@ export default function ProducaoPage() {
               <tbody>
                 {sortedData.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="text-center py-12 text-[#705A4D] font-sans">
+                    <td colSpan="10" className="text-center py-12 text-[#705A4D] font-sans">
                       Nenhuma produção registrada
                     </td>
                   </tr>
                 ) : (
-                  sortedData.map((producao) => (
-                    <tr key={producao.id} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
+                  sortedData.map((producao) => {
+                    const isSelected = producoesSelecionadas.includes(producao.id);
+                    const isPendente = !producao.data_conclusao;
+                    return (
+                    <tr key={producao.id} className={`border-t border-[#8B5A3C]/10 ${isSelected ? 'bg-[#6B4423]/10' : 'hover:bg-[#F5E6D3]/50'}`}>
+                      <td className="px-3 py-4 text-center">
+                        {isPendente && (
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelecionarProducao(producao.id)}
+                            className="w-4 h-4 rounded border-[#8B5A3C] text-[#6B4423] focus:ring-[#6B4423]"
+                          />
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">{producao.pedido_numero || '-'}</td>
                       <td className="px-6 py-4">
                         {producao.tipo_producao === 'estoque' || (producao.pedido_numero && producao.pedido_numero.startsWith('EST-')) ? (
@@ -874,7 +999,7 @@ export default function ProducaoPage() {
                         )}
                       </td>
                     </tr>
-                  ))
+                  );})
                 )}
               </tbody>
             </table>
