@@ -9,6 +9,8 @@ import os
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+MONGO_URL = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+DB_NAME = os.environ.get('DB_NAME', 'sussu_chocolates_db')
+
+client = AsyncIOMotorClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+db = client[DB_NAME]
