@@ -436,16 +436,15 @@ export default function VendasPage() {
   };
 
   // Handlers de venda
-  const handleConfirmarPagamento = async (vendaId) => {
-    if (!window.confirm('Confirmar recebimento do pagamento desta venda?')) return;
-    try {
-      await vendasAPI.confirmarPagamento(vendaId);
-      toast.success('Pagamento confirmado!');
-      fetchData();
-    } catch (error) {
-      toast.error('Erro ao confirmar pagamento');
-    }
-  };
+  const handleConfirmarPagamento = async (vendaId, formaPagamento) => {
+  try {
+    await vendasAPI.confirmarPagamento(vendaId, { forma_pagamento: formaPagamento });
+    toast.success('Pagamento confirmado!');
+    fetchData();
+  } catch (error) {
+    toast.error('Erro ao confirmar pagamento');
+  }
+};
 
   const handleCancelarVenda = async (venda) => {
     const motivo = window.prompt('Informe o motivo do cancelamento:');
