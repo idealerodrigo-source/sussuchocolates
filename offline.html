@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#6B4423">
+  <title>Offline - Sussu Chocolates</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #F5E6D3 0%, #E8D5C4 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      text-align: center;
+      max-width: 400px;
+      padding: 40px 30px;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(62, 39, 35, 0.15);
+    }
+    
+    .logo {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 30px;
+      opacity: 0.7;
+    }
+    
+    .icon-offline {
+      font-size: 60px;
+      margin-bottom: 20px;
+    }
+    
+    h1 {
+      color: #3E2723;
+      font-size: 24px;
+      margin-bottom: 15px;
+      font-weight: 600;
+    }
+    
+    p {
+      color: #705A4D;
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+    
+    .btn-retry {
+      display: inline-block;
+      padding: 14px 30px;
+      background: #6B4423;
+      color: #F5E6D3;
+      text-decoration: none;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      border: none;
+      cursor: pointer;
+    }
+    
+    .btn-retry:hover {
+      background: #8B5A3C;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(107, 68, 35, 0.3);
+    }
+    
+    .tips {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #E8D5C4;
+    }
+    
+    .tips h3 {
+      color: #6B4423;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    
+    .tips ul {
+      list-style: none;
+      text-align: left;
+      color: #705A4D;
+      font-size: 14px;
+    }
+    
+    .tips li {
+      padding: 5px 0;
+      padding-left: 20px;
+      position: relative;
+    }
+    
+    .tips li::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      color: #8B5A3C;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="/icon-192x192.png" alt="Sussu Chocolates" class="logo">
+    
+    <div class="icon-offline">📡</div>
+    
+    <h1>Você está offline</h1>
+    
+    <p>
+      Não foi possível conectar ao servidor. 
+      Verifique sua conexão com a internet e tente novamente.
+    </p>
+    
+    <button class="btn-retry" onclick="location.reload()">
+      Tentar novamente
+    </button>
+    
+    <div class="tips">
+      <h3>Dicas:</h3>
+      <ul>
+        <li>Verifique se o Wi-Fi está conectado</li>
+        <li>Desative o modo avião</li>
+        <li>Reinicie o roteador se necessário</li>
+        <li>Aguarde alguns segundos e tente novamente</li>
+      </ul>
+    </div>
+  </div>
+  
+  <script>
+    // Tentar reconectar automaticamente a cada 30 segundos
+    let retryCount = 0;
+    const maxRetries = 10;
+    
+    function checkConnection() {
+      if (navigator.onLine) {
+        location.reload();
+      } else if (retryCount < maxRetries) {
+        retryCount++;
+        setTimeout(checkConnection, 30000);
+      }
+    }
+    
+    window.addEventListener('online', () => {
+      location.reload();
+    });
+    
+    // Iniciar verificação
+    setTimeout(checkConnection, 30000);
+  </script>
+</body>
+</html>
