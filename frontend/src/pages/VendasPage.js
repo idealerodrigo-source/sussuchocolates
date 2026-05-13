@@ -436,10 +436,14 @@ export default function VendasPage() {
   };
 
   // Handlers de venda
-  const handleConfirmarPagamento = async (vendaId, formaPagamento) => {
+  const handleConfirmarPagamento = async (vendaId, formaPagamento, valorRecebido, quitaTotal) => {
   try {
-    await vendasAPI.confirmarPagamento(vendaId, { forma_pagamento: formaPagamento });
-    toast.success('Pagamento confirmado!');
+    await vendasAPI.confirmarPagamento(vendaId, {
+      forma_pagamento: formaPagamento,
+      valor_recebido: valorRecebido,
+      quita_total: quitaTotal
+    });
+    toast.success(quitaTotal ? 'Pagamento confirmado!' : 'Pagamento parcial registrado!');
     fetchData();
   } catch (error) {
     toast.error('Erro ao confirmar pagamento');
