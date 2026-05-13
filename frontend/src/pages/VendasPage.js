@@ -446,6 +446,16 @@ export default function VendasPage() {
   }
 };
 
+const handleEditarPagamento = async (vendaId, formaPagamento) => {
+    try {
+      await vendasAPI.confirmarPagamento(vendaId, { forma_pagamento: formaPagamento });
+      toast.success('Forma de pagamento atualizada!');
+      fetchData();
+    } catch (error) {
+      toast.error('Erro ao atualizar pagamento');
+    }
+  };
+
   const handleCancelarVenda = async (venda) => {
     const motivo = window.prompt('Informe o motivo do cancelamento:');
     if (!motivo) return;
@@ -1376,6 +1386,7 @@ export default function VendasPage() {
         sortConfig={sortConfig}
         onSort={requestSort}
         onConfirmarPagamento={handleConfirmarPagamento}
+onEditarPagamento={handleEditarPagamento}
         onEmitirNFCe={handleEmitirNFCe}
         onVisualizarNFCe={handleVisualizarNFCe}
         onImprimirCupom={imprimirCupom}
