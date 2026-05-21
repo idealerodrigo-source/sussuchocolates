@@ -1,0 +1,127 @@
+{
+  "theme": "light",
+  "archetype": "1 - Organic & Earthy (Customized for Artisanal Chocolate Brand)",
+  "brand_name": "Sussu Chocolates",
+  "typography": {
+    "fonts": [
+      {
+        "family": "Playfair Display",
+        "type": "serif",
+        "usage": "Headings (H1, H2, H3), Logos, Emphasized Metrics",
+        "import_statement": "@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');"
+      },
+      {
+        "family": "Manrope",
+        "type": "sans-serif",
+        "usage": "Body text, Tables, UI Elements, Input Fields, Badges",
+        "import_statement": "@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');"
+      }
+    ],
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl font-serif font-bold tracking-tight text-[#3E2723]",
+      "h2": "text-3xl sm:text-4xl font-serif font-semibold tracking-tight text-[#3E2723]",
+      "h3": "text-xl sm:text-2xl font-serif font-medium text-[#6B4423]",
+      "body": "text-base font-sans text-[#4A3B32] leading-relaxed",
+      "small": "text-sm font-sans text-[#705A4D]",
+      "label": "text-xs font-sans uppercase tracking-[0.1em] font-semibold text-[#8B5A3C]"
+    }
+  },
+  "colors": {
+    "primary": {
+      "DEFAULT": "#6B4423",
+      "hover": "#8B5A3C",
+      "foreground": "#F5E6D3"
+    },
+    "secondary": {
+      "DEFAULT": "#8B5A3C",
+      "hover": "#A67B5B",
+      "foreground": "#F5E6D3"
+    },
+    "background": {
+      "page": "#F5E6D3",
+      "surface": "#FFFDF8",
+      "sidebar": "#3E2723"
+    },
+    "text": {
+      "primary": "#3E2723",
+      "secondary": "#705A4D",
+      "muted": "#9A8476",
+      "on_dark": "#F5E6D3"
+    },
+    "border": {
+      "light": "rgba(139, 90, 60, 0.15)",
+      "medium": "rgba(139, 90, 60, 0.3)"
+    },
+    "status": {
+      "success": "#2F855A",
+      "success_bg": "#C6F6D5",
+      "warning": "#D97706",
+      "warning_bg": "#FEFCBF",
+      "danger": "#C53030",
+      "danger_bg": "#FED7D7"
+    }
+  },
+  "layout_and_spacing": {
+    "philosophy": "Generous Spacing (p-6, p-8), 'Control Room Grid' for dashboard analytics, 'Bento Grid' for overview.",
+    "dashboard_grid": "grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6",
+    "card_padding": "p-6",
+    "section_padding": "py-12 md:py-16",
+    "container_max_width": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+    "border_radius": "rounded-xl",
+    "shadows": {
+      "card": "shadow-[0_4px_24px_rgba(62,39,35,0.04)]",
+      "hover": "shadow-[0_8px_32px_rgba(62,39,35,0.08)]",
+      "dropdown": "shadow-[0_12px_48px_rgba(62,39,35,0.12)]"
+    }
+  },
+  "surface_strategy": {
+    "dashboard_cards": "bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200",
+    "sidebar": "bg-[#3E2723] text-[#F5E6D3] border-r border-[#6B4423]",
+    "header": "bg-[#F5E6D3]/80 backdrop-blur-xl border-b border-[#8B5A3C]/15 sticky top-0 z-40"
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-[#6B4423] text-[#F5E6D3] hover:bg-[#8B5A3C] transition-colors font-medium rounded-lg px-6 py-2.5 shadow-sm",
+      "secondary": "bg-[#E8D5C4] text-[#3E2723] hover:bg-[#D4BC9A] transition-colors font-medium rounded-lg px-6 py-2.5",
+      "outline": "border-2 border-[#6B4423] text-[#6B4423] hover:bg-[#6B4423] hover:text-[#F5E6D3] transition-colors font-medium rounded-lg px-6 py-2.5"
+    },
+    "inputs": "bg-[#FFFDF8] border border-[#8B5A3C]/30 focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] rounded-lg text-[#3E2723] placeholder:text-[#9A8476] transition-all",
+    "tables": "w-full text-left text-sm text-[#4A3B32] bg-[#FFFDF8] rounded-xl overflow-hidden shadow-sm border border-[#8B5A3C]/15. Header rows bg-[#E8D5C4] text-[#3E2723]. Row hover bg-[#F5E6D3]/50."
+  },
+  "icons": {
+    "library": "@phosphor-icons/react",
+    "style": "Duotone or Regular weight. High-end, precise styling suitable for artisanal brands."
+  },
+  "media": {
+    "logos": {
+      "primary_brand": "https://customer-assets.emergentagent.com/job_sussu-manage/artifacts/kgl5rby1_Logo_Sussu_Chocolates-01.png"
+    },
+    "backgrounds": {
+      "login_abstract": "https://static.prod-images.emergentagent.com/jobs/925c05d5-c856-4bd2-988f-bcc3715b2cda/images/2dfaf7cd2e11d101358cd221cc89a6fba4a8dee4756e9519a8fe1f370773c601.png"
+    },
+    "imagery": {
+      "hero_chocolate_pour": "https://static.prod-images.emergentagent.com/jobs/925c05d5-c856-4bd2-988f-bcc3715b2cda/images/5d2442480d75d55acd996e2ec09b3ca1899febf8f132912fbdd378df6e4e74be.png",
+      "chef_preparing": "https://images.pexels.com/photos/6035325/pexels-photo-6035325.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    }
+  },
+  "motion_and_interactions": {
+    "hover_states": "Buttons translate-y-[-1px] and increase shadow. List items change background color slightly.",
+    "page_transitions": "Fade-in with slight upward motion (translate-y-2) on initial render.",
+    "staggered_lists": "List items or dashboard cards should enter sequentially with 50ms delay."
+  },
+  "accessibility_and_testing": {
+    "contrast": "Ensure minimum 4.5:1 ratio for text on background. Primary text (#3E2723) on Beige (#F5E6D3) passes easily.",
+    "testing_attributes": "All interactive elements, forms, navigation links, and action buttons MUST have a descriptive 'data-testid' attribute in kebab-case."
+  },
+  "instructions_to_main_agent": [
+    "Install `@phosphor-icons/react` for elegant, thin-line icons suitable for an artisanal brand.",
+    "Add 'Playfair Display' and 'Manrope' fonts to index.css or via Google Fonts link.",
+    "Ensure all `.js` and `.jsx` components use standard Tailwind utility classes.",
+    "Do NOT use pure white `#FFFFFF` for backgrounds; use `#FFFDF8` to maintain the warm artisanal feel.",
+    "Implement a dashboard structure with a dark sidebar (`bg-[#3E2723]`) and a warm page background (`bg-[#F5E6D3]`).",
+    "Use pure HTML/Tailwind for structural bento-grids, and deeply customized Shadcn components for forms, tables, and dialogs.",
+    "Build modules for: Dashboard, Clientes, Pedidos, Produção, Estoque, Vendas/NFC-e.",
+    "Embed the login page background using the 'login_abstract' image provided in the media section.",
+    "Apply `data-testid` to EVERY interactive element (buttons, inputs, links, tabs)."
+  ]
+}
