@@ -1,4 +1,4 @@
-import axios from 'axios';
+﻿import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -74,7 +74,7 @@ export const vendasAPI = {
   listar: () => api.get('/vendas'),
   criar: (data) => api.post('/vendas', data),
   atualizar: (id, data) => api.put(`/vendas/${id}`, data),
-  confirmarPagamento: (id, data) => api.put(`/vendas/\${id}/confirmar-pagamento`, data),
+  confirmarPagamento: (id, data) => api.put(`/vendas/${id}/confirmar-pagamento`, data),
   cancelar: (id, motivo) => api.put(`/vendas/${id}/cancelar`, { motivo }),
   restaurar: (id) => api.put(`/vendas/${id}/restaurar`),
 };
@@ -144,7 +144,7 @@ export const nfceAPI = {
   obter: (id) => api.get(`/nfce/${id}`),
 };
 
-// Configurações - Usuários
+// ConfiguraÃ§Ãµes - UsuÃ¡rios
 export const usuariosAPI = {
   listar: () => api.get('/configuracoes/usuarios'),
   criar: (data) => api.post('/configuracoes/usuarios', data),
@@ -152,7 +152,7 @@ export const usuariosAPI = {
   deletar: (id) => api.delete(`/configuracoes/usuarios/${id}`),
 };
 
-// Configurações - Empresa
+// ConfiguraÃ§Ãµes - Empresa
 export const empresaAPI = {
   obter: () => api.get('/configuracoes/empresa'),
   atualizar: (data) => api.put('/configuracoes/empresa', data),
