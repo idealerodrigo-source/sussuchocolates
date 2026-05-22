@@ -450,13 +450,13 @@ export default function VendasPage() {
   }
 };
 
-const handleEditarPagamento = async (vendaId, formaPagamento) => {
+const handleEditarPagamento = async (vendaId, dados) => {
     try {
-      await vendasAPI.confirmarPagamento(vendaId, { forma_pagamento: formaPagamento });
-      toast.success('Forma de pagamento atualizada!');
+      await vendasAPI.editarPagamento(vendaId, dados);
+      toast.success('Pagamento atualizado!');
       fetchData();
     } catch (error) {
-      toast.error('Erro ao atualizar pagamento');
+      toast.error('Erro ao editar pagamento');
     }
   };
 
