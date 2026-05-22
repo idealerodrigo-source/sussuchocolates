@@ -260,7 +260,12 @@ export default function VendasTable({
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">{venda.cliente_nome}</td>
+                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">
+                      {venda.cliente_nome}
+                      {devedores[venda.cliente_id] && (
+                        <span className="ml-1 text-[10px] text-red-600 font-bold" title={`Devedor: R$ ${devedores[venda.cliente_id].total_pendente.toFixed(2).replace('.', ',')}`}>⚠️ Devedor</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{formatDateTime(venda.data_venda)}</td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">
                       <div className="flex flex-col gap-0.5">

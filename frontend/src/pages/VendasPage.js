@@ -26,6 +26,7 @@ export default function VendasPage() {
   const [clientes, setClientes] = useState([]);
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [devedores, setDevedores] = useState({});
   const [dialogOpen, setDialogOpen] = useState(false);
   const [tipoVenda, setTipoVenda] = useState('pedido');
   const [searchTerm, setSearchTerm] = useState('');
@@ -130,6 +131,12 @@ export default function VendasPage() {
         produtosAPI.listar(),
       ]);
       setVendas(vendasRes.data);
+      try {
+        const devedoresRes = await vendasAPI.resumoDevedores();
+        const devedoresMap = {};
+        devedoresRes.data.forEach(d => { devedoresMap[d.cliente_id] = d; });
+        setDevedores(devedoresMap);
+      } catch (e) {}
       
       // Criar set de pedidos que já têm venda (não cancelada)
       const pedidosComVenda = new Set(
@@ -1389,6 +1396,7 @@ const handleEditarPagamento = async (vendaId, dados) => {
         vendas={sortedData}
         sortConfig={sortConfig}
         onSort={requestSort}
+        devedores={devedores}
         onConfirmarPagamento={handleConfirmarPagamento}
 onEditarPagamento={handleEditarPagamento}
         onEmitirNFCe={handleEmitirNFCe}
