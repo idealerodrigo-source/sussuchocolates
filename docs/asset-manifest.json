@@ -1,19 +1,19 @@
 {
   "files": {
-    "main.css": "/sussuchocolates/static/css/main.a5a12dd0.css",
-    "main.js": "/sussuchocolates/static/js/main.0cc78aa5.js",
+    "main.css": "/sussuchocolates/static/css/main.9e3ff80e.css",
+    "main.js": "/sussuchocolates/static/js/main.7f6eb35c.js",
     "static/js/239.e39fb35b.chunk.js": "/sussuchocolates/static/js/239.e39fb35b.chunk.js",
     "static/js/977.4b3215a8.chunk.js": "/sussuchocolates/static/js/977.4b3215a8.chunk.js",
-    "static/js/455.492e6b75.chunk.js": "/sussuchocolates/static/js/455.492e6b75.chunk.js",
+    "static/js/455.b7e4a211.chunk.js": "/sussuchocolates/static/js/455.b7e4a211.chunk.js",
     "index.html": "/sussuchocolates/index.html",
-    "main.a5a12dd0.css.map": "/sussuchocolates/static/css/main.a5a12dd0.css.map",
-    "main.0cc78aa5.js.map": "/sussuchocolates/static/js/main.0cc78aa5.js.map",
+    "main.9e3ff80e.css.map": "/sussuchocolates/static/css/main.9e3ff80e.css.map",
+    "main.7f6eb35c.js.map": "/sussuchocolates/static/js/main.7f6eb35c.js.map",
     "239.e39fb35b.chunk.js.map": "/sussuchocolates/static/js/239.e39fb35b.chunk.js.map",
     "977.4b3215a8.chunk.js.map": "/sussuchocolates/static/js/977.4b3215a8.chunk.js.map",
-    "455.492e6b75.chunk.js.map": "/sussuchocolates/static/js/455.492e6b75.chunk.js.map"
+    "455.b7e4a211.chunk.js.map": "/sussuchocolates/static/js/455.b7e4a211.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.a5a12dd0.css",
-    "static/js/main.0cc78aa5.js"
+    "static/css/main.9e3ff80e.css",
+    "static/js/main.7f6eb35c.js"
   ]
 }
