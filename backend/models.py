@@ -298,6 +298,8 @@ class Venda(BaseModel):
     tem_itens_a_produzir: bool = False  # Indica se há itens para produção
     tem_itens_extras: bool = False  # Indica se há itens extras na venda de pedido
     pedido_producao_id: Optional[str] = None  # ID do pedido gerado para produção
+    valor_pago_parcial: Optional[float] = None  # Valor parcialmente pago
+    valor_pendente: Optional[float] = None  # Saldo pendente
 
 
 class VendaCreate(BaseModel):
