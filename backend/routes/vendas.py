@@ -152,7 +152,7 @@ async def listar_vendas(current_user: dict = Depends(get_current_user)):
 
 
 @router.put("/{venda_id}/confirmar-pagamento")
-async def confirmar_pagamento_venda(venda_id: str, current_user: dict = Depends(get_current_user)):
+async def confirmar_pagamento_venda(venda_id: str, request: dict = None, current_user: dict = Depends(get_current_user)):
     venda = await db.vendas.find_one({"id": venda_id}, {"_id": 0})
     if not venda:
         raise HTTPException(status_code=404, detail="Venda não encontrada")
@@ -160,16 +160,33 @@ async def confirmar_pagamento_venda(venda_id: str, current_user: dict = Depends(
     if venda.get('status_pagamento') == 'pago':
         raise HTTPException(status_code=400, detail="Esta venda já está paga")
     
-    await db.vendas.update_one(
-        {"id": venda_id},
-        {"$set": {
-            "status_pagamento": "pago",
-            "data_pagamento": datetime.now(timezone.utc).isoformat(),
-            "entrega_posterior": False
-        }}
-    )
-    
-    return {"message": "Pagamento confirmado com sucesso"}
+    update_fields = {"entrega_posterior": False}
+    if request:
+        forma = request.get("forma_pagamento")
+        valor = request.get("valor_recebido")
+        quita = request.get("quita_total", True)
+        if forma:
+            update_fields["forma_pagamento"] = forma
+        if valor is not None and not quita:
+            total = venda.get("valor_total", 0)
+            pago = venda.get("valor_pago_parcial", 0) or 0
+            novo_pago = pago + valor
+            saldo = max(0, total - novo_pago)
+            update_fields["valor_pago_parcial"] = novo_pago
+            update_fields["valor_pendente"] = saldo
+            if saldo <= 0.01:
+                update_fields["status_pagamento"] = "pago"
+                update_fields["data_pagamento"] = datetime.now(timezone.utc).isoformat()
+            else:
+                update_fields["status_pagamento"] = "pendente"
+        else:
+            update_fields["status_pagamento"] = "pago"
+            update_fields["data_pagamento"] = datetime.now(timezone.utc).isoformat()
+    else:
+        update_fields["status_pagamento"] = "pago"
+        update_fields["data_pagamento"] = datetime.now(timezone.utc).isoformat()
+    await db.vendas.update_one({"id": venda_id}, {"$set": update_fields})
+    return {"message": "Pagamento atualizado com sucesso"}
 
 
 @router.put("/{venda_id}/restaurar")
