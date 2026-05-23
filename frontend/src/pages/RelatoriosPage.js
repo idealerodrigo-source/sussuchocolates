@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { relatoriosAPI, producaoAPI, estoqueAPI } from '../services/api';
+import { relatoriosAPI, producaoAPI, estoqueAPI, vendasAPI } from '../services/api';
 import { formatCurrency } from '../utils/formatters';
 import { MagnifyingGlass, Factory, Package, Users, ShoppingCart, CheckCircle, FilePdf, FileXls, DownloadSimple, CalendarBlank, Phone, Warning, WarningCircle, Cube, CurrencyDollar, ClockCountdown, Receipt } from '@phosphor-icons/react';
 import { toast } from 'sonner';
@@ -35,6 +35,7 @@ export default function RelatoriosPage() {
   const [producaoPorDataEntrega, setProducaoPorDataEntrega] = useState(null);
   const [pedidosStatusVendas, setPedidosStatusVendas] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [devedores, setDevedores] = useState([]);
   const [itensSelecionados, setItensSelecionados] = useState([]);
   const [filtros, setFiltros] = useState({
     data_inicio: '',
@@ -52,6 +53,7 @@ export default function RelatoriosPage() {
     } else if (activeTab === 'pedidos-resumo') {
       buscarPedidosResumo();
     } else if (activeTab === 'vendas') {
+      buscarDevedores();
       buscarRelatorioVendas();
     } else if (activeTab === 'producao') {
       buscarRelatorioProducao();
@@ -113,6 +115,15 @@ export default function RelatoriosPage() {
       toast.error('Erro ao carregar relatório');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const buscarDevedores = async () => {
+    try {
+      const res = await vendasAPI.resumoDevedores();
+      setDevedores(res.data || []);
+    } catch (e) {
+      setDevedores([]);
     }
   };
 
@@ -1903,6 +1914,12 @@ export default function RelatoriosPage() {
                 </div>
               </div>
 
+              <div className="bg-[#FFFDF8] border border-orange-200 rounded-xl p-6 shadow-sm md:col-span-3">
+                <p className="text-xs font-sans uppercase tracking-wider font-semibold text-orange-600 mb-2">Total em Aberto (A Receber)</p>
+                <p className="text-3xl font-serif font-bold text-orange-700">{formatCurrency(devedores.reduce((acc, d) => acc + d.total_pendente, 0))}</p>
+                <p className="text-sm text-orange-600 mt-1">{devedores.length} cliente(s) com saldo pendente</p>
+              </div>
+
               {relatorioVendas.vendas_por_dia?.length > 0 && (
                 <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm">
                   <h3 className="text-xl font-serif font-semibold text-[#3E2723] mb-4">Vendas por Dia</h3>
@@ -1921,6 +1938,29 @@ export default function RelatoriosPage() {
                   </ResponsiveContainer>
                 </div>
               )}
+            {devedores.length > 0 && (
+              <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm">
+                <h3 className="text-xl font-serif font-semibold text-[#3E2723] mb-4">Clientes com Saldo Pendente</h3>
+                <table className="w-full">
+                  <thead className="bg-[#E8D5C4]">
+                    <tr>
+                      <th className="text-left px-4 py-2 text-sm font-semibold text-[#3E2723]">Cliente</th>
+                      <th className="text-center px-4 py-2 text-sm font-semibold text-[#3E2723]">Vendas em Aberto</th>
+                      <th className="text-right px-4 py-2 text-sm font-semibold text-[#3E2723]">Total Pendente</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {devedores.sort((a,b) => b.total_pendente - a.total_pendente).map((d, i) => (
+                      <tr key={i} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
+                        <td className="px-4 py-3 text-sm text-[#3E2723] font-medium">{d.cliente_nome}</td>
+                        <td className="px-4 py-3 text-sm text-center text-[#705A4D]">{d.num_vendas}</td>
+                        <td className="px-4 py-3 text-sm text-right font-bold text-orange-600">{formatCurrency(d.total_pendente)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
             </>
           )}
         </div>
