@@ -28,18 +28,13 @@ jobs:
         env:
           CI: false
 
-      - name: Clean docs folder
+      - name: Deploy docs
         run: |
           rm -rf docs
           mkdir docs
-
-      - name: Copy build to docs
-        run: cp -r frontend/build/. docs/
-
-       - name: Create CNAME and 404
-        run: |
-          echo "www.sussuchocolates.com.br" > docs/CNAME
+          cp -r frontend/build/. docs/
           cp docs/index.html docs/404.html
+          printf 'www.sussuchocolates.com.br' > docs/CNAME
 
       - name: Commit and push docs
         run: |
