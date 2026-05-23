@@ -202,7 +202,7 @@ function ModalEditarPagamento({ venda, onConfirmar, onFechar }) {
 }
 
 export default function VendasTable({
-  vendas, sortConfig, onSort, onConfirmarPagamento, onEditarPagamento,
+  vendas, sortConfig, onSort, devedores = {}, onConfirmarPagamento, onEditarPagamento,
   onEmitirNFCe, onVisualizarNFCe, onImprimirCupom, onCancelarNFCe, onCancelarVenda, onRestaurarVenda,
 }) {
   const [vendaParaReceber, setVendaParaReceber] = useState(null);
