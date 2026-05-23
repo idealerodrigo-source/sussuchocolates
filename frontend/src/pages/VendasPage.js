@@ -34,10 +34,6 @@ export default function VendasPage() {
   const [filtroTipo, setFiltroTipo] = useState('todos');
   const [filtroPeriodo, setFiltroPeriodo] = useState('todos');
   const [filtroClienteId, setFiltroClienteId] = useState('');
-  const [filtroStatus, setFiltroStatus] = useState('todos');
-  const [filtroTipo, setFiltroTipo] = useState('todos');
-  const [filtroPeriodo, setFiltroPeriodo] = useState('todos');
-  const [filtroClienteId, setFiltroClienteId] = useState('');
   const [etapaVendaDireta, setEtapaVendaDireta] = useState(1);
   
   // Estado para modal de seleção de sabores
