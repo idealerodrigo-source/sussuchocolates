@@ -30,6 +30,14 @@ export default function VendasPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [tipoVenda, setTipoVenda] = useState('pedido');
   const [searchTerm, setSearchTerm] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('todos');
+  const [filtroTipo, setFiltroTipo] = useState('todos');
+  const [filtroPeriodo, setFiltroPeriodo] = useState('todos');
+  const [filtroClienteId, setFiltroClienteId] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('todos');
+  const [filtroTipo, setFiltroTipo] = useState('todos');
+  const [filtroPeriodo, setFiltroPeriodo] = useState('todos');
+  const [filtroClienteId, setFiltroClienteId] = useState('');
   const [etapaVendaDireta, setEtapaVendaDireta] = useState(1);
   
   // Estado para modal de seleção de sabores
@@ -74,9 +82,26 @@ export default function VendasPage() {
   
   // Filtrar vendas pelo termo de pesquisa
   const filteredVendas = useMemo(() => {
-    if (!searchTerm.trim()) return vendas;
-    const term = searchTerm.toLowerCase();
+    const hoje = new Date();
+    const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const inicioSemana = new Date(inicioDia);
+    inicioSemana.setDate(inicioDia.getDate() - inicioDia.getDay());
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
     return vendas.filter(venda => {
+      if (filtroStatus === "cancelada" && venda.status_venda !== "cancelada") return false;
+      if (filtroStatus !== "todos" && filtroStatus !== "cancelada" && venda.status_venda === "cancelada") return false;
+      if (filtroStatus === "pago" && venda.status_pagamento !== "pago") return false;
+      if (filtroStatus === "pendente" && venda.status_pagamento !== "pendente") return false;
+      if (filtroTipo !== "todos" && venda.tipo_venda !== filtroTipo) return false;
+      if (filtroClienteId && venda.cliente_id !== filtroClienteId) return false;
+      if (filtroPeriodo !== "todos") {
+        const dataVenda = new Date(venda.data_venda);
+        if (filtroPeriodo === "hoje" && dataVenda < inicioDia) return false;
+        if (filtroPeriodo === "semana" && dataVenda < inicioSemana) return false;
+        if (filtroPeriodo === "mes" && dataVenda < inicioMes) return false;
+      }
+      if (!searchTerm.trim()) return true;
+      const term = searchTerm.toLowerCase();
       if (venda.cliente_nome?.toLowerCase().includes(term)) return true;
       if (venda.forma_pagamento?.toLowerCase().includes(term)) return true;
       if (venda.tipo_venda?.toLowerCase().includes(term)) return true;
@@ -88,7 +113,7 @@ export default function VendasPage() {
       if (venda.status_venda !== 'cancelada' && 'ativa'.includes(term)) return true;
       return false;
     });
-  }, [vendas, searchTerm]);
+  }, [vendas, searchTerm, filtroStatus, filtroTipo, filtroPeriodo, filtroClienteId]);
   
   const { sortedData, requestSort, sortConfig } = useSortableTable(filteredVendas, { key: 'data_venda', direction: 'desc' });
   
@@ -1398,8 +1423,32 @@ const handleEditarPagamento = async (vendaId, dados) => {
             </button>
           )}
         </div>
-        {searchTerm && (
-          <p className="text-xs text-[#705A4D] mt-1">Encontrados: {filteredVendas.length} de {vendas.length} vendas</p>
+        <p className="text-xs text-[#705A4D] mt-1">Encontrados: {filteredVendas.length} de {vendas.length} vendas</p>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-3">
+        <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} className="px-3 py-1.5 text-sm border border-[#8B5A3C]/30 rounded-lg bg-[#FFFDF8] text-[#3E2723] outline-none">
+          <option value="todos">Todos os status</option>
+          <option value="pago">Pago</option>
+          <option value="pendente">A Receber</option>
+          <option value="cancelada">Cancelada</option>
+        </select>
+        <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} className="px-3 py-1.5 text-sm border border-[#8B5A3C]/30 rounded-lg bg-[#FFFDF8] text-[#3E2723] outline-none">
+          <option value="todos">Todos os tipos</option>
+          <option value="pedido">Pedido</option>
+          <option value="direta">Venda Direta</option>
+        </select>
+        <select value={filtroPeriodo} onChange={e => setFiltroPeriodo(e.target.value)} className="px-3 py-1.5 text-sm border border-[#8B5A3C]/30 rounded-lg bg-[#FFFDF8] text-[#3E2723] outline-none">
+          <option value="todos">Todo o periodo</option>
+          <option value="hoje">Hoje</option>
+          <option value="semana">Esta semana</option>
+          <option value="mes">Este mes</option>
+        </select>
+        <select value={filtroClienteId} onChange={e => setFiltroClienteId(e.target.value)} className="px-3 py-1.5 text-sm border border-[#8B5A3C]/30 rounded-lg bg-[#FFFDF8] text-[#3E2723] outline-none">
+          <option value="">Todos os clientes</option>
+          {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+        </select>
+        {(filtroStatus !== "todos" || filtroTipo !== "todos" || filtroPeriodo !== "todos" || filtroClienteId) && (
+          <button onClick={() => { setFiltroStatus("todos"); setFiltroTipo("todos"); setFiltroPeriodo("todos"); setFiltroClienteId(""); }} className="px-3 py-1.5 text-sm text-red-600 border border-red-300 rounded-lg hover:bg-red-50">X Limpar filtros</button>
         )}
       </div>
 
