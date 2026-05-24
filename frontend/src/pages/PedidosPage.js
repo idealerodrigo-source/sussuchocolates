@@ -258,17 +258,6 @@ export default function PedidosPage() {
     }
   };
 
-  const handleVoltarConcluido = async (pedido) => {
-    if (!window.confirm(`Deseja reverter o pedido ${pedido.numero} para "Concluido"?`)) return;
-    try {
-      await pedidosAPI.atualizarStatus(pedido.id, 'concluido');
-      toast.success('Pedido revertido para Concluido!');
-      fetchPedidos();
-    } catch (error) {
-      toast.error('Erro ao atualizar status do pedido');
-    }
-  };
-
   const handleCancelarPedido = async (pedido) => {
     const statusLabel = getStatusLabel(pedido.status);
     
