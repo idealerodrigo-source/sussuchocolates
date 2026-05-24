@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [totalPendente, setTotalPendente] = useState(0);
   const [numDevedores, setNumDevedores] = useState(0);
+  const [vendasVencidas, setVendasVencidas] = useState([]);
 
   useEffect(() => {
     fetchStats();
@@ -30,6 +31,18 @@ export default function DashboardPage() {
         const total = devRes.data.reduce((acc, d) => acc + d.total_pendente, 0);
         setTotalPendente(total);
         setNumDevedores(devRes.data.length);
+      } catch (e) {}
+      try {
+        const vendasRes = await vendasAPI.listar();
+        const hoje = new Date();
+        hoje.setHours(0,0,0,0);
+        const vencidas = vendasRes.data.filter(v =>
+          v.status_pagamento === 'pendente' &&
+          v.status_venda !== 'cancelada' &&
+          v.data_previsao_pagamento &&
+          new Date(v.data_previsao_pagamento) < hoje
+        );
+        setVendasVencidas(vencidas);
       } catch (e) {}
     } catch (error) {
       toast.error('Erro ao carregar estatísticas');
@@ -115,6 +128,17 @@ export default function DashboardPage() {
             <p className="text-sm text-orange-600 mt-1">{numDevedores} cliente(s) com saldo pendente</p>
           </div>
           <div className="p-4 rounded-xl bg-orange-100 text-orange-600 text-4xl">💰</div>
+        </div>
+      )}
+
+      {vendasVencidas.length > 0 && (
+        <div className="bg-red-50 border border-red-300 rounded-xl p-6 shadow-sm mb-6 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-sans uppercase tracking-wider font-semibold text-red-600 mb-1">Pagamentos Vencidos</p>
+            <p className="text-3xl font-serif font-bold text-red-700">{vendasVencidas.length} venda(s)</p>
+            <p className="text-sm text-red-600 mt-1">Com prazo de pagamento ultrapassado</p>
+          </div>
+          <div className="p-4 rounded-xl bg-red-100 text-red-600 text-4xl">⚠️</div>
         </div>
       )}
 
