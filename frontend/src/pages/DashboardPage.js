@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { dashboardAPI } from '../services/api';
+import { dashboardAPI, vendasAPI } from '../services/api';
 import { formatCurrency } from '../utils/formatters';
 import {
   Users,
@@ -14,6 +14,8 @@ import { toast } from 'sonner';
 export default function DashboardPage() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [totalPendente, setTotalPendente] = useState(0);
+  const [numDevedores, setNumDevedores] = useState(0);
 
   useEffect(() => {
     fetchStats();
@@ -23,6 +25,12 @@ export default function DashboardPage() {
     try {
       const response = await dashboardAPI.stats();
       setStats(response.data);
+      try {
+        const devRes = await vendasAPI.resumoDevedores();
+        const total = devRes.data.reduce((acc, d) => acc + d.total_pendente, 0);
+        setTotalPendente(total);
+        setNumDevedores(devRes.data.length);
+      } catch (e) {}
     } catch (error) {
       toast.error('Erro ao carregar estatísticas');
     } finally {
@@ -98,6 +106,17 @@ export default function DashboardPage() {
           );
         })}
       </div>
+
+      {totalPendente > 0 && (
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 shadow-sm mb-6 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-sans uppercase tracking-wider font-semibold text-orange-600 mb-1">Total A Receber</p>
+            <p className="text-3xl font-serif font-bold text-orange-700">{formatCurrency(totalPendente)}</p>
+            <p className="text-sm text-orange-600 mt-1">{numDevedores} cliente(s) com saldo pendente</p>
+          </div>
+          <div className="p-4 rounded-xl bg-orange-100 text-orange-600 text-4xl">💰</div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div
