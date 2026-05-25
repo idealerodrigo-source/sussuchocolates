@@ -267,6 +267,14 @@ class FormaPagamentoItem(BaseModel):
     parcelas: int = 1  # Apenas para crédito
 
 
+
+class HistoricoPagamento(BaseModel):
+    data: str
+    valor: float
+    forma_pagamento: str
+    quita_total: bool = False
+    responsavel: Optional[str] = None
+
 # Venda Models
 class Venda(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -300,6 +308,7 @@ class Venda(BaseModel):
     pedido_producao_id: Optional[str] = None  # ID do pedido gerado para produção
     valor_pago_parcial: Optional[float] = None  # Valor parcialmente pago
     valor_pendente: Optional[float] = None  # Saldo pendente
+    historico_pagamentos: Optional[List[HistoricoPagamento]] = None  # Historico de pagamentos
 
 
 class VendaCreate(BaseModel):

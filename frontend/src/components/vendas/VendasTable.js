@@ -189,6 +189,26 @@ function ModalEditarPagamento({ venda, onConfirmar, onFechar }) {
           </div>
         </div>
 
+        {venda.historico_pagamentos && venda.historico_pagamentos.length > 0 && (
+          <div className="mb-4">
+            <p className="text-sm font-semibold text-[#6B4423] mb-2">📋 Histórico de Pagamentos</p>
+            <div className="bg-[#F5E6D3] rounded-xl overflow-hidden">
+              {venda.historico_pagamentos.map((h, i) => (
+                <div key={i} className="flex justify-between items-center px-3 py-2 border-b border-[#8B5A3C]/10 last:border-0">
+                  <div>
+                    <p className="text-xs font-medium text-[#3E2723]">{h.forma_pagamento}</p>
+                    <p className="text-[10px] text-[#705A4D]">{new Date(h.data).toLocaleDateString('pt-BR')} {new Date(h.data).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-[#2F855A]">R$ {h.valor.toFixed(2).replace('.', ',')}</p>
+                    {h.quita_total && <p className="text-[10px] text-[#2F855A]">Quitado</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-3">
           <Button type="button" variant="outline" onClick={onFechar} className="flex-1">Cancelar</Button>
           <Button type="button" onClick={handleSalvar} disabled={salvando}
@@ -202,7 +222,7 @@ function ModalEditarPagamento({ venda, onConfirmar, onFechar }) {
 }
 
 export default function VendasTable({
-  vendas, sortConfig, onSort, devedores = {}, onConfirmarPagamento, onEditarPagamento,
+  vendas, sortConfig, onSort, onConfirmarPagamento, onEditarPagamento,
   onEmitirNFCe, onVisualizarNFCe, onImprimirCupom, onCancelarNFCe, onCancelarVenda, onRestaurarVenda,
 }) {
   const [vendaParaReceber, setVendaParaReceber] = useState(null);
@@ -260,12 +280,7 @@ export default function VendasTable({
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">
-                      {venda.cliente_nome}
-                      {devedores[venda.cliente_id] && (
-                        <span className="ml-1 text-[10px] text-red-600 font-bold" title={`Devedor: R$ ${devedores[venda.cliente_id].total_pendente.toFixed(2).replace('.', ',')}`}>⚠️ Devedor</span>
-                      )}
-                    </td>
+                    <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans font-medium">{venda.cliente_nome}</td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">{formatDateTime(venda.data_venda)}</td>
                     <td className="px-6 py-4 text-sm text-[#4A3B32] font-sans">
                       <div className="flex flex-col gap-0.5">

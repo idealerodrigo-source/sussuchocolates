@@ -8,7 +8,7 @@ import uuid
 
 from database import db
 from auth import get_current_user
-from models import Venda, VendaCreate, CancelarVendaRequest, MovimentoEstoque, PedidoStatus, ItemPedido
+from models import Venda, VendaCreate, CancelarVendaRequest, MovimentoEstoque, PedidoStatus, ItemPedido, HistoricoPagamento
 
 router = APIRouter(prefix="/vendas", tags=["vendas"])
 
@@ -212,7 +212,15 @@ async def confirmar_pagamento_venda(venda_id: str, request: dict = None, current
     else:
         update_fields["status_pagamento"] = "pago"
         update_fields["data_pagamento"] = datetime.now(timezone.utc).isoformat()
-    await db.vendas.update_one({"id": venda_id}, {"$set": update_fields})
+    # Registrar no historico
+    novo_registro = {
+        "data": datetime.now(timezone.utc).isoformat(),
+        "valor": update_fields.get("valor_pago_parcial", venda.get("valor_total", 0)),
+        "forma_pagamento": update_fields.get("forma_pagamento", venda.get("forma_pagamento", "")),
+        "quita_total": update_fields.get("status_pagamento") == "pago",
+        "responsavel": current_user.get("nome", "")
+    }
+    await db.vendas.update_one({"id": venda_id}, {"$set": update_fields, "$push": {"historico_pagamentos": novo_registro}})
     return {"message": "Pagamento atualizado com sucesso"}
 
 
