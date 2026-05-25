@@ -17,6 +17,7 @@ function ModalReceberPagamento({ venda, onConfirmar, onFechar }) {
   const [formaPagamento, setFormaPagamento] = useState('');
   const [valorRecebido, setValorRecebido] = useState(valorPendente.toFixed(2));
   const [confirmando, setConfirmando] = useState(false);
+  const [parcelas, setParcelas] = useState(1);
 
   const valor = parseFloat(valorRecebido) || 0;
   const saldoRestante = Math.max(0, valorPendente - valor);
@@ -27,7 +28,7 @@ function ModalReceberPagamento({ venda, onConfirmar, onFechar }) {
     if (valor <= 0) { alert('Informe um valor válido'); return; }
     if (valor > valorPendente + 0.01) { alert(`O valor não pode ser maior que ${formatCurrency(valorPendente)}`); return; }
     setConfirmando(true);
-    await onConfirmar(venda.id, formaPagamento, valor, quitaTotal);
+    await onConfirmar(venda.id, formaPagamento, valor, quitaTotal, parcelas);
     setConfirmando(false);
   };
 
@@ -91,6 +92,25 @@ function ModalReceberPagamento({ venda, onConfirmar, onFechar }) {
             ))}
           </div>
         </div>
+        {formaPagamento === 'Cartão de Crédito' && (
+          <div className="mb-4">
+            <p className="text-sm font-semibold text-[#6B4423] mb-2">Número de parcelas</p>
+            <div className="grid grid-cols-4 gap-2">
+              {[1,2,3,4,5,6,8,10,12].map(n => (
+                <button key={n} type="button" onClick={() => setParcelas(n)}
+                  className={`py-2 rounded-xl border-2 text-sm font-medium transition-all ${parcelas === n ? 'border-[#6B4423] bg-[#6B4423] text-white' : 'border-[#8B5A3C]/30 text-[#3E2723] hover:border-[#6B4423]'}`}>
+                  {n}x
+                </button>
+              ))}
+            </div>
+            {parcelas > 1 && (
+              <p className="text-xs text-[#705A4D] mt-1">
+                {parcelas}x de R$ {(valor / parcelas).toFixed(2).replace('.', ',')}
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="flex gap-3">
           <Button type="button" variant="outline" onClick={onFechar} className="flex-1">Cancelar</Button>
           <Button type="button" onClick={handleConfirmar} disabled={!formaPagamento || confirmando || valor <= 0}
@@ -228,8 +248,8 @@ export default function VendasTable({
   const [vendaParaReceber, setVendaParaReceber] = useState(null);
   const [vendaParaEditar, setVendaParaEditar] = useState(null);
 
-  const handleConfirmarComForma = async (vendaId, formaPagamento, valorRecebido, quitaTotal) => {
-    await onConfirmarPagamento(vendaId, formaPagamento, valorRecebido, quitaTotal);
+  const handleConfirmarComForma = async (vendaId, formaPagamento, valorRecebido, quitaTotal, parcelas = 1) => {
+    await onConfirmarPagamento(vendaId, formaPagamento, valorRecebido, quitaTotal, parcelas);
     setVendaParaReceber(null);
   };
 
