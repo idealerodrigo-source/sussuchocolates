@@ -144,6 +144,35 @@ export default function RelatoriosPage() {
     }
   };
 
+
+  // Exportar PDF Devedores
+  const exportarPdfDevedores = () => {
+    if (!devedores || devedores.length === 0) { toast.error('Nenhum devedor'); return; }
+    const doc = new jsPDF();
+    const startY = addPdfHeader(doc, 'RELATORIO DE DEVEDORES', new Date().toLocaleDateString('pt-BR'));
+    const total = devedores.reduce((acc, d) => acc + d.total_pendente, 0);
+    doc.setFontSize(11);
+    doc.text('Total Pendente: ' + formatCurrency(total), 15, startY);
+    doc.text('Clientes: ' + devedores.length, 15, startY + 6);
+    const tableData = [...devedores].sort((a,b) => b.total_pendente - a.total_pendente).map(d => [d.cliente_nome, d.num_vendas, formatCurrency(d.total_pendente)]);
+    autoTable(doc, { startY: startY + 14, head: [['Cliente', 'Vendas', 'Total Pendente']], body: tableData, theme: 'striped', headStyles: { fillColor: [107, 68, 35], textColor: 255 }, columnStyles: { 2: { halign: 'right' } } });
+    doc.save('Devedores.pdf');
+    toast.success('PDF exportado!');
+  };
+
+  const exportarExcelDevedores = () => {
+    if (!devedores || devedores.length === 0) { toast.error('Nenhum devedor'); return; }
+    const total = devedores.reduce((acc, d) => acc + d.total_pendente, 0);
+    const wsData = [['SUSSU CHOCOLATES - DEVEDORES'], ['Gerado em: ' + new Date().toLocaleString('pt-BR')], ['Total: ' + formatCurrency(total)], [], ['Cliente', 'Vendas', 'Total Pendente'], ...[...devedores].sort((a,b) => b.total_pendente - a.total_pendente).map(d => [d.cliente_nome, d.num_vendas, d.total_pendente])];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = [{ wch: 30 }, { wch: 10 }, { wch: 15 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Devedores');
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    saveAs(new Blob([excelBuffer]), 'Devedores.xlsx');
+    toast.success('Excel exportado!');
+  };
+
   const buscarRelatorioVendas = async () => {
     setLoading(true);
     try {
@@ -1936,6 +1965,20 @@ export default function RelatoriosPage() {
                 <p className="text-xs font-sans uppercase tracking-wider font-semibold text-orange-600 mb-2">Total em Aberto (A Receber)</p>
                 <p className="text-3xl font-serif font-bold text-orange-700">{formatCurrency(devedores.reduce((acc, d) => acc + d.total_pendente, 0))}</p>
                 <p className="text-sm text-orange-600 mt-1">{devedores.length} cliente(s) com saldo pendente</p>
+              </div>
+
+              <div className="bg-[#FFFDF8] border border-orange-200 rounded-xl p-4 mb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-orange-600">Total A Receber</p>
+                    <p className="text-2xl font-bold text-orange-700">{formatCurrency(devedores.reduce((acc, d) => acc + d.total_pendente, 0))}</p>
+                    <p className="text-xs text-orange-600">{devedores.length} cliente(s) com saldo pendente</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={exportarPdfDevedores} className="px-3 py-1.5 text-xs text-red-600 border border-red-600 rounded-lg hover:bg-red-50 flex items-center gap-1">PDF Devedores</button>
+                    <button onClick={exportarExcelDevedores} className="px-3 py-1.5 text-xs text-green-600 border border-green-600 rounded-lg hover:bg-green-50 flex items-center gap-1">Excel Devedores</button>
+                  </div>
+                </div>
               </div>
 
               {relatorioVendas.vendas_por_dia?.length > 0 && (
