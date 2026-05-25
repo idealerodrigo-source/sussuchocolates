@@ -2361,7 +2361,7 @@ export default function RelatoriosPage() {
             )}
           </div>
           <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm">
-            <h3 className="text-xl font-serif font-semibold text-[#3E2723] mb-4">Possiveis Duplicatas</h3>
+            <h3 className="text-xl font-serif font-semibold text-[#3E2723] mb-4">Pedidos Cobrados Mais de Uma Vez</h3>
             {duplicatas === null ? (
               <p className="text-[#705A4D]">Carregando...</p>
             ) : duplicatas.length === 0 ? (
@@ -2371,7 +2371,7 @@ export default function RelatoriosPage() {
                 <thead className="bg-[#E8D5C4]"><tr>
                   <th className="text-left px-4 py-2 text-sm font-semibold text-[#3E2723]">Cliente</th>
                   <th className="text-left px-4 py-2 text-sm font-semibold text-[#3E2723]">Pedido</th>
-                  <th className="text-center px-4 py-2 text-sm font-semibold text-[#3E2723]">Produtos Duplicados</th>
+                  <th className="text-center px-4 py-2 text-sm font-semibold text-[#3E2723]">Qtd Vendas</th>
                 </tr></thead>
                 <tbody>{duplicatas.map((d, i) => (
                   <tr key={i} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
