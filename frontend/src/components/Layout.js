@@ -27,6 +27,8 @@ export default function Layout() {
   useEffect(() => {
     const carregar = async () => {
       try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
         const res = await vendasAPI.listar();
         const hoje = new Date();
         hoje.setHours(0,0,0,0);
