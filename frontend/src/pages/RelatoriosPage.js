@@ -34,6 +34,8 @@ export default function RelatoriosPage() {
   const [relatorioSaldos, setRelatorioSaldos] = useState(null);
   const [producaoPorDataEntrega, setProducaoPorDataEntrega] = useState(null);
   const [pedidosStatusVendas, setPedidosStatusVendas] = useState(null);
+  const [pedidosSemVenda, setPedidosSemVenda] = useState(null);
+  const [duplicatas, setDuplicatas] = useState(null);
   const [loading, setLoading] = useState(false);
   const [devedores, setDevedores] = useState([]);
   const [itensSelecionados, setItensSelecionados] = useState([]);
@@ -62,6 +64,8 @@ export default function RelatoriosPage() {
     } else if (activeTab === 'estoque') {
       buscarAlertasEstoque();
       buscarRelatorioSaldos();
+    } else if (activeTab === 'consistencia') {
+      buscarConsistencia();
     } else if (activeTab === 'status-vendas') {
       buscarPedidosStatusVendas();
     }
@@ -124,6 +128,19 @@ export default function RelatoriosPage() {
       setDevedores(res.data || []);
     } catch (e) {
       setDevedores([]);
+    }
+  };
+
+  const buscarConsistencia = async () => {
+    try {
+      const [semVendaRes, dupRes] = await Promise.all([
+        relatoriosAPI.pedidosSemVenda(),
+        relatoriosAPI.duplicatas()
+      ]);
+      setPedidosSemVenda(semVendaRes.data);
+      setDuplicatas(dupRes.data);
+    } catch (e) {
+      toast.error('Erro ao carregar dados de consistencia');
     }
   };
 
@@ -637,6 +654,7 @@ export default function RelatoriosPage() {
     { id: 'produzidos', label: 'Itens Produzidos', icon: CheckCircle },
     { id: 'pedidos-resumo', label: 'Resumo Pedidos', icon: ShoppingCart },
     { id: 'vendas', label: 'Vendas', icon: Package },
+    { id: 'consistencia', label: 'Consistencia', icon: Warning },
     { id: 'producao', label: 'Produção Geral', icon: Factory },
     { id: 'estoque', label: 'Estoque', icon: Cube },
     { id: 'clientes', label: 'Clientes', icon: Users },
@@ -2313,6 +2331,58 @@ export default function RelatoriosPage() {
               <p>Clique em "Atualizar" para carregar os dados de estoque</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* TAB: CONSISTENCIA */}
+      {activeTab === 'consistencia' && (
+        <div className="space-y-6">
+          <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm">
+            <h3 className="text-xl font-serif font-semibold text-[#3E2723] mb-4">Pedidos Concluidos sem Venda</h3>
+            {pedidosSemVenda === null ? (
+              <p className="text-[#705A4D]">Carregando...</p>
+            ) : pedidosSemVenda.length === 0 ? (
+              <p className="text-green-600 font-medium">Todos os pedidos tem venda registrada!</p>
+            ) : (
+              <table className="w-full">
+                <thead className="bg-[#E8D5C4]"><tr>
+                  <th className="text-left px-4 py-2 text-sm font-semibold text-[#3E2723]">Pedido</th>
+                  <th className="text-left px-4 py-2 text-sm font-semibold text-[#3E2723]">Cliente</th>
+                  <th className="text-right px-4 py-2 text-sm font-semibold text-[#3E2723]">Valor</th>
+                </tr></thead>
+                <tbody>{pedidosSemVenda.map((p, i) => (
+                  <tr key={i} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
+                    <td className="px-4 py-3 text-sm font-medium text-[#3E2723]">{p.numero}</td>
+                    <td className="px-4 py-3 text-sm text-[#705A4D]">{p.cliente_nome}</td>
+                    <td className="px-4 py-3 text-sm text-right font-bold">{formatCurrency(p.valor_total)}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            )}
+          </div>
+          <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm">
+            <h3 className="text-xl font-serif font-semibold text-[#3E2723] mb-4">Possiveis Duplicatas</h3>
+            {duplicatas === null ? (
+              <p className="text-[#705A4D]">Carregando...</p>
+            ) : duplicatas.length === 0 ? (
+              <p className="text-green-600 font-medium">Nenhuma duplicata encontrada!</p>
+            ) : (
+              <table className="w-full">
+                <thead className="bg-[#E8D5C4]"><tr>
+                  <th className="text-left px-4 py-2 text-sm font-semibold text-[#3E2723]">Cliente</th>
+                  <th className="text-left px-4 py-2 text-sm font-semibold text-[#3E2723]">Pedido</th>
+                  <th className="text-center px-4 py-2 text-sm font-semibold text-[#3E2723]">Produtos em Comum</th>
+                </tr></thead>
+                <tbody>{duplicatas.map((d, i) => (
+                  <tr key={i} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
+                    <td className="px-4 py-3 text-sm font-medium text-[#3E2723]">{d.cliente_nome}</td>
+                    <td className="px-4 py-3 text-sm text-[#705A4D]">{d.pedido_numero}</td>
+                    <td className="px-4 py-3 text-sm text-center"><span className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-bold">{d.produtos_em_comum}</span></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -95,6 +95,8 @@ export const relatoriosAPI = {
   }),
   pedidosResumo: () => api.get('/relatorios/pedidos/resumo'),
   pedidosStatusVendas: () => api.get('/relatorios/pedidos/status-vendas'),
+  pedidosSemVenda: () => api.get('/relatorios/pedidos-sem-venda'),
+  duplicatas: () => api.get('/relatorios/duplicatas'),
 };
 
 export const dashboardAPI = {
