@@ -38,11 +38,24 @@ async def relatorio_vendas(
         vendas_por_dia[data]['quantidade'] += 1
         vendas_por_dia[data]['valor'] += v['valor_total']
     
+    vendas_lista = [{
+        "data": v["data_venda"][:10] if isinstance(v["data_venda"], str) else str(v["data_venda"])[:10],
+        "cliente": v.get("cliente_nome",""),
+        "tipo": v.get("tipo_venda",""),
+        "forma_pagamento": v.get("forma_pagamento",""),
+        "status_pagamento": v.get("status_pagamento",""),
+        "status_venda": v.get("status_venda",""),
+        "valor_total": v.get("valor_total",0),
+        "valor_pago_parcial": v.get("valor_pago_parcial"),
+        "valor_pendente": v.get("valor_pendente")
+    } for v in vendas]
+
     return {
         "total_vendas": total_vendas,
         "valor_total": valor_total,
         "ticket_medio": valor_total / total_vendas if total_vendas > 0 else 0,
-        "vendas_por_dia": sorted(vendas_por_dia.values(), key=lambda x: x['data'])
+        "vendas_por_dia": sorted(vendas_por_dia.values(), key=lambda x: x['data']),
+        "vendas_lista": vendas_lista
     }
 
 

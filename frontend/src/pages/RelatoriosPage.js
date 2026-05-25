@@ -622,20 +622,24 @@ export default function RelatoriosPage() {
     doc.text(`Valor Total: ${formatCurrency(relatorioVendas.valor_total)}`, 15, startY + 6);
     doc.text(`Ticket Médio: ${formatCurrency(relatorioVendas.ticket_medio)}`, 15, startY + 12);
 
-    if (relatorioVendas.vendas_por_dia?.length) {
-      const tableData = relatorioVendas.vendas_por_dia.map(v => [
+    const listaVendas = relatorioVendas.vendas_lista || [];
+    if (listaVendas.length) {
+      const tableData = listaVendas.map(v => [
         v.data,
-        v.quantidade || 1,
-        formatCurrency(v.valor)
+        v.cliente,
+        v.tipo === 'pedido' ? 'Pedido' : 'Direta',
+        v.forma_pagamento,
+        v.status_pagamento === 'pago' ? 'Pago' : 'A Receber',
+        formatCurrency(v.valor_total)
       ]);
-
       autoTable(doc, {
         startY: startY + 20,
-        head: [['Data', 'Quantidade', 'Valor']],
+        head: [['Data', 'Cliente', 'Tipo', 'Pagamento', 'Status', 'Valor']],
         body: tableData,
         theme: 'striped',
         headStyles: { fillColor: [107, 68, 35], textColor: 255 },
-        columnStyles: { 2: { halign: 'right' } }
+        columnStyles: { 5: { halign: 'right' } },
+        styles: { fontSize: 8 }
       });
     }
 
@@ -663,8 +667,8 @@ export default function RelatoriosPage() {
       ['Valor Total:', relatorioVendas.valor_total],
       ['Ticket Médio:', relatorioVendas.ticket_medio],
       [],
-      ['Data', 'Quantidade', 'Valor'],
-      ...(relatorioVendas.vendas_por_dia || []).map(v => [v.data, v.quantidade || 1, v.valor])
+      ['Data', 'Cliente', 'Tipo', 'Pagamento', 'Status', 'Valor'],
+      ...(relatorioVendas.vendas_lista || []).map(v => [v.data, v.cliente, v.tipo, v.forma_pagamento, v.status_pagamento === 'pago' ? 'Pago' : 'A Receber', v.valor_total])
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(wsData);
