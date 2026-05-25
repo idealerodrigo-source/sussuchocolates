@@ -2371,7 +2371,7 @@ export default function RelatoriosPage() {
                 <thead className="bg-[#E8D5C4]"><tr>
                   <th className="text-left px-4 py-2 text-sm font-semibold text-[#3E2723]">Cliente</th>
                   <th className="text-left px-4 py-2 text-sm font-semibold text-[#3E2723]">Pedido</th>
-                  <th className="text-center px-4 py-2 text-sm font-semibold text-[#3E2723]">Produtos em Comum</th>
+                  <th className="text-center px-4 py-2 text-sm font-semibold text-[#3E2723]">Produtos Duplicados</th>
                 </tr></thead>
                 <tbody>{duplicatas.map((d, i) => (
                   <tr key={i} className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50">
