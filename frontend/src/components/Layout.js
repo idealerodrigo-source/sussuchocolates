@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { vendasAPI } from '../services/api';
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEmpresa } from '../contexts/EmpresaContext';
@@ -21,6 +22,27 @@ import {
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [vendasVencidas, setVendasVencidas] = useState(0);
+
+  useEffect(() => {
+    const carregar = async () => {
+      try {
+        const res = await vendasAPI.listar();
+        const hoje = new Date();
+        hoje.setHours(0,0,0,0);
+        const vencidas = res.data.filter(v =>
+          v.status_pagamento === 'pendente' &&
+          v.status_venda !== 'cancelada' &&
+          v.data_previsao_pagamento &&
+          new Date(v.data_previsao_pagamento) < hoje
+        );
+        setVendasVencidas(vencidas.length);
+      } catch (e) {}
+    };
+    carregar();
+    const interval = setInterval(carregar, 60000);
+    return () => clearInterval(interval);
+  }, []);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -85,6 +107,9 @@ export default function Layout() {
               >
                 <Icon size={24} weight={active ? 'fill' : 'regular'} />
                 {sidebarOpen && <span className="font-medium">{item.label}</span>}
+                {item.path === '/vendas' && vendasVencidas > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{vendasVencidas}</span>
+                )}
               </Link>
             );
           })}
