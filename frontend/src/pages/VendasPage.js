@@ -15,7 +15,9 @@ import {
   VendasTable,
   NFCePreviewModal,
   NFCeViewModal,
-  ProdutosExtrasSection
+  ProdutosExtrasSection,
+  VendaViewModal,
+  generateVendaPDF
 } from '../components/vendas';
 import CupomVendaModal from '../components/vendas/CupomVendaModal';
 
@@ -138,6 +140,10 @@ export default function VendasPage() {
   const [viewNFCeOpen, setViewNFCeOpen] = useState(false);
   const [selectedVendaForNFCe, setSelectedVendaForNFCe] = useState(null);
   const [emitindoNFCe, setEmitindoNFCe] = useState(false);
+
+  // Estado para o modal de visualização de venda
+  const [viewVendaOpen, setViewVendaOpen] = useState(false);
+  const [viewingVenda, setViewingVenda] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -540,6 +546,19 @@ const handleEditarPagamento = async (vendaId, dados) => {
   const imprimirCupom = (venda) => {
     setVendaParaCupom(venda);
     setCupomModalOpen(true);
+  };
+
+  const handleVisualizarVenda = (venda) => {
+    setViewingVenda(venda);
+    setViewVendaOpen(true);
+  };
+
+  const handleGerarPDFVenda = async (venda) => {
+    try {
+      await generateVendaPDF(venda, clientes);
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+    }
   };
 
   const handleCancelarNFCe = async (venda) => {
@@ -1462,6 +1481,7 @@ onEditarPagamento={handleEditarPagamento}
         onCancelarNFCe={handleCancelarNFCe}
         onCancelarVenda={handleCancelarVenda}
         onRestaurarVenda={handleRestaurarVenda}
+        onVisualizarVenda={handleVisualizarVenda}
       />
 
       {/* Modais de NFC-e */}
@@ -1497,6 +1517,15 @@ onEditarPagamento={handleEditarPagamento}
         open={cupomModalOpen}
         onClose={() => setCupomModalOpen(false)}
         venda={vendaParaCupom}
+      />
+
+      {/* Modal de Visualização da Venda */}
+      <VendaViewModal
+        open={viewVendaOpen}
+        onOpenChange={setViewVendaOpen}
+        venda={viewingVenda}
+        onGeneratePDF={handleGerarPDFVenda}
+        onImprimirCupom={imprimirCupom}
       />
     </div>
   );

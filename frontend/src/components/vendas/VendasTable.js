@@ -244,6 +244,7 @@ function ModalEditarPagamento({ venda, onConfirmar, onFechar }) {
 export default function VendasTable({
   vendas, sortConfig, onSort, onConfirmarPagamento, onEditarPagamento,
   onEmitirNFCe, onVisualizarNFCe, onImprimirCupom, onCancelarNFCe, onCancelarVenda, onRestaurarVenda,
+  onVisualizarVenda,
 }) {
   const [vendaParaReceber, setVendaParaReceber] = useState(null);
   const [vendaParaEditar, setVendaParaEditar] = useState(null);
@@ -351,6 +352,10 @@ export default function VendasTable({
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex gap-2 justify-end">
+                        <Button onClick={() => onVisualizarVenda(venda)} size="sm" variant="outline"
+                          className="text-[#6B4423] border-[#8B5A3C]/30 hover:bg-[#F5E6D3] text-xs" title="Visualizar">
+                          <Eye size={16} weight="bold" />
+                        </Button>
                         {venda.status_venda !== 'cancelada' && (
                           <>
                             {venda.status_pagamento === 'pendente' && (
@@ -380,7 +385,7 @@ export default function VendasTable({
                             {venda.nfce_emitida && (
                               <div className="flex gap-1">
                                 <Button onClick={() => onVisualizarNFCe(venda)} size="sm" variant="outline"
-                                  className="text-[#6B4423] border-[#8B5A3C]/30 hover:bg-[#F5E6D3] text-xs">
+                                  className="text-[#6B4423] border-[#8B5A3C]/30 hover:bg-[#F5E6D3] text-xs" title="Visualizar NFC-e">
                                   <Eye size={16} weight="bold" />
                                 </Button>
                                 <Button onClick={() => onImprimirCupom(venda)} size="sm" variant="outline"
