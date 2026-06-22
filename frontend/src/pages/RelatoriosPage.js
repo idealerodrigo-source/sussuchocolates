@@ -38,6 +38,8 @@ export default function RelatoriosPage() {
   const [pedidosStatusVendas, setPedidosStatusVendas] = useState(null);
   const [pedidosSemVenda, setPedidosSemVenda] = useState(null);
   const [duplicatas, setDuplicatas] = useState(null);
+  const [inadimplencia, setInadimplencia] = useState(null);
+  const [expandidoCliente, setExpandidoCliente] = useState(null);
   const [loading, setLoading] = useState(false);
   const [devedores, setDevedores] = useState([]);
   const [itensSelecionados, setItensSelecionados] = useState([]);
@@ -70,6 +72,8 @@ export default function RelatoriosPage() {
       buscarConsistencia();
     } else if (activeTab === 'status-vendas') {
       buscarPedidosStatusVendas();
+    } else if (activeTab === 'inadimplencia') {
+      buscarInadimplencia();
     }
   }, [activeTab]);
 
@@ -143,6 +147,18 @@ export default function RelatoriosPage() {
       setDuplicatas(dupRes.data);
     } catch (e) {
       toast.error('Erro ao carregar dados de consistencia');
+    }
+  };
+
+  const buscarInadimplencia = async () => {
+    setLoading(true);
+    try {
+      const res = await relatoriosAPI.inadimplencia();
+      setInadimplencia(res.data);
+    } catch (e) {
+      toast.error('Erro ao carregar relatório de inadimplência');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -689,6 +705,7 @@ export default function RelatoriosPage() {
     { id: 'produzidos', label: 'Itens Produzidos', icon: CheckCircle },
     { id: 'pedidos-resumo', label: 'Resumo Pedidos', icon: ShoppingCart },
     { id: 'vendas', label: 'Vendas', icon: Package },
+    { id: 'inadimplencia', label: 'Inadimplência', icon: CurrencyDollar },
     { id: 'consistencia', label: 'Consistencia', icon: Warning },
     { id: 'producao', label: 'Produção Geral', icon: Factory },
     { id: 'estoque', label: 'Estoque', icon: Cube },
@@ -2432,6 +2449,160 @@ export default function RelatoriosPage() {
               </table>
             )}
           </div>
+        </div>
+      )}
+
+      {/* TAB: INADIMPLÊNCIA */}
+      {activeTab === 'inadimplencia' && (
+        <div className="space-y-6">
+          <h2 className="text-2xl font-serif font-semibold text-[#3E2723]">Relatório de Inadimplência</h2>
+
+          {loading && <p className="text-[#705A4D] py-8 text-center">Carregando...</p>}
+
+          {!loading && inadimplencia && (
+            <>
+              {/* Cards resumo */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                  <p className="text-xs font-semibold uppercase text-orange-600 mb-1">Total em Aberto</p>
+                  <p className="text-2xl font-serif font-bold text-orange-700">{formatCurrency(inadimplencia.total_geral)}</p>
+                </div>
+                <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-4">
+                  <p className="text-xs font-semibold uppercase text-[#8B5A3C] mb-1">Clientes</p>
+                  <p className="text-2xl font-serif font-bold text-[#3E2723]">{inadimplencia.num_clientes}</p>
+                </div>
+                <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-4">
+                  <p className="text-xs font-semibold uppercase text-[#8B5A3C] mb-1">Vendas em Aberto</p>
+                  <p className="text-2xl font-serif font-bold text-[#3E2723]">{inadimplencia.num_vendas}</p>
+                </div>
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <p className="text-xs font-semibold uppercase text-red-600 mb-1">Acima de 90 dias</p>
+                  <p className="text-2xl font-serif font-bold text-red-700">{formatCurrency(inadimplencia.aging?.acima_90 || 0)}</p>
+                </div>
+              </div>
+
+              {/* Aging */}
+              <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm">
+                <h3 className="text-lg font-serif font-semibold text-[#3E2723] mb-4">Análise de Aging (por faixa de atraso)</h3>
+                <div className="space-y-3">
+                  {[
+                    { label: 'No prazo / Sem vencimento', valor: inadimplencia.aging?.sem_vencimento || 0, cor: 'bg-green-500' },
+                    { label: '1 a 30 dias em atraso', valor: inadimplencia.aging?.ate_30 || 0, cor: 'bg-yellow-400' },
+                    { label: '31 a 60 dias em atraso', valor: inadimplencia.aging?.['31_60'] || 0, cor: 'bg-orange-500' },
+                    { label: '61 a 90 dias em atraso', valor: inadimplencia.aging?.['61_90'] || 0, cor: 'bg-red-500' },
+                    { label: 'Acima de 90 dias', valor: inadimplencia.aging?.acima_90 || 0, cor: 'bg-red-800' },
+                  ].map((faixa, i) => {
+                    const pct = inadimplencia.total_geral > 0 ? Math.round((faixa.valor / inadimplencia.total_geral) * 100) : 0;
+                    return (
+                      <div key={i} className="flex items-center gap-3">
+                        <span className="text-sm text-[#705A4D] w-52 flex-shrink-0">{faixa.label}</span>
+                        <div className="flex-1 h-4 bg-[#F5E6D3] rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${faixa.cor}`} style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-sm font-semibold text-[#3E2723] w-28 text-right">{formatCurrency(faixa.valor)}</span>
+                        <span className="text-xs text-[#705A4D] w-10 text-right">{pct}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Lista por cliente */}
+              <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-[#8B5A3C]/15">
+                  <h3 className="text-lg font-serif font-semibold text-[#3E2723]">Detalhe por Cliente</h3>
+                  <p className="text-sm text-[#705A4D]">Clique em um cliente para ver as vendas individuais</p>
+                </div>
+                <table className="w-full">
+                  <thead className="bg-[#E8D5C4]">
+                    <tr>
+                      <th className="text-left px-4 py-3 text-sm font-semibold text-[#3E2723]">Cliente</th>
+                      <th className="text-center px-4 py-3 text-sm font-semibold text-[#3E2723]">Vendas</th>
+                      <th className="text-center px-4 py-3 text-sm font-semibold text-[#3E2723]">Maior Atraso</th>
+                      <th className="text-right px-4 py-3 text-sm font-semibold text-[#3E2723]">Total Pendente</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inadimplencia.clientes.map((c, i) => (
+                      <>
+                        <tr
+                          key={c.cliente_id}
+                          className="border-t border-[#8B5A3C]/10 hover:bg-[#F5E6D3]/50 cursor-pointer"
+                          onClick={() => setExpandidoCliente(expandidoCliente === c.cliente_id ? null : c.cliente_id)}
+                        >
+                          <td className="px-4 py-3 text-sm font-medium text-[#3E2723]">
+                            <span className="mr-2">{expandidoCliente === c.cliente_id ? '▼' : '▶'}</span>
+                            {c.cliente_nome}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-center text-[#705A4D]">{c.num_vendas}</td>
+                          <td className="px-4 py-3 text-sm text-center">
+                            {c.dias_maior_atraso > 0 ? (
+                              <span className={`px-2 py-1 rounded text-xs font-bold ${
+                                c.dias_maior_atraso > 90 ? 'bg-red-100 text-red-700' :
+                                c.dias_maior_atraso > 60 ? 'bg-red-50 text-red-600' :
+                                c.dias_maior_atraso > 30 ? 'bg-orange-100 text-orange-700' :
+                                'bg-yellow-100 text-yellow-700'
+                              }`}>
+                                {c.dias_maior_atraso} dias
+                              </span>
+                            ) : (
+                              <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">No prazo</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right font-bold text-orange-700">{formatCurrency(c.total_pendente)}</td>
+                        </tr>
+                        {expandidoCliente === c.cliente_id && (
+                          <tr key={`exp-${c.cliente_id}`} className="bg-[#FDFAF5]">
+                            <td colSpan={4} className="px-8 py-3">
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="text-[#705A4D]">
+                                    <th className="text-left pb-2">Data Venda</th>
+                                    <th className="text-left pb-2">Vencimento</th>
+                                    <th className="text-center pb-2">Atraso</th>
+                                    <th className="text-left pb-2">Forma</th>
+                                    <th className="text-right pb-2">Pendente</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {c.vendas.map((v, vi) => (
+                                    <tr key={vi} className="border-t border-[#8B5A3C]/10">
+                                      <td className="py-1.5">{v.data_venda}</td>
+                                      <td className="py-1.5">{v.data_vencimento || '—'}</td>
+                                      <td className="py-1.5 text-center">
+                                        {v.dias_atraso > 0 ? (
+                                          <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                                            v.dias_atraso > 90 ? 'bg-red-100 text-red-700' :
+                                            v.dias_atraso > 60 ? 'bg-orange-100 text-orange-700' :
+                                            v.dias_atraso > 30 ? 'bg-yellow-100 text-yellow-700' :
+                                            'bg-yellow-50 text-yellow-600'
+                                          }`}>{v.dias_atraso}d</span>
+                                        ) : '—'}
+                                      </td>
+                                      <td className="py-1.5 text-[#705A4D]">{v.forma_pagamento}</td>
+                                      <td className="py-1.5 text-right font-semibold text-orange-700">{formatCurrency(v.valor_pendente)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {!loading && inadimplencia && inadimplencia.num_clientes === 0 && (
+            <div className="text-center py-16 text-[#705A4D]">
+              <p className="text-4xl mb-4">✅</p>
+              <p className="text-lg font-serif font-semibold">Nenhuma inadimplência registrada!</p>
+              <p className="text-sm mt-2">Todos os pagamentos estão em dia.</p>
+            </div>
+          )}
         </div>
       )}
     </div>

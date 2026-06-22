@@ -501,3 +501,98 @@ async def duplicatas(current_user: dict = Depends(get_current_user)):
             })
 
     return resultado
+
+
+@router.get("/inadimplencia")
+async def relatorio_inadimplencia(current_user: dict = Depends(get_current_user)):
+    """Relatório detalhado de inadimplência com aging por cliente"""
+    from datetime import datetime, timezone, date
+
+    hoje = datetime.now(timezone.utc).date()
+
+    vendas = await db.vendas.find(
+        {"status_pagamento": "pendente", "status_venda": {"$ne": "cancelada"}},
+        {"_id": 0, "id": 1, "cliente_id": 1, "cliente_nome": 1,
+         "valor_total": 1, "valor_pendente": 1, "valor_pago_parcial": 1,
+         "data_venda": 1, "data_previsao_pagamento": 1,
+         "forma_pagamento": 1, "tipo_venda": 1, "pedido_id": 1}
+    ).sort("data_previsao_pagamento", 1).to_list(5000)
+
+    clientes: dict = {}
+    total_geral = 0.0
+    aging = {"ate_30": 0.0, "31_60": 0.0, "61_90": 0.0, "acima_90": 0.0, "sem_vencimento": 0.0}
+
+    for v in vendas:
+        cid = v.get("cliente_id") or "sem_cliente"
+        pendente = v.get("valor_pendente") or v.get("valor_total") or 0
+
+        # Calcular dias de atraso
+        prev_str = v.get("data_previsao_pagamento")
+        if prev_str:
+            try:
+                prev = date.fromisoformat(str(prev_str)[:10])
+                dias_atraso = (hoje - prev).days
+            except Exception:
+                dias_atraso = None
+        else:
+            dias_atraso = None
+
+        # Bucket de aging
+        if dias_atraso is None:
+            aging["sem_vencimento"] += pendente
+            bucket = "Sem vencimento"
+        elif dias_atraso <= 0:
+            aging["sem_vencimento"] += pendente
+            bucket = "No prazo"
+        elif dias_atraso <= 30:
+            aging["ate_30"] += pendente
+            bucket = "1-30 dias"
+        elif dias_atraso <= 60:
+            aging["31_60"] += pendente
+            bucket = "31-60 dias"
+        elif dias_atraso <= 90:
+            aging["61_90"] += pendente
+            bucket = "61-90 dias"
+        else:
+            aging["acima_90"] += pendente
+            bucket = "Acima de 90 dias"
+
+        total_geral += pendente
+
+        if cid not in clientes:
+            clientes[cid] = {
+                "cliente_id": cid,
+                "cliente_nome": v.get("cliente_nome") or "Sem nome",
+                "total_pendente": 0.0,
+                "num_vendas": 0,
+                "dias_maior_atraso": 0,
+                "vendas": []
+            }
+
+        clientes[cid]["total_pendente"] += pendente
+        clientes[cid]["num_vendas"] += 1
+        if dias_atraso and dias_atraso > clientes[cid]["dias_maior_atraso"]:
+            clientes[cid]["dias_maior_atraso"] = dias_atraso
+
+        data_venda_str = str(v.get("data_venda", ""))[:10]
+        clientes[cid]["vendas"].append({
+            "id": v.get("id", "")[:8],
+            "data_venda": data_venda_str,
+            "data_vencimento": str(prev_str)[:10] if prev_str else None,
+            "dias_atraso": max(0, dias_atraso) if dias_atraso and dias_atraso > 0 else 0,
+            "bucket": bucket,
+            "valor_total": v.get("valor_total"),
+            "valor_pendente": pendente,
+            "forma_pagamento": v.get("forma_pagamento"),
+            "tipo_venda": v.get("tipo_venda"),
+        })
+
+    lista = sorted(clientes.values(), key=lambda x: x["total_pendente"], reverse=True)
+
+    return {
+        "total_geral": round(total_geral, 2),
+        "num_clientes": len(lista),
+        "num_vendas": len(vendas),
+        "aging": {k: round(v, 2) for k, v in aging.items()},
+        "clientes": lista
+    }
