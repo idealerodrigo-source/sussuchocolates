@@ -13,33 +13,74 @@ router = APIRouter(tags=["dashboard"])
 
 @router.get("/dashboard/stats")
 async def dashboard_stats(current_user: dict = Depends(get_current_user)):
+    import asyncio
     hoje = datetime.now(timezone.utc).date().isoformat()
     mes_atual = datetime.now(timezone.utc).strftime("%Y-%m")
-    
-    total_clientes = await db.clientes.count_documents({})
-    total_produtos = await db.produtos.count_documents({})
-    
-    pedidos_pendentes = await db.pedidos.count_documents({"status": PedidoStatus.PENDENTE})
-    pedidos_em_producao = await db.pedidos.count_documents({"status": PedidoStatus.EM_PRODUCAO})
-    
-    vendas_mes = await db.vendas.find({
-        "data_venda": {"$regex": f"^{mes_atual}"}
-    }, {"_id": 0}).to_list(10000)
-    
-    valor_vendas_mes = sum(v['valor_total'] for v in vendas_mes)
-    
-    vendas_hoje = [v for v in vendas_mes if v['data_venda'].startswith(hoje)]
-    valor_vendas_hoje = sum(v['valor_total'] for v in vendas_hoje)
-    
+
+    # Executar todas as consultas em paralelo
+    (
+        total_clientes,
+        total_produtos,
+        pedidos_pendentes,
+        pedidos_em_producao,
+        vendas_mes_raw,
+        vendas_pendentes_raw,
+    ) = await asyncio.gather(
+        db.clientes.count_documents({}),
+        db.produtos.count_documents({}),
+        db.pedidos.count_documents({"status": PedidoStatus.PENDENTE}),
+        db.pedidos.count_documents({"status": PedidoStatus.EM_PRODUCAO}),
+        db.vendas.find(
+            {"data_venda": {"$regex": f"^{mes_atual}"}, "status_venda": {"$ne": "cancelada"}},
+            {"_id": 0, "data_venda": 1, "valor_total": 1}
+        ).to_list(10000),
+        db.vendas.find(
+            {"status_pagamento": "pendente", "status_venda": {"$ne": "cancelada"}},
+            {"_id": 0, "cliente_id": 1, "cliente_nome": 1, "valor_total": 1,
+             "valor_pendente": 1, "data_previsao_pagamento": 1}
+        ).to_list(1000),
+    )
+
+    # Calcular vendas do mes e do dia
+    valor_vendas_mes = sum(v['valor_total'] for v in vendas_mes_raw)
+    vendas_hoje_raw = [v for v in vendas_mes_raw if str(v['data_venda']).startswith(hoje)]
+    valor_vendas_hoje = sum(v['valor_total'] for v in vendas_hoje_raw)
+
+    # Calcular devedores
+    devedores: dict = {}
+    for venda in vendas_pendentes_raw:
+        cid = venda.get("cliente_id")
+        if not cid:
+            continue
+        valor = venda.get("valor_pendente") or venda.get("valor_total") or 0
+        if cid not in devedores:
+            devedores[cid] = {"total_pendente": 0, "num_vendas": 0,
+                              "cliente_nome": venda.get("cliente_nome")}
+        devedores[cid]["total_pendente"] += valor
+        devedores[cid]["num_vendas"] += 1
+
+    total_pendente = sum(d["total_pendente"] for d in devedores.values())
+    num_devedores = len(devedores)
+
+    # Calcular vendas vencidas (prazo ultrapassado)
+    vendas_vencidas = sum(
+        1 for v in vendas_pendentes_raw
+        if v.get("data_previsao_pagamento") and
+        str(v["data_previsao_pagamento"])[:10] < hoje
+    )
+
     return {
         "total_clientes": total_clientes,
         "total_produtos": total_produtos,
         "pedidos_pendentes": pedidos_pendentes,
         "pedidos_em_producao": pedidos_em_producao,
-        "vendas_mes": len(vendas_mes),
+        "vendas_mes": len(vendas_mes_raw),
         "valor_vendas_mes": valor_vendas_mes,
-        "vendas_hoje": len(vendas_hoje),
-        "valor_vendas_hoje": valor_vendas_hoje
+        "vendas_hoje": len(vendas_hoje_raw),
+        "valor_vendas_hoje": valor_vendas_hoje,
+        "total_pendente": total_pendente,
+        "num_devedores": num_devedores,
+        "vendas_vencidas": vendas_vencidas,
     }
 
 

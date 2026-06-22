@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { dashboardAPI, vendasAPI } from '../services/api';
+import { dashboardAPI } from '../services/api';
 import { formatCurrency } from '../utils/formatters';
 import {
   Users,
@@ -11,12 +11,36 @@ import {
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 
+function SkeletonCard() {
+  return (
+    <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm animate-pulse">
+      <div className="flex items-center justify-between mb-4">
+        <div className="w-10 h-10 rounded-lg bg-[#F5E6D3]" />
+      </div>
+      <div className="h-3 w-24 rounded bg-[#F5E6D3] mb-3" />
+      <div className="h-8 w-16 rounded bg-[#F5E6D3]" />
+    </div>
+  );
+}
+
+function SkeletonWide() {
+  return (
+    <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm animate-pulse">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-lg bg-[#F5E6D3]" />
+        <div className="space-y-2">
+          <div className="h-4 w-32 rounded bg-[#F5E6D3]" />
+          <div className="h-3 w-20 rounded bg-[#F5E6D3]" />
+        </div>
+      </div>
+      <div className="h-10 w-40 rounded bg-[#F5E6D3]" />
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [totalPendente, setTotalPendente] = useState(0);
-  const [numDevedores, setNumDevedores] = useState(0);
-  const [vendasVencidas, setVendasVencidas] = useState([]);
 
   useEffect(() => {
     fetchStats();
@@ -26,38 +50,12 @@ export default function DashboardPage() {
     try {
       const response = await dashboardAPI.stats();
       setStats(response.data);
-      try {
-        const devRes = await vendasAPI.resumoDevedores();
-        const total = devRes.data.reduce((acc, d) => acc + d.total_pendente, 0);
-        setTotalPendente(total);
-        setNumDevedores(devRes.data.length);
-      } catch (e) {}
-      try {
-        const vendasRes = await vendasAPI.listar();
-        const hoje = new Date();
-        hoje.setHours(0,0,0,0);
-        const vencidas = vendasRes.data.filter(v =>
-          v.status_pagamento === 'pendente' &&
-          v.status_venda !== 'cancelada' &&
-          v.data_previsao_pagamento &&
-          new Date(v.data_previsao_pagamento) < hoje
-        );
-        setVendasVencidas(vencidas);
-      } catch (e) {}
     } catch (error) {
       toast.error('Erro ao carregar estatísticas');
     } finally {
       setLoading(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <p className="text-[#6B4423] font-sans">Carregando...</p>
-      </div>
-    );
-  }
 
   const statCards = [
     {
@@ -97,91 +95,111 @@ export default function DashboardPage() {
         </p>
       </div>
 
+      {/* Cards de estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {statCards.map((card, index) => {
-          const Icon = card.icon;
-          return (
-            <div
-              key={index}
-              data-testid={`stat-card-${index}`}
-              className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-lg ${card.color}`}>
-                  <Icon size={24} weight="bold" />
+        {loading
+          ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
+          : statCards.map((card, index) => {
+              const Icon = card.icon;
+              return (
+                <div
+                  key={index}
+                  data-testid={`stat-card-${index}`}
+                  className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={`p-3 rounded-lg ${card.color}`}>
+                      <Icon size={24} weight="bold" />
+                    </div>
+                  </div>
+                  <h3 className="text-sm font-sans uppercase tracking-wider font-semibold text-[#8B5A3C] mb-1">
+                    {card.title}
+                  </h3>
+                  <p className="text-3xl font-serif font-bold text-[#3E2723]">{card.value}</p>
                 </div>
-              </div>
-              <h3 className="text-sm font-sans uppercase tracking-wider font-semibold text-[#8B5A3C] mb-1">
-                {card.title}
-              </h3>
-              <p className="text-3xl font-serif font-bold text-[#3E2723]">{card.value}</p>
-            </div>
-          );
-        })}
+              );
+            })}
       </div>
 
-      {totalPendente > 0 && (
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 shadow-sm mb-6 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-sans uppercase tracking-wider font-semibold text-orange-600 mb-1">Total A Receber</p>
-            <p className="text-3xl font-serif font-bold text-orange-700">{formatCurrency(totalPendente)}</p>
-            <p className="text-sm text-orange-600 mt-1">{numDevedores} cliente(s) com saldo pendente</p>
-          </div>
-          <div className="p-4 rounded-xl bg-orange-100 text-orange-600 text-4xl">💰</div>
-        </div>
+      {/* Alertas financeiros */}
+      {loading ? (
+        <div className="h-24 rounded-xl bg-[#F5E6D3]/50 animate-pulse mb-6" />
+      ) : (
+        <>
+          {(stats?.total_pendente || 0) > 0 && (
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 shadow-sm mb-6 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-sans uppercase tracking-wider font-semibold text-orange-600 mb-1">Total A Receber</p>
+                <p className="text-3xl font-serif font-bold text-orange-700">{formatCurrency(stats.total_pendente)}</p>
+                <p className="text-sm text-orange-600 mt-1">{stats.num_devedores} cliente(s) com saldo pendente</p>
+              </div>
+              <div className="p-4 rounded-xl bg-orange-100 text-orange-600 text-4xl">💰</div>
+            </div>
+          )}
+
+          {(stats?.vendas_vencidas || 0) > 0 && (
+            <div className="bg-red-50 border border-red-300 rounded-xl p-6 shadow-sm mb-6 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-sans uppercase tracking-wider font-semibold text-red-600 mb-1">Pagamentos Vencidos</p>
+                <p className="text-3xl font-serif font-bold text-red-700">{stats.vendas_vencidas} venda(s)</p>
+                <p className="text-sm text-red-600 mt-1">Com prazo de pagamento ultrapassado</p>
+              </div>
+              <div className="p-4 rounded-xl bg-red-100 text-red-600 text-4xl">⚠️</div>
+            </div>
+          )}
+        </>
       )}
 
-      {vendasVencidas.length > 0 && (
-        <div className="bg-red-50 border border-red-300 rounded-xl p-6 shadow-sm mb-6 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-sans uppercase tracking-wider font-semibold text-red-600 mb-1">Pagamentos Vencidos</p>
-            <p className="text-3xl font-serif font-bold text-red-700">{vendasVencidas.length} venda(s)</p>
-            <p className="text-sm text-red-600 mt-1">Com prazo de pagamento ultrapassado</p>
-          </div>
-          <div className="p-4 rounded-xl bg-red-100 text-red-600 text-4xl">⚠️</div>
-        </div>
-      )}
-
+      {/* Cards de vendas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div
-          className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm"
-          data-testid="vendas-mes-card"
-        >
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-3 rounded-lg bg-[#C6F6D5] text-[#2F855A]">
-              <TrendUp size={24} weight="bold" />
-            </div>
-            <div>
-              <h3 className="text-xl font-serif font-medium text-[#6B4423]">Vendas do Mês</h3>
-              <p className="text-sm text-[#705A4D] font-sans">
-                {stats?.vendas_mes || 0} vendas realizadas
+        {loading ? (
+          <>
+            <SkeletonWide />
+            <SkeletonWide />
+          </>
+        ) : (
+          <>
+            <div
+              className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm"
+              data-testid="vendas-mes-card"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 rounded-lg bg-[#C6F6D5] text-[#2F855A]">
+                  <TrendUp size={24} weight="bold" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-serif font-medium text-[#6B4423]">Vendas do Mês</h3>
+                  <p className="text-sm text-[#705A4D] font-sans">
+                    {stats?.vendas_mes || 0} vendas realizadas
+                  </p>
+                </div>
+              </div>
+              <p className="text-4xl font-serif font-bold text-[#3E2723]">
+                {formatCurrency(stats?.valor_vendas_mes || 0)}
               </p>
             </div>
-          </div>
-          <p className="text-4xl font-serif font-bold text-[#3E2723]">
-            {formatCurrency(stats?.valor_vendas_mes || 0)}
-          </p>
-        </div>
 
-        <div
-          className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm"
-          data-testid="vendas-hoje-card"
-        >
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-3 rounded-lg bg-blue-100 text-blue-700">
-              <ChartLine size={24} weight="bold" />
-            </div>
-            <div>
-              <h3 className="text-xl font-serif font-medium text-[#6B4423]">Vendas Hoje</h3>
-              <p className="text-sm text-[#705A4D] font-sans">
-                {stats?.vendas_hoje || 0} vendas realizadas
+            <div
+              className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm"
+              data-testid="vendas-hoje-card"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 rounded-lg bg-blue-100 text-blue-700">
+                  <ChartLine size={24} weight="bold" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-serif font-medium text-[#6B4423]">Vendas Hoje</h3>
+                  <p className="text-sm text-[#705A4D] font-sans">
+                    {stats?.vendas_hoje || 0} vendas realizadas
+                  </p>
+                </div>
+              </div>
+              <p className="text-4xl font-serif font-bold text-[#3E2723]">
+                {formatCurrency(stats?.valor_vendas_hoje || 0)}
               </p>
             </div>
-          </div>
-          <p className="text-4xl font-serif font-bold text-[#3E2723]">
-            {formatCurrency(stats?.valor_vendas_hoje || 0)}
-          </p>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );
