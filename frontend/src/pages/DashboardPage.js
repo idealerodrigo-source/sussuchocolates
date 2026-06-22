@@ -201,6 +201,41 @@ export default function DashboardPage() {
           </>
         )}
       </div>
+
+      {/* Top 5 produtos do mês */}
+      {!loading && (stats?.top_produtos_mes || []).length > 0 && (
+        <div className="mt-6 bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-serif font-semibold text-[#3E2723] mb-4">
+            🏆 Mais Vendidos este Mês
+          </h3>
+          <div className="space-y-3">
+            {stats.top_produtos_mes.map((p, i) => {
+              const max = stats.top_produtos_mes[0]?.total || 1;
+              const pct = Math.round((p.total / max) * 100);
+              const medals = ['🥇', '🥈', '🥉'];
+              return (
+                <div key={i} className="flex items-center gap-3">
+                  <span className="text-sm font-bold w-6 text-center">{medals[i] || `${i + 1}º`}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-medium text-[#3E2723] truncate">{p.nome}</span>
+                      <span className="text-sm font-bold text-[#6B4423] ml-2 flex-shrink-0">
+                        {Number.isInteger(p.total) ? p.total : p.total.toFixed(1)}x
+                      </span>
+                    </div>
+                    <div className="h-2 bg-[#F5E6D3] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-[#6B4423] rounded-full"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

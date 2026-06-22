@@ -69,6 +69,18 @@ async def dashboard_stats(current_user: dict = Depends(get_current_user)):
         str(v["data_previsao_pagamento"])[:10] < hoje
     )
 
+    # Top 5 produtos mais vendidos do mês (aggregation no banco)
+    pipeline_top = [
+        {"$match": {"data_venda": {"$regex": f"^{mes_atual}"}, "status_venda": {"$ne": "cancelada"}}},
+        {"$unwind": "$items"},
+        {"$group": {"_id": "$items.produto_id", "nome": {"$first": "$items.produto_nome"},
+                    "total": {"$sum": "$items.quantidade"}}},
+        {"$sort": {"total": -1}},
+        {"$limit": 5},
+    ]
+    top_produtos_raw = await db.vendas.aggregate(pipeline_top).to_list(5)
+    top_produtos = [{"nome": p["nome"], "total": p["total"]} for p in top_produtos_raw]
+
     return {
         "total_clientes": total_clientes,
         "total_produtos": total_produtos,
@@ -81,6 +93,7 @@ async def dashboard_stats(current_user: dict = Depends(get_current_user)):
         "total_pendente": total_pendente,
         "num_devedores": num_devedores,
         "vendas_vencidas": vendas_vencidas,
+        "top_produtos_mes": top_produtos,
     }
 
 

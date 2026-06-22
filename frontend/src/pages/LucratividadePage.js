@@ -56,6 +56,8 @@ export default function LucratividadePage() {
   const topLucrativos = lucratividade?.top_5_mais_lucrativos || [];
   const topMargem = lucratividade?.top_5_maior_margem || [];
   const resumo = lucratividade?.resumo || {};
+  const maisVendidos = desempenho?.mais_vendidos || [];
+  const maiorReceita = desempenho?.maior_receita || [];
 
   return (
     <div data-testid="lucratividade-page">
@@ -192,6 +194,82 @@ export default function LucratividadePage() {
               />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Ranking de Mais Vendidos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+
+        {/* Top 10 por Quantidade */}
+        <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm">
+          <h3 className="text-xl font-serif font-semibold text-[#3E2723] mb-1">🏆 Mais Vendidos por Quantidade</h3>
+          <p className="text-sm text-[#705A4D] mb-4">Top 10 produtos com maior volume de unidades vendidas</p>
+          {maisVendidos.length === 0 ? (
+            <p className="text-center py-8 text-[#705A4D]">Sem dados disponíveis</p>
+          ) : (
+            <div className="space-y-3">
+              {maisVendidos.map((p, i) => {
+                const max = maisVendidos[0]?.total_vendido || 1;
+                const pct = Math.round((p.total_vendido / max) * 100);
+                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}º`;
+                return (
+                  <div key={p.produto_id} className="flex items-center gap-3">
+                    <span className="text-sm font-bold w-7 text-center">{medal}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm font-medium text-[#3E2723] truncate">{p.produto_nome}</span>
+                        <span className="text-sm font-bold text-[#6B4423] ml-2 flex-shrink-0">
+                          {Number.isInteger(p.total_vendido) ? p.total_vendido : p.total_vendido.toFixed(1)}x
+                        </span>
+                      </div>
+                      <div className="h-2 bg-[#F5E6D3] rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${pct}%`, backgroundColor: COLORS[Math.min(i, COLORS.length - 1)] }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Top 10 por Receita */}
+        <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-6 shadow-sm">
+          <h3 className="text-xl font-serif font-semibold text-[#3E2723] mb-1">💰 Maior Receita Gerada</h3>
+          <p className="text-sm text-[#705A4D] mb-4">Top 10 produtos com maior valor total em vendas</p>
+          {maiorReceita.length === 0 ? (
+            <p className="text-center py-8 text-[#705A4D]">Sem dados disponíveis</p>
+          ) : (
+            <div className="space-y-3">
+              {maiorReceita.map((p, i) => {
+                const max = maiorReceita[0]?.receita_gerada || 1;
+                const pct = Math.round((p.receita_gerada / max) * 100);
+                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}º`;
+                return (
+                  <div key={p.produto_id} className="flex items-center gap-3">
+                    <span className="text-sm font-bold w-7 text-center">{medal}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm font-medium text-[#3E2723] truncate">{p.produto_nome}</span>
+                        <span className="text-sm font-bold text-green-700 ml-2 flex-shrink-0">
+                          {formatCurrency(p.receita_gerada)}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-[#F5E6D3] rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${pct}%`, backgroundColor: '#2F855A' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
