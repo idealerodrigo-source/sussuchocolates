@@ -170,4 +170,8 @@ export const empresaAPI = {
   removerLogo: () => api.delete('/configuracoes/empresa/logo'),
 };
 
+export const backupAPI = {
+  exportar: () => api.get('/configuracoes/backup/exportar', { responseType: 'blob' }),
+};
+
 export default api;

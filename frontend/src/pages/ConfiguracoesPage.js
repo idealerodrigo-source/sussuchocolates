@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { usuariosAPI, empresaAPI } from '../services/api';
+import { usuariosAPI, empresaAPI, backupAPI } from '../services/api';
 import { formatDateTime } from '../utils/formatters';
 import { 
   Users, Buildings, Image, Plus, Trash, PencilSimple, 
-  Eye, EyeSlash, ShieldCheck, Upload, X 
+  Eye, EyeSlash, ShieldCheck, Upload, X, DownloadSimple, Database, Warning
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
@@ -37,6 +37,9 @@ export default function ConfiguracoesPage() {
   const [empresaForm, setEmpresaForm] = useState({});
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
+  // Estados para Backup
+  const [exportando, setExportando] = useState(false);
+
   useEffect(() => {
     if (activeTab === 'usuarios') {
       fetchUsuarios();
@@ -44,6 +47,28 @@ export default function ConfiguracoesPage() {
       fetchEmpresa();
     }
   }, [activeTab]);
+
+  const handleExportarBackup = async () => {
+    setExportando(true);
+    try {
+      const response = await backupAPI.exportar();
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      const cd = response.headers['content-disposition'] || '';
+      const match = cd.match(/filename="?([^"]+)"?/);
+      link.setAttribute('download', match ? match[1] : 'sussu_backup.json');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Backup exportado com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao exportar backup');
+    } finally {
+      setExportando(false);
+    }
+  };
 
   const fetchUsuarios = async () => {
     try {
@@ -246,6 +271,17 @@ export default function ConfiguracoesPage() {
         >
           <Image size={20} weight="bold" />
           Logo
+        </button>
+        <button
+          onClick={() => setActiveTab('backup')}
+          className={`px-6 py-3 font-sans font-medium transition-colors flex items-center gap-2 ${
+            activeTab === 'backup'
+              ? 'text-[#6B4423] border-b-2 border-[#6B4423]'
+              : 'text-[#705A4D] hover:text-[#6B4423]'
+          }`}
+        >
+          <Database size={20} weight="bold" />
+          Backup
         </button>
       </div>
 
@@ -711,6 +747,49 @@ export default function ConfiguracoesPage() {
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Tab: Backup */}
+      {activeTab === 'backup' && (
+        <div className="max-w-2xl">
+          <p className="text-[#705A4D] mb-6">Exporte todos os dados do sistema para um arquivo de backup. Recomendado fazer periodicamente.</p>
+
+          {/* Card de exportação */}
+          <div className="bg-[#FFFDF8] border border-[#8B5A3C]/20 rounded-xl p-6 shadow-sm mb-6">
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-lg bg-green-100 text-green-700 flex-shrink-0">
+                <Database size={28} weight="bold" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-serif font-semibold text-[#3E2723] mb-1">Exportar Backup Completo</h3>
+                <p className="text-sm text-[#705A4D] mb-4">
+                  Gera um arquivo <strong>.json</strong> com todos os dados: clientes, produtos, pedidos, vendas, compras e estoque.
+                  O arquivo pode ser usado para restaurar o sistema em caso de necessidade.
+                </p>
+                <Button
+                  onClick={handleExportarBackup}
+                  disabled={exportando}
+                  className="bg-[#6B4423] text-[#F5E6D3] hover:bg-[#8B5A3C]"
+                >
+                  <DownloadSimple size={18} weight="bold" className="mr-2" />
+                  {exportando ? 'Exportando...' : 'Exportar Backup Agora'}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Aviso */}
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+            <Warning size={20} weight="bold" className="text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800 mb-1">Boas práticas de backup</p>
+              <ul className="text-sm text-amber-700 space-y-1 list-disc list-inside">
+                <li>Faça backup ao menos uma vez por semana</li>
+                <li>Guarde o arquivo em local seguro (nuvem, HD externo)</li>
+                <li>O arquivo contém dados sensíveis — não compartilhe</li>
+              </ul>
             </div>
           </div>
         </div>

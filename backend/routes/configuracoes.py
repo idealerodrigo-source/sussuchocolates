@@ -230,3 +230,53 @@ async def remover_logo(current_user: dict = Depends(get_current_user)):
     await db.empresa.update_one({}, {"$set": {"logo": None}})
     
     return {"message": "Logo removido com sucesso"}
+
+
+# ===== BACKUP / EXPORTAÇÃO =====
+from fastapi.responses import StreamingResponse
+import json
+import io
+
+@router.get("/backup/exportar")
+async def exportar_backup(current_user: dict = Depends(get_current_user)):
+    """Exporta todos os dados do sistema em JSON para backup"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Apenas administradores podem exportar dados")
+
+    import asyncio
+    (clientes, produtos, pedidos, vendas, compras, estoque) = await asyncio.gather(
+        db.clientes.find({}, {"_id": 0}).to_list(100000),
+        db.produtos.find({}, {"_id": 0}).to_list(100000),
+        db.pedidos.find({}, {"_id": 0}).to_list(100000),
+        db.vendas.find({}, {"_id": 0}).to_list(100000),
+        db.compras.find({}, {"_id": 0}).to_list(100000),
+        db.estoque.find({}, {"_id": 0}).to_list(100000),
+    )
+
+    def converter(obj):
+        from datetime import datetime, date
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        raise TypeError(f"Tipo não serializável: {type(obj)}")
+
+    payload = {
+        "versao": "1.0",
+        "data_exportacao": __import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat(),
+        "clientes": clientes,
+        "produtos": produtos,
+        "pedidos": pedidos,
+        "vendas": vendas,
+        "compras": compras,
+        "estoque": estoque,
+    }
+
+    conteudo = json.dumps(payload, ensure_ascii=False, indent=2, default=converter)
+    arquivo = io.BytesIO(conteudo.encode("utf-8"))
+    data_hoje = __import__('datetime').datetime.now().strftime("%Y%m%d_%H%M")
+    nome_arquivo = f"sussu_backup_{data_hoje}.json"
+
+    return StreamingResponse(
+        arquivo,
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{nome_arquivo}"'}
+    )
