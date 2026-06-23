@@ -44,6 +44,37 @@ async def obter_cliente(cliente_id: str, current_user: dict = Depends(get_curren
     return cliente
 
 
+@router.get("/{cliente_id}/historico")
+async def historico_cliente(cliente_id: str, current_user: dict = Depends(get_current_user)):
+    """Retorna pedidos, vendas e totais de um cliente"""
+    import asyncio
+    cliente, pedidos, vendas = await asyncio.gather(
+        db.clientes.find_one({"id": cliente_id}, {"_id": 0}),
+        db.pedidos.find({"cliente_id": cliente_id}, {"_id": 0}).sort("data_pedido", -1).to_list(500),
+        db.vendas.find({"cliente_id": cliente_id, "status_venda": {"$ne": "cancelada"}}, {"_id": 0}).sort("data_venda", -1).to_list(500),
+    )
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+
+    total_gasto = sum(v.get("valor_total", 0) for v in vendas)
+    pendente = sum(
+        v.get("valor_pendente") or v.get("valor_total", 0)
+        for v in vendas if v.get("status_pagamento") == "pendente"
+    )
+
+    return {
+        "cliente": cliente,
+        "pedidos": pedidos,
+        "vendas": vendas,
+        "resumo": {
+            "total_pedidos": len(pedidos),
+            "total_vendas": len(vendas),
+            "total_gasto": round(total_gasto, 2),
+            "valor_pendente": round(pendente, 2),
+        }
+    }
+
+
 @router.put("/{cliente_id}", response_model=Cliente)
 async def atualizar_cliente(cliente_id: str, cliente_data: ClienteCreate, current_user: dict = Depends(get_current_user)):
     existing = await db.clientes.find_one({"id": cliente_id}, {"_id": 0})

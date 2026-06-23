@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { clientesAPI } from '../services/api';
-import { formatCPF, formatCNPJ, formatPhone } from '../utils/formatters';
-import { Plus, Pencil, Trash, MagnifyingGlass } from '@phosphor-icons/react';
+import { formatCPF, formatCNPJ, formatPhone, formatCurrency } from '../utils/formatters';
+import { Plus, Pencil, Trash, MagnifyingGlass, Eye, ShoppingCart, Receipt, Phone, MapPin } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -13,7 +13,10 @@ export default function ClientesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCliente, setEditingCliente] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  
+  const [fichaOpen, setFichaOpen] = useState(false);
+  const [fichaCliente, setFichaCliente] = useState(null);
+  const [fichaLoading, setFichaLoading] = useState(false);
+  const [fichaTab, setFichaTab] = useState('pedidos');  
   // Filtrar clientes pelo termo de pesquisa
   const filteredClientes = useMemo(() => {
     if (!searchTerm.trim()) return clientes;
@@ -53,6 +56,22 @@ export default function ClientesPage() {
       toast.error('Erro ao carregar clientes');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleVerFicha = async (cliente) => {
+    setFichaOpen(true);
+    setFichaLoading(true);
+    setFichaCliente(null);
+    setFichaTab('pedidos');
+    try {
+      const res = await clientesAPI.historico(cliente.id);
+      setFichaCliente(res.data);
+    } catch {
+      toast.error('Erro ao carregar histórico do cliente');
+      setFichaOpen(false);
+    } finally {
+      setFichaLoading(false);
     }
   };
 
@@ -342,6 +361,13 @@ export default function ClientesPage() {
                     <td className="px-6 py-4 text-right">
                       <div className="flex gap-2 justify-end">
                         <button
+                          onClick={() => handleVerFicha(cliente)}
+                          className="p-2 text-[#6B4423] hover:bg-[#E8D5C4] rounded-lg transition-colors"
+                          title="Ver ficha"
+                        >
+                          <Eye size={18} />
+                        </button>
+                        <button
                           onClick={() => handleEdit(cliente)}
                           className="p-2 text-[#6B4423] hover:bg-[#E8D5C4] rounded-lg transition-colors"
                           data-testid={`btn-edit-${cliente.id}`}
@@ -364,6 +390,143 @@ export default function ClientesPage() {
           </table>
         </div>
       </div>
+      {/* Modal Ficha do Cliente */}
+      <Dialog open={fichaOpen} onOpenChange={setFichaOpen}>
+        <DialogContent className="bg-[#FFFDF8] max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-serif text-[#3E2723]">
+              Ficha do Cliente
+            </DialogTitle>
+          </DialogHeader>
+
+          {fichaLoading && (
+            <div className="py-12 text-center text-[#705A4D]">Carregando...</div>
+          )}
+
+          {!fichaLoading && fichaCliente && (
+            <div className="space-y-5">
+              {/* Dados do cliente */}
+              <div className="bg-[#F5E6D3]/40 rounded-xl p-4 grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <p className="text-xl font-serif font-bold text-[#3E2723]">{fichaCliente.cliente.nome}</p>
+                  {(fichaCliente.cliente.cpf || fichaCliente.cliente.cnpj) && (
+                    <p className="text-sm text-[#705A4D]">
+                      {fichaCliente.cliente.cpf ? formatCPF(fichaCliente.cliente.cpf) : formatCNPJ(fichaCliente.cliente.cnpj)}
+                    </p>
+                  )}
+                </div>
+                {fichaCliente.cliente.telefone && (
+                  <div className="flex items-center gap-2 text-sm text-[#3E2723]">
+                    <Phone size={16} className="text-[#6B4423]" />
+                    {formatPhone(fichaCliente.cliente.telefone)}
+                  </div>
+                )}
+                {fichaCliente.cliente.email && (
+                  <div className="text-sm text-[#3E2723]">📧 {fichaCliente.cliente.email}</div>
+                )}
+                {fichaCliente.cliente.cidade && (
+                  <div className="flex items-center gap-2 text-sm text-[#3E2723]">
+                    <MapPin size={16} className="text-[#6B4423]" />
+                    {fichaCliente.cliente.cidade}{fichaCliente.cliente.estado ? ` / ${fichaCliente.cliente.estado}` : ''}
+                  </div>
+                )}
+              </div>
+
+              {/* Cards resumo */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-3 text-center">
+                  <p className="text-xs uppercase font-semibold text-[#8B5A3C] mb-1">Pedidos</p>
+                  <p className="text-2xl font-serif font-bold text-[#3E2723]">{fichaCliente.resumo.total_pedidos}</p>
+                </div>
+                <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-3 text-center">
+                  <p className="text-xs uppercase font-semibold text-[#8B5A3C] mb-1">Vendas</p>
+                  <p className="text-2xl font-serif font-bold text-[#3E2723]">{fichaCliente.resumo.total_vendas}</p>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-center">
+                  <p className="text-xs uppercase font-semibold text-green-700 mb-1">Total Gasto</p>
+                  <p className="text-lg font-serif font-bold text-green-700">{formatCurrency(fichaCliente.resumo.total_gasto)}</p>
+                </div>
+                {fichaCliente.resumo.valor_pendente > 0 && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 text-center">
+                    <p className="text-xs uppercase font-semibold text-orange-600 mb-1">Pendente</p>
+                    <p className="text-lg font-serif font-bold text-orange-700">{formatCurrency(fichaCliente.resumo.valor_pendente)}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Abas pedidos / vendas */}
+              <div className="flex gap-1 border-b border-[#8B5A3C]/15">
+                <button
+                  onClick={() => setFichaTab('pedidos')}
+                  className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${fichaTab === 'pedidos' ? 'text-[#6B4423] border-b-2 border-[#6B4423]' : 'text-[#705A4D] hover:text-[#6B4423]'}`}
+                >
+                  <ShoppingCart size={16} />
+                  Pedidos ({fichaCliente.pedidos.length})
+                </button>
+                <button
+                  onClick={() => setFichaTab('vendas')}
+                  className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${fichaTab === 'vendas' ? 'text-[#6B4423] border-b-2 border-[#6B4423]' : 'text-[#705A4D] hover:text-[#6B4423]'}`}
+                >
+                  <Receipt size={16} />
+                  Vendas ({fichaCliente.vendas.length})
+                </button>
+              </div>
+
+              {/* Lista de pedidos */}
+              {fichaTab === 'pedidos' && (
+                fichaCliente.pedidos.length === 0 ? (
+                  <p className="text-center py-8 text-[#705A4D]">Nenhum pedido encontrado</p>
+                ) : (
+                  <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                    {fichaCliente.pedidos.map((p, i) => (
+                      <div key={i} className="flex items-center justify-between bg-[#FDFAF5] border border-[#8B5A3C]/10 rounded-lg px-4 py-3">
+                        <div>
+                          <p className="font-medium text-sm text-[#3E2723]">{p.numero}</p>
+                          <p className="text-xs text-[#705A4D]">{String(p.data_pedido).slice(0,10)}{p.data_entrega ? ` · Entrega: ${String(p.data_entrega).slice(0,10)}` : ''}</p>
+                          <p className="text-xs text-[#705A4D]">{(p.items||[]).length} item(ns)</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-sm text-[#6B4423]">{formatCurrency(p.valor_total)}</p>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                            p.status === 'entregue' ? 'bg-green-100 text-green-700' :
+                            p.status === 'cancelado' ? 'bg-red-100 text-red-600' :
+                            p.status === 'concluido' ? 'bg-blue-100 text-blue-700' :
+                            'bg-yellow-100 text-yellow-700'
+                          }`}>{p.status?.replace('_', ' ')}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              )}
+
+              {/* Lista de vendas */}
+              {fichaTab === 'vendas' && (
+                fichaCliente.vendas.length === 0 ? (
+                  <p className="text-center py-8 text-[#705A4D]">Nenhuma venda encontrada</p>
+                ) : (
+                  <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                    {fichaCliente.vendas.map((v, i) => (
+                      <div key={i} className="flex items-center justify-between bg-[#FDFAF5] border border-[#8B5A3C]/10 rounded-lg px-4 py-3">
+                        <div>
+                          <p className="font-medium text-sm text-[#3E2723]">{String(v.data_venda).slice(0,10)}</p>
+                          <p className="text-xs text-[#705A4D]">{v.forma_pagamento || '—'} · {(v.items||[]).length} item(ns)</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-sm text-[#6B4423]">{formatCurrency(v.valor_total)}</p>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                            v.status_pagamento === 'pago' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                          }`}>{v.status_pagamento === 'pago' ? 'Pago' : 'A receber'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

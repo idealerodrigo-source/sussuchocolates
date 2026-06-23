@@ -23,6 +23,7 @@ export const clientesAPI = {
   criar: (data) => api.post('/clientes', data),
   atualizar: (id, data) => api.put(`/clientes/${id}`, data),
   deletar: (id) => api.delete(`/clientes/${id}`),
+  historico: (id) => api.get(`/clientes/${id}/historico`),
 };
 
 export const produtosAPI = {
