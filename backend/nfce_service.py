@@ -246,7 +246,7 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
         # === EMITENTE ===
         emitente = Emitente()
         emitente.cnpj = CNPJ_EMITENTE
-        emitente.ie = IE_EMITENTE
+        emitente.inscricao_estadual = IE_EMITENTE
         emitente.razao_social = "09.328.682 SUZETE CANDIDO XAVIER"
         emitente.nome_fantasia = "Sussu Chocolates"
         emitente.endereco_logradouro = "Rua Quintino Bocaiuva"
