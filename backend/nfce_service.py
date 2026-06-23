@@ -228,14 +228,18 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
         from pynfe.processamento.serializacao import SerializacaoXML
         from pynfe.processamento.assinatura import AssinaturaA1
         from pynfe.processamento.comunicacao import ComunicacaoSefaz
-        from pynfe.utils.flags import (
-            MODELO_NFCE, TIPO_DOCUMENTO_SAIDA, TIPO_IMPRESSAO_DANFE_NFCE,
-            FORMA_EMISSAO_NORMAL, FINALIDADE_EMISSAO_NORMAL,
-            CLIENTE_FINAL_SIM, INDICADOR_PRESENCIAL_OPERACAO_PRESENCIAL,
-            INDICADOR_DESTINO_OPERACAO_INTERNA,
-        )
         from lxml import etree
         import hashlib, hmac
+
+        # Constantes NFC-e (valores numéricos diretos — independente da versão do pynfe)
+        MODELO_NFCE = 65
+        TIPO_SAIDA = 1
+        TIPO_IMPRESSAO_NFCE = 4
+        FORMA_EMISSAO_NORMAL = 1
+        FINALIDADE_NORMAL = 1
+        CLIENTE_FINAL = 1
+        PRESENCIAL = 1
+        DESTINO_INTERNO = 1
 
         fonte = _fonte_dados
 
@@ -290,13 +294,13 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
         nf.data_emissao = datetime.now(timezone.utc)
         nf.data_saida_entrada = datetime.now(timezone.utc)
         nf.natureza_operacao = "VENDA AO CONSUMIDOR"
-        nf.tipo_documento = TIPO_DOCUMENTO_SAIDA       # 1 = Saída
-        nf.tipo_impressao_danfe = TIPO_IMPRESSAO_DANFE_NFCE  # 4
-        nf.forma_emissao = FORMA_EMISSAO_NORMAL        # 1
-        nf.finalidade_emissao = FINALIDADE_EMISSAO_NORMAL    # 1
-        nf.cliente_final = CLIENTE_FINAL_SIM           # 1
-        nf.indicador_presencial = INDICADOR_PRESENCIAL_OPERACAO_PRESENCIAL  # 1
-        nf.indicador_destino = INDICADOR_DESTINO_OPERACAO_INTERNA  # 1
+        nf.tipo_documento = 1    # 1 = Saída
+        nf.tipo_impressao_danfe = 4  # 4 = NFC-e
+        nf.forma_emissao = 1     # 1 = Normal
+        nf.finalidade_emissao = 1  # 1 = Normal
+        nf.cliente_final = 1     # 1 = Sim
+        nf.indicador_presencial = 1  # 1 = Presencial
+        nf.indicador_destino = 1    # 1 = Operação interna
         nf.uf = UF
         nf.municipio = COD_IBGE_MUNICIPIO
         nf.processo_emissao = "0"
