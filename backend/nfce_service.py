@@ -372,39 +372,39 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
         con = ComunicacaoSefaz(UF, CERT_PATH, CERT_SENHA, HOMOLOGACAO)
         resposta = con.autorizacao(modelo="nfce", nota_fiscal=xml_assinado, ind_sinc=1)
 
-        # === PROCESSAR RESPOSTA ===
-        root = etree.fromstring(resposta.content)
+        # === PROCESSAR RESPOSTA (retorna tupla: 0=sucesso, 1=erro) ===
         ns = {'nfe': 'http://www.portalfiscal.inf.br/nfe'}
+        status_ret = resposta[0]
 
-        c_stat = root.find('.//nfe:cStat', ns)
-        x_motivo = root.find('.//nfe:xMotivo', ns)
-        n_prot = root.find('.//nfe:nProt', ns)
-        dh_recbto = root.find('.//nfe:dhRecbto', ns)
-        ch_nfe = root.find('.//nfe:chNFe', ns)
+        if status_ret == 0:
+            # Sucesso — resposta[1] é o XML nfeProc autorizado (lxml Element)
+            nfe_proc = resposta[1]
+            xml_final = etree.tostring(nfe_proc, encoding='unicode')
 
-        codigo = c_stat.text if c_stat is not None else "000"
-        motivo = x_motivo.text if x_motivo is not None else "Sem resposta"
+            # Extrair dados do protNFe
+            inf_prot = nfe_proc.find('.//nfe:infProt', ns)
+            c_stat = inf_prot.find('nfe:cStat', ns) if inf_prot is not None else None
+            x_motivo = inf_prot.find('nfe:xMotivo', ns) if inf_prot is not None else None
+            n_prot = inf_prot.find('nfe:nProt', ns) if inf_prot is not None else None
+            dh_recbto = inf_prot.find('nfe:dhRecbto', ns) if inf_prot is not None else None
+            ch_nfe = inf_prot.find('nfe:chNFe', ns) if inf_prot is not None else None
 
-        # Códigos de autorização: 100 (autorizado) ou 150 (autorizado fora prazo)
-        if codigo in ("100", "150"):
+            codigo = c_stat.text if c_stat is not None else "100"
+            motivo = x_motivo.text if x_motivo is not None else "Autorizada"
             chave = ch_nfe.text if ch_nfe is not None else ""
             protocolo = n_prot.text if n_prot is not None else ""
             data_aut = dh_recbto.text if dh_recbto is not None else ""
 
             # Gerar URL do QR Code SEFAZ-PR
             ambiente = "2" if HOMOLOGACAO else "1"
-            csc_hex = CSC_TOKEN.upper()
             qr_sem_hash = f"{chave}|{ambiente}|{CSC_ID}|"
-            hash_csc = hashlib.sha1((qr_sem_hash + csc_hex).encode()).hexdigest().upper()
+            hash_csc = hashlib.sha1((qr_sem_hash + CSC_TOKEN.upper()).encode()).hexdigest().upper()
             base_qr = (
                 "https://homologacao.nfce.fazenda.pr.gov.br/nfce/qrcode"
                 if HOMOLOGACAO
                 else "https://nfce.fazenda.pr.gov.br/nfce/qrcode"
             )
             qrcode_url = f"{base_qr}?p={chave}|{ambiente}|{CSC_ID}|{hash_csc}"
-
-            # Gravar XML autorizado
-            xml_final = etree.tostring(root, encoding='unicode')
 
             return RespostaNFCe(
                 sucesso=True,
@@ -417,6 +417,17 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
                 xml_autorizado=xml_final,
             )
         else:
+            # Erro — resposta[1] é o objeto requests.Response com detalhes do erro
+            retorno_erro = resposta[1]
+            try:
+                root_err = etree.fromstring(retorno_erro.content)
+                c_stat = root_err.find('.//nfe:cStat', ns)
+                x_motivo = root_err.find('.//nfe:xMotivo', ns)
+                codigo = c_stat.text if c_stat is not None else "????"
+                motivo = x_motivo.text if x_motivo is not None else retorno_erro.text[:300]
+            except Exception:
+                codigo = str(retorno_erro.status_code) if hasattr(retorno_erro, 'status_code') else "????"
+                motivo = str(retorno_erro)[:300]
             return RespostaNFCe(
                 sucesso=False,
                 mensagem=f"SEFAZ rejeitou: [{codigo}] {motivo}",
