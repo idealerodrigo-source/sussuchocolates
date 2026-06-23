@@ -258,17 +258,21 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
         emitente.endereco_cep = "86400000"
         emitente.endereco_pais = "1058"
         emitente.endereco_telefone = "43999676206"
-        emitente.codigo_regime_tributario = "1"  # Simples Nacional
+        emitente.codigo_de_regime_tributario = "1"  # Simples Nacional
 
         # === DESTINATÁRIO (opcional em NFC-e) ===
         cliente = Cliente()
         if dados.cliente and dados.cliente.cpf:
-            cliente.cpf = _so_numeros(dados.cliente.cpf)
-            cliente.nome_razao_social = dados.cliente.nome or "CONSUMIDOR"
+            cliente.tipo_documento = "CPF"
+            cliente.numero_documento = _so_numeros(dados.cliente.cpf)
+            cliente.razao_social = dados.cliente.nome or "CONSUMIDOR"
         else:
-            cliente.nome_razao_social = "CONSUMIDOR"
-        cliente.ie = "ISENTO"
-        cliente.indicador_ie = "9"  # 9 = Não Contribuinte
+            cliente.tipo_documento = "CPF"
+            cliente.numero_documento = "00000000000"  # CPF fictício para consumidor anônimo
+            cliente.razao_social = "CONSUMIDOR"
+        cliente.inscricao_estadual = "ISENTO"
+        cliente.isento_icms = True
+        cliente.indicador_ie = 9  # 9 = Não Contribuinte
         cliente.email = ""
         cliente.endereco_logradouro = "NAO INFORMADO"
         cliente.endereco_numero = "0"
