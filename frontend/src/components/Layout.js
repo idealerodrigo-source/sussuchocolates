@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { vendasAPI } from '../services/api';
+import { vendasAPI, estoqueAPI } from '../services/api';
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEmpresa } from '../contexts/EmpresaContext';
@@ -24,22 +24,27 @@ import {
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [vendasVencidas, setVendasVencidas] = useState(0);
+  const [alertasEstoque, setAlertasEstoque] = useState(0);
 
   useEffect(() => {
     const carregar = async () => {
       try {
         const token = localStorage.getItem('token');
         if (!token) return;
-        const res = await vendasAPI.listar();
+        const [vendasRes, estoqueres] = await Promise.all([
+          vendasAPI.listar(),
+          estoqueAPI.alertas(),
+        ]);
         const hoje = new Date();
         hoje.setHours(0,0,0,0);
-        const vencidas = res.data.filter(v =>
+        const vencidas = vendasRes.data.filter(v =>
           v.status_pagamento === 'pendente' &&
           v.status_venda !== 'cancelada' &&
           v.data_previsao_pagamento &&
           new Date(v.data_previsao_pagamento) < hoje
         );
         setVendasVencidas(vencidas.length);
+        setAlertasEstoque(estoqueres.data?.criticos || 0);
       } catch (e) {}
     };
     carregar();
@@ -113,6 +118,9 @@ export default function Layout() {
                 {sidebarOpen && <span className="font-medium">{item.label}</span>}
                 {item.path === '/vendas' && vendasVencidas > 0 && (
                   <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{vendasVencidas}</span>
+                )}
+                {item.path === '/estoque' && alertasEstoque > 0 && (
+                  <span className="ml-auto bg-orange-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{alertasEstoque}</span>
                 )}
               </Link>
             );

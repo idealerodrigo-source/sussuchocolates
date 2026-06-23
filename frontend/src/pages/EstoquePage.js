@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { estoqueAPI, produtosAPI } from '../services/api';
 import { formatDateTime } from '../utils/formatters';
-import { Plus, TrendUp, TrendDown, ArrowsClockwise, MapPin, MagnifyingGlass } from '@phosphor-icons/react';
+import { Plus, TrendUp, TrendDown, ArrowsClockwise, MapPin, MagnifyingGlass, Warning } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -11,6 +11,7 @@ export default function EstoquePage() {
   const [movimentos, setMovimentos] = useState([]);
   const [saldos, setSaldos] = useState([]);
   const [produtos, setProdutos] = useState([]);
+  const [alertas, setAlertas] = useState(null);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('saldo');
@@ -55,14 +56,16 @@ export default function EstoquePage() {
 
   const fetchData = async () => {
     try {
-      const [movimentosRes, saldosRes, produtosRes] = await Promise.all([
+      const [movimentosRes, saldosRes, produtosRes, alertasRes] = await Promise.all([
         estoqueAPI.listar(),
         estoqueAPI.saldo(),
         produtosAPI.listar(),
+        estoqueAPI.alertas(),
       ]);
       setMovimentos(movimentosRes.data);
       setSaldos(saldosRes.data);
       setProdutos(produtosRes.data);
+      setAlertas(alertasRes.data);
     } catch (error) {
       toast.error('Erro ao carregar dados');
     } finally {
@@ -117,6 +120,38 @@ export default function EstoquePage() {
           <p className="text-base font-sans text-[#705A4D]">Gerencie o estoque de produtos</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+
+      {/* Painel de alertas de estoque */}
+      {alertas && alertas.total_alertas > 0 && (
+        <div className="mb-6 bg-orange-50 border border-orange-200 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Warning size={20} weight="bold" className="text-orange-600" />
+            <h3 className="font-semibold text-orange-800">
+              {alertas.criticos > 0
+                ? `⚠️ ${alertas.criticos} produto(s) com estoque zerado`
+                : `📦 ${alertas.total_alertas} produto(s) abaixo do mínimo`}
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {alertas.alertas.slice(0, 6).map((a, i) => (
+              <div key={i} className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm ${
+                a.status === 'critico' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'
+              }`}>
+                <span className="font-medium truncate mr-2">{a.produto_nome}</span>
+                <span className="font-bold flex-shrink-0">
+                  {a.status === 'critico' ? '🔴 Zerado' : `${a.saldo_atual}/${a.estoque_minimo}`}
+                </span>
+              </div>
+            ))}
+            {alertas.total_alertas > 6 && (
+              <div className="px-3 py-2 text-sm text-orange-600 font-medium">
+                +{alertas.total_alertas - 6} mais em Relatórios → Estoque
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
           <DialogTrigger asChild>
             <Button data-testid="btn-add-movimento" className="bg-[#6B4423] text-[#F5E6D3] hover:bg-[#8B5A3C]">
               <Plus size={20} weight="bold" className="mr-2" />

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { dashboardAPI } from '../services/api';
+import { dashboardAPI, estoqueAPI } from '../services/api';
 import { formatCurrency } from '../utils/formatters';
 import {
   Users,
@@ -40,6 +40,7 @@ function SkeletonWide() {
 
 export default function DashboardPage() {
   const [stats, setStats] = useState(null);
+  const [alertasEstoque, setAlertasEstoque] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -48,8 +49,12 @@ export default function DashboardPage() {
 
   const fetchStats = async () => {
     try {
-      const response = await dashboardAPI.stats();
-      setStats(response.data);
+      const [statsRes, alertasRes] = await Promise.all([
+        dashboardAPI.stats(),
+        estoqueAPI.alertas(),
+      ]);
+      setStats(statsRes.data);
+      setAlertasEstoque(alertasRes.data);
     } catch (error) {
       toast.error('Erro ao carregar estatísticas');
     } finally {
@@ -145,6 +150,19 @@ export default function DashboardPage() {
                 <p className="text-sm text-red-600 mt-1">Com prazo de pagamento ultrapassado</p>
               </div>
               <div className="p-4 rounded-xl bg-red-100 text-red-600 text-4xl">⚠️</div>
+            </div>
+          )}
+
+          {(alertasEstoque?.criticos || 0) > 0 && (
+            <div className="bg-orange-50 border border-orange-300 rounded-xl p-6 shadow-sm mb-6 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-sans uppercase tracking-wider font-semibold text-orange-600 mb-1">Estoque Crítico</p>
+                <p className="text-3xl font-serif font-bold text-orange-700">{alertasEstoque.criticos} produto(s) zerado(s)</p>
+                {(alertasEstoque?.baixos || 0) > 0 && (
+                  <p className="text-sm text-orange-600 mt-1">+ {alertasEstoque.baixos} produto(s) abaixo do mínimo</p>
+                )}
+              </div>
+              <div className="p-4 rounded-xl bg-orange-100 text-orange-600 text-4xl">📦</div>
             </div>
           )}
         </>
