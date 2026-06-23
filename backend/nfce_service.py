@@ -278,7 +278,7 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
         cliente.endereco_pais = "1058"
 
         # === NÚMERO DA NFC-e ===
-        if db:
+        if db is not None:
             numero_nf = await _proximo_numero_nfce(db)
         else:
             numero_nf = int(datetime.now().strftime('%H%M%S'))
