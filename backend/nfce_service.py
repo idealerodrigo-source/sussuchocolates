@@ -281,9 +281,8 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
             cliente.endereco_cep = "86400000"
             cliente.endereco_pais = "1058"
             cliente.endereco_telefone = ""
-            nf.cliente = cliente
         else:
-            nf.cliente = None  # sem identificação — dest omitido na NFC-e
+            cliente = None  # sem identificação — dest omitido na NFC-e
 
         # === NÚMERO DA NFC-e ===
         if db is not None:
@@ -294,6 +293,7 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
         # === NOTA FISCAL ===
         nf = NotaFiscal()
         nf.emitente = emitente
+        nf.cliente = cliente  # None = sem dest (consumidor anônimo)
         nf.fonte_dados = fonte
         nf.modelo = MODELO_NFCE          # 65
         nf.serie = SERIE_NFCE
