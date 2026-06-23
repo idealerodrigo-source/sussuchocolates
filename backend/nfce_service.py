@@ -316,6 +316,14 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
         nf.transporte_modalidade_frete = 9  # 9 = Sem frete (obrigatório NFC-e)
         nf.informacoes_complementares = "Documento emitido por ME ou EPP optante pelo Simples Nacional"
 
+        # === RESPONSÁVEL TÉCNICO (obrigatório NT 2018/003) ===
+        nf.adicionar_responsavel_tecnico(
+            cnpj=CNPJ_EMITENTE,
+            contato="Sussu Chocolates",
+            email="sussuchocolates@hotmail.com",
+            fone="43999676206",
+        )
+
         # === ITENS ===
         for i, item in enumerate(dados.items, 1):
             # Em homologação o 1º item deve ter descrição específica (obrigação SEFAZ)
