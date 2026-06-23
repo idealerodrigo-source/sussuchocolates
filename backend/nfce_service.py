@@ -396,6 +396,8 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
                 ind_pag="1",  # 1 = A prazo
             )
 
+        from pynfe.processamento.serializacao import SerializacaoXML, SerializacaoQrcode
+
         # === SERIALIZAR ===
         serializer = SerializacaoXML(fonte, homologacao=HOMOLOGACAO)
         xml_str = serializer.exportar(nf, valor_troco=float(valor_troco_total))
@@ -404,10 +406,11 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
         assinatura = AssinaturaA1(CERT_PATH, CERT_SENHA)
         xml_assinado = assinatura.assinar(xml_str)
 
-        # === GERAR QR CODE (obrigatório NFC-e — inserido no XML assinado) ===
+        # === GERAR QR CODE (obrigatório NFC-e) ===
         csc_id = os.environ.get('CSC_ID', CSC_ID)
         csc_token = os.environ.get('CSC_TOKEN', CSC_TOKEN)
-        xml_com_qrcode = serializer.gerar_qrcode(csc_id, csc_token, xml_assinado)
+        qrcode_serializer = SerializacaoQrcode()
+        xml_com_qrcode = qrcode_serializer.gerar_qrcode(csc_id, csc_token, xml_assinado)
 
         # === TRANSMITIR ===
         con = ComunicacaoSefaz(UF, CERT_PATH, CERT_SENHA, HOMOLOGACAO)
