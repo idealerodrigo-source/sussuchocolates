@@ -19,12 +19,32 @@ import {
   Gear,
   WifiSlash,
   CalendarBlank,
+  X,
 } from '@phosphor-icons/react';
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
   const [vendasVencidas, setVendasVencidas] = useState(0);
   const [alertasEstoque, setAlertasEstoque] = useState(0);
+
+  // Detectar mobile e ajustar sidebar
+  useEffect(() => {
+    const check = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) setSidebarOpen(false);
+    };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  // Fechar sidebar ao navegar no mobile
+  const location = useLocation();
+  useEffect(() => {
+    if (isMobile) setSidebarOpen(false);
+  }, [location.pathname, isMobile]);
 
   useEffect(() => {
     const carregar = async () => {
@@ -36,7 +56,7 @@ export default function Layout() {
           estoqueAPI.alertas(),
         ]);
         const hoje = new Date();
-        hoje.setHours(0,0,0,0);
+        hoje.setHours(0, 0, 0, 0);
         const vencidas = vendasRes.data.filter(v =>
           v.status_pagamento === 'pendente' &&
           v.status_venda !== 'cancelada' &&
@@ -51,7 +71,7 @@ export default function Layout() {
     const interval = setInterval(carregar, 60000);
     return () => clearInterval(interval);
   }, []);
-  const location = useLocation();
+
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { logo } = useEmpresa();
@@ -80,109 +100,133 @@ export default function Layout() {
 
   const isActive = (path) => location.pathname === path;
 
+  const sidebarContent = (
+    <>
+      <div className="p-4 border-b border-[#6B4423] flex items-center justify-between">
+        {logo && (
+          <img src={logo} alt="Sussu Chocolates" className="h-14 max-w-[160px] object-contain" />
+        )}
+        {isMobile && (
+          <button onClick={() => setSidebarOpen(false)} className="text-[#E8D5C4] hover:text-white p-1">
+            <X size={22} weight="bold" />
+          </button>
+        )}
+      </div>
+
+      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          const active = isActive(item.path);
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              data-testid={`nav-${item.label.toLowerCase()}`}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg font-sans transition-colors ${
+                active ? 'bg-[#6B4423] text-[#F5E6D3]' : 'text-[#E8D5C4] hover:bg-[#6B4423]/50'
+              }`}
+            >
+              <Icon size={22} weight={active ? 'fill' : 'regular'} className="flex-shrink-0" />
+              <span className="font-medium text-sm truncate">{item.label}</span>
+              {item.path === '/vendas' && vendasVencidas > 0 && (
+                <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">{vendasVencidas}</span>
+              )}
+              {item.path === '/estoque' && alertasEstoque > 0 && (
+                <span className="ml-auto bg-orange-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">{alertasEstoque}</span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="p-3 border-t border-[#6B4423]">
+        <div className="mb-2 px-3">
+          <p className="text-sm font-medium text-[#F5E6D3] truncate">{user?.nome}</p>
+          <p className="text-xs text-[#9A8476] truncate">{user?.email}</p>
+        </div>
+        <button
+          onClick={handleLogout}
+          data-testid="btn-logout"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-[#E8D5C4] hover:bg-[#6B4423]/50 font-sans transition-colors"
+        >
+          <SignOut size={22} />
+          <span className="font-medium text-sm">Sair</span>
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <div className="min-h-screen flex bg-[#F5E6D3]">
-      <aside
-        className={`bg-[#3E2723] text-[#F5E6D3] border-r border-[#6B4423] flex flex-col transition-all duration-300 ${
-          sidebarOpen ? 'w-64' : 'w-20'
-        }`}
-      >
-        <div className="p-6 border-b border-[#6B4423]">
-          <div className="flex items-center justify-between">
-            {sidebarOpen && (
-              <img
-                src={logo}
-                alt="Sussu Chocolates"
-                className="h-16 max-w-[180px] object-contain"
-              />
-            )}
-          </div>
-        </div>
 
-        <nav className="flex-1 p-4 space-y-1">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.path);
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                data-testid={`nav-${item.label.toLowerCase()}`}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg font-sans transition-colors ${
-                  active
-                    ? 'bg-[#6B4423] text-[#F5E6D3]'
-                    : 'text-[#E8D5C4] hover:bg-[#6B4423]/50'
-                }`}
-              >
-                <Icon size={24} weight={active ? 'fill' : 'regular'} />
-                {sidebarOpen && <span className="font-medium">{item.label}</span>}
-                {item.path === '/vendas' && vendasVencidas > 0 && (
-                  <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{vendasVencidas}</span>
-                )}
-                {item.path === '/estoque' && alertasEstoque > 0 && (
-                  <span className="ml-auto bg-orange-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{alertasEstoque}</span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="p-4 border-t border-[#6B4423]">
-          <div className="mb-3 px-4">
-            {sidebarOpen && (
-              <div>
-                <p className="text-sm font-medium text-[#F5E6D3]">{user?.nome}</p>
-                <p className="text-xs text-[#9A8476]">{user?.email}</p>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={handleLogout}
-            data-testid="btn-logout"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg w-full text-[#E8D5C4] hover:bg-[#6B4423]/50 font-sans transition-colors"
+      {/* === MOBILE: overlay + drawer === */}
+      {isMobile && (
+        <>
+          {/* Backdrop escurecido */}
+          {sidebarOpen && (
+            <div
+              className="fixed inset-0 bg-black/50 z-40"
+              onClick={() => setSidebarOpen(false)}
+            />
+          )}
+          {/* Drawer deslizante */}
+          <aside
+            className={`fixed top-0 left-0 h-full w-72 bg-[#3E2723] text-[#F5E6D3] flex flex-col z-50 transition-transform duration-300 ${
+              sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}
           >
-            <SignOut size={24} />
-            {sidebarOpen && <span className="font-medium">Sair</span>}
-          </button>
-        </div>
-      </aside>
+            {sidebarContent}
+          </aside>
+        </>
+      )}
 
-      <main className="flex-1 overflow-auto">
-        {/* Banner de offline */}
+      {/* === DESKTOP: sidebar fixa === */}
+      {!isMobile && (
+        <aside
+          className={`bg-[#3E2723] text-[#F5E6D3] border-r border-[#6B4423] flex flex-col transition-all duration-300 flex-shrink-0 ${
+            sidebarOpen ? 'w-56' : 'w-0 overflow-hidden'
+          }`}
+        >
+          {sidebarContent}
+        </aside>
+      )}
+
+      {/* === Conteúdo principal === */}
+      <main className="flex-1 overflow-auto min-w-0">
         {!isOnline && (
           <div className="bg-amber-500 text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-medium">
             <WifiSlash size={18} weight="bold" />
             Você está offline. Algumas funcionalidades podem estar indisponíveis.
           </div>
         )}
-        
-        <div className="sticky top-0 z-40 bg-[#F5E6D3]/80 backdrop-blur-xl border-b border-[#8B5A3C]/15 px-6 py-4">
+
+        <div className="sticky top-0 z-30 bg-[#F5E6D3]/90 backdrop-blur-xl border-b border-[#8B5A3C]/15 px-4 py-3">
           <div className="flex items-center justify-between">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="text-[#6B4423] hover:text-[#8B5A3C] transition-colors"
+              className="text-[#6B4423] hover:text-[#8B5A3C] transition-colors p-1"
             >
               <List size={24} weight="bold" />
             </button>
-            <div className="text-right">
-              <p className="text-sm font-medium text-[#3E2723] font-sans">
-                {new Date().toLocaleDateString('pt-BR', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </p>
-            </div>
+            <p className="text-xs font-medium text-[#705A4D] font-sans hidden sm:block">
+              {new Date().toLocaleDateString('pt-BR', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </p>
+            <p className="text-xs font-medium text-[#705A4D] font-sans sm:hidden">
+              {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+            </p>
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <Outlet />
         </div>
       </main>
-      
-      {/* Banner de instalação PWA */}
+
       <PWAInstallPrompt />
     </div>
   );
