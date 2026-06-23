@@ -370,7 +370,7 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
 
         # === TRANSMITIR ===
         con = ComunicacaoSefaz(UF, CERT_PATH, CERT_SENHA, HOMOLOGACAO)
-        resposta = con.autorizacao(modelo="nfce", lote=[xml_assinado])
+        resposta = con.autorizacao(modelo="nfce", nota_fiscal=xml_assinado, ind_sinc=1)
 
         # === PROCESSAR RESPOSTA ===
         root = etree.fromstring(resposta.content)
