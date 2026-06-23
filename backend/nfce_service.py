@@ -365,14 +365,27 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
 
         # === PAGAMENTOS ===
         valor_troco_total = Decimal("0.00")
+        total_pagamentos = Decimal("0.00")
         for pag in dados.pagamentos:
+            v = Decimal(str(round(pag.valor, 2)))
             nf.adicionar_pagamento(
                 t_pag=pag.forma,
-                v_pag=Decimal(str(round(pag.valor, 2))),
+                v_pag=v,
                 ind_pag="0",  # 0=à Vista
             )
             if pag.troco:
                 valor_troco_total += Decimal(str(round(pag.troco, 2)))
+            total_pagamentos += v
+
+        # Garantir que total de pagamentos == valor total da NF (obrigatório SEFAZ)
+        valor_nf = Decimal(str(round(dados.valor_total, 2)))
+        diff = valor_nf - total_pagamentos
+        if diff > Decimal("0.01"):
+            nf.adicionar_pagamento(
+                t_pag="99",   # 99 = Outros
+                v_pag=diff,
+                ind_pag="1",  # 1 = A prazo
+            )
 
         # === SERIALIZAR ===
         serializer = SerializacaoXML(fonte, homologacao=HOMOLOGACAO)
