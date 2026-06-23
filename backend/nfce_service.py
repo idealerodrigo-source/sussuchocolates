@@ -404,9 +404,14 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
         assinatura = AssinaturaA1(CERT_PATH, CERT_SENHA)
         xml_assinado = assinatura.assinar(xml_str)
 
+        # === GERAR QR CODE (obrigatório NFC-e — inserido no XML assinado) ===
+        csc_id = os.environ.get('CSC_ID', CSC_ID)
+        csc_token = os.environ.get('CSC_TOKEN', CSC_TOKEN)
+        xml_com_qrcode = serializer.gerar_qrcode(csc_id, csc_token, xml_assinado)
+
         # === TRANSMITIR ===
         con = ComunicacaoSefaz(UF, CERT_PATH, CERT_SENHA, HOMOLOGACAO)
-        resposta = con.autorizacao(modelo="nfce", nota_fiscal=xml_assinado, ind_sinc=1)
+        resposta = con.autorizacao(modelo="nfce", nota_fiscal=xml_com_qrcode, ind_sinc=1)
 
         # === PROCESSAR RESPOSTA (retorna tupla: 0=sucesso, 1=erro) ===
         ns = {'nfe': 'http://www.portalfiscal.inf.br/nfe'}
