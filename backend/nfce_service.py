@@ -23,7 +23,7 @@ HOMOLOGACAO = os.environ.get('NFCE_AMBIENTE', 'homologacao') == 'homologacao'
 UF = 'PR'
 COD_IBGE_MUNICIPIO = '4112207'  # Jacarezinho/PR
 NOME_MUNICIPIO = 'Jacarezinho'
-SERIE_NFCE = '001'
+SERIE_NFCE = '1'
 
 # Caminho do certificado — carregado de variável de ambiente (base64) ou arquivo
 _CERT_PATH_DEFAULT = os.path.join(os.path.dirname(__file__), 'certificates', 'certificado.pfx')
