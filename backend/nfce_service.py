@@ -312,7 +312,8 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
         nf.municipio = COD_IBGE_MUNICIPIO
         nf.processo_emissao = "0"
         nf.indicador_intermediador = "0"
-        nf.modalidade_frete = 9  # 9 = Sem frete (obrigatório para NFC-e)
+        nf.modalidade_frete = 9          # fallback
+        nf.transporte_modalidade_frete = 9  # 9 = Sem frete (obrigatório NFC-e)
         nf.informacoes_complementares = "Documento emitido por ME ou EPP optante pelo Simples Nacional"
 
         # === ITENS ===
