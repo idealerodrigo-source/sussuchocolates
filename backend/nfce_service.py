@@ -428,8 +428,10 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
             )
 
     except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
         logger.exception(f"Erro ao emitir NFC-e: {e}")
-        return RespostaNFCe(sucesso=False, mensagem=f"Erro interno: {str(e)}")
+        return RespostaNFCe(sucesso=False, mensagem=f"Erro interno: {str(e)} | {tb[-500:]}")
 
 
 async def cancelar_nfce(chave_acesso: str, justificativa: str, db=None) -> dict:
