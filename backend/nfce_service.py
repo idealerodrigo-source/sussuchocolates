@@ -350,16 +350,19 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
             )
 
         # === PAGAMENTOS ===
+        valor_troco_total = Decimal("0.00")
         for pag in dados.pagamentos:
             nf.adicionar_pagamento(
-                forma_pagamento=pag.forma,
-                valor=Decimal(str(round(pag.valor, 2))),
-                troco=Decimal(str(round(pag.troco, 2))) if pag.troco else Decimal("0.00"),
+                t_pag=pag.forma,
+                v_pag=Decimal(str(round(pag.valor, 2))),
+                ind_pag="0",  # 0=à Vista
             )
+            if pag.troco:
+                valor_troco_total += Decimal(str(round(pag.troco, 2)))
 
         # === SERIALIZAR ===
         serializer = SerializacaoXML(fonte, homologacao=HOMOLOGACAO)
-        xml_str = serializer.exportar(nf)
+        xml_str = serializer.exportar(nf, valor_troco=float(valor_troco_total))
 
         # === ASSINAR ===
         assinatura = AssinaturaA1(CERT_PATH, CERT_SENHA)
