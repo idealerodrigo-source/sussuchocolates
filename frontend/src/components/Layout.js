@@ -18,6 +18,7 @@ import {
   Truck,
   Gear,
   WifiSlash,
+  CalendarBlank,
 } from '@phosphor-icons/react';
 
 export default function Layout() {
@@ -56,6 +57,7 @@ export default function Layout() {
     { path: '/clientes', label: 'Clientes', icon: Users },
     { path: '/produtos', label: 'Produtos', icon: Package },
     { path: '/pedidos', label: 'Pedidos', icon: ShoppingCart },
+    { path: '/calendario', label: 'Calendário', icon: CalendarBlank },
     { path: '/producao', label: 'Produção', icon: Factory },
     { path: '/embalagem', label: 'Embalagem', icon: Archive },
     { path: '/estoque', label: 'Estoque', icon: List },
