@@ -1,242 +1,430 @@
 """
-Módulo de NFC-e (Nota Fiscal de Consumidor Eletrônica)
-Integração com SEFAZ-PR para emissão de cupons fiscais
+Módulo de NFC-e (Nota Fiscal de Consumidor Eletrônica) - Modelo 65
+Integração com SEFAZ-PR via pynfe
 """
 import os
 import logging
+import hashlib
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Optional, List
 from pydantic import BaseModel, Field
 import uuid
 
-# Configurações do certificado
-CERTIFICADO_PATH = os.path.join(os.path.dirname(__file__), 'certificates', 'certificado.pfx')
-CERTIFICADO_SENHA = os.environ.get('CERTIFICADO_SENHA', 'Aei#0493')
-
-# Configurações da NFC-e
-UF = 'PR'  # Paraná
-CNPJ_EMITENTE = '09328682000130'  # CNPJ da empresa
-CSC_ID = os.environ.get('CSC_ID', '')  # ID do CSC fornecido pela SEFAZ
-CSC_TOKEN = os.environ.get('CSC_TOKEN', '')  # Token do CSC
-
-# Ambiente: True = Homologação (testes), False = Produção
-HOMOLOGACAO = os.environ.get('NFCE_AMBIENTE', 'homologacao') == 'homologacao'
-
 logger = logging.getLogger(__name__)
 
+# ===== CONFIGURAÇÕES =====
+CERT_PATH = os.path.join(os.path.dirname(__file__), 'certificates', 'certificado.pfx')
+CERT_SENHA = os.environ.get('CERTIFICADO_SENHA', '')
+CSC_ID = os.environ.get('CSC_ID', '')
+CSC_TOKEN = os.environ.get('CSC_TOKEN', '')
+IE_EMITENTE = os.environ.get('IE_EMITENTE', '9042901730')
+CNPJ_EMITENTE = '09328682000130'
+HOMOLOGACAO = os.environ.get('NFCE_AMBIENTE', 'homologacao') == 'homologacao'
+UF = 'PR'
+COD_IBGE_MUNICIPIO = '4112207'  # Jacarezinho/PR
+NOME_MUNICIPIO = 'Jacarezinho'
+SERIE_NFCE = '001'
 
+
+# ===== MODELOS =====
 class ItemNFCe(BaseModel):
-    """Item da NFC-e"""
     codigo: str
     descricao: str
-    ncm: str = "00000000"
-    cfop: str = "5102"
+    ncm: str = "18069000"       # Chocolates e preparações alimentícias com cacau
+    cfop: str = "5102"          # Venda de mercadoria adquirida/recebida de terceiros
     unidade: str = "UN"
     quantidade: float
     valor_unitario: float
     valor_total: float
-    
-    # Tributação
-    cst_icms: str = "00"  # CST do ICMS
-    aliquota_icms: float = 0.0
-    valor_icms: float = 0.0
+    # ICMS - Simples Nacional (CSOSN 400 = não tributado pelo SN)
+    cst_icms: str = "400"       # Tributado pelo SIMPLES NACIONAL sem permissão de crédito
+    # PIS/COFINS
+    cst_pis: str = "07"         # Operação isenta da contribuição
+    cst_cofins: str = "07"
 
 
-class DadosClienteNFCe(BaseModel):
-    """Dados do cliente (opcional na NFC-e)"""
+class PagamentoNFCe(BaseModel):
+    forma: str = "01"           # 01=Dinheiro, 03=Cartão Crédito, 04=Cartão Débito, 99=Outros
+    valor: float
+    troco: float = 0.0
+
+
+class ClienteNFCe(BaseModel):
     cpf: Optional[str] = None
     nome: Optional[str] = None
 
 
-class NFCeEmissao(BaseModel):
-    """Dados para emissão da NFC-e"""
+class EmissaoNFCe(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     venda_id: Optional[str] = None
-    cliente: Optional[DadosClienteNFCe] = None
+    cliente: Optional[ClienteNFCe] = None
     items: List[ItemNFCe]
-    
-    # Totais
     valor_produtos: float
     valor_desconto: float = 0.0
     valor_total: float
-    
-    # Pagamento
-    forma_pagamento: str = "01"  # 01=Dinheiro, 02=Cheque, 03=Cartão Crédito, 04=Cartão Débito, 05=Crédito Loja
-    valor_pago: float = 0.0
-    valor_troco: float = 0.0
+    pagamentos: List[PagamentoNFCe]
+    numero_nf: Optional[str] = None  # Preenchido automaticamente
 
 
-class NFCeResponse(BaseModel):
-    """Resposta da emissão de NFC-e"""
-    success: bool
-    message: str
+class RespostaNFCe(BaseModel):
+    sucesso: bool
+    mensagem: str
     chave_acesso: Optional[str] = None
     numero_nfce: Optional[str] = None
     protocolo: Optional[str] = None
     data_autorizacao: Optional[str] = None
     qrcode_url: Optional[str] = None
     xml_autorizado: Optional[str] = None
-    danfe_url: Optional[str] = None
 
 
-def verificar_certificado():
-    """Verifica se o certificado está configurado corretamente"""
-    if not os.path.exists(CERTIFICADO_PATH):
-        return {"valido": False, "mensagem": "Certificado não encontrado"}
-    
+# ===== FUNÇÕES AUXILIARES =====
+def _so_numeros(texto: str) -> str:
+    return ''.join(filter(str.isdigit, str(texto)))
+
+
+def verificar_certificado() -> dict:
+    """Verifica validade do certificado A1"""
+    if not os.path.exists(CERT_PATH):
+        return {"valido": False, "mensagem": "Certificado não encontrado em certificates/certificado.pfx"}
+    if not CERT_SENHA:
+        return {"valido": False, "mensagem": "CERTIFICADO_SENHA não configurada nas variáveis de ambiente"}
     try:
         from cryptography.hazmat.primitives.serialization import pkcs12
         from cryptography import x509
-        
-        with open(CERTIFICADO_PATH, 'rb') as f:
+        with open(CERT_PATH, 'rb') as f:
             pfx_data = f.read()
-        
-        # Carregar o certificado PKCS12
-        private_key, certificate, additional_certs = pkcs12.load_key_and_certificates(
-            pfx_data, 
-            CERTIFICADO_SENHA.encode()
-        )
-        
-        if certificate is None:
-            return {"valido": False, "mensagem": "Certificado não encontrado no arquivo PFX"}
-        
-        # Extrair informações do certificado
-        subject = certificate.subject
-        not_after = certificate.not_valid_after_utc
-        
-        # Extrair CN do subject
+        pk, cert, _ = pkcs12.load_key_and_certificates(pfx_data, CERT_SENHA.encode())
+        if cert is None:
+            return {"valido": False, "mensagem": "Certificado inválido"}
+        not_after = cert.not_valid_after_utc
         cn = None
-        for attribute in subject:
-            if attribute.oid == x509.oid.NameOID.COMMON_NAME:
-                cn = attribute.value
+        for attr in cert.subject:
+            if attr.oid == x509.oid.NameOID.COMMON_NAME:
+                cn = attr.value
                 break
-        
+        vencido = datetime.now(timezone.utc) > not_after
         return {
-            "valido": True,
-            "titular": cn if cn else "N/A",
+            "valido": not vencido,
+            "titular": cn or "N/A",
             "cnpj": CNPJ_EMITENTE,
             "validade": not_after.strftime('%d/%m/%Y'),
-            "vencido": datetime.now(timezone.utc) > not_after
+            "vencido": vencido,
+            "ambiente": "Homologação" if HOMOLOGACAO else "Produção",
         }
     except Exception as e:
-        return {"valido": False, "mensagem": str(e)}
+        return {"valido": False, "mensagem": f"Erro ao ler certificado: {e}"}
 
 
-def status_servico_sefaz():
-    """Consulta o status do serviço da SEFAZ"""
+def verificar_configuracao() -> dict:
+    """Verifica se todas as variáveis obrigatórias estão configuradas"""
+    problemas = []
+    if not CERT_SENHA:
+        problemas.append("CERTIFICADO_SENHA não configurada")
+    if not CSC_ID:
+        problemas.append("CSC_ID não configurado")
+    if not CSC_TOKEN:
+        problemas.append("CSC_TOKEN não configurado")
+    if not IE_EMITENTE:
+        problemas.append("IE_EMITENTE não configurada")
+    if not os.path.exists(CERT_PATH):
+        problemas.append("certificates/certificado.pfx não encontrado")
+    return {
+        "configurado": len(problemas) == 0,
+        "problemas": problemas,
+        "ambiente": "Homologação" if HOMOLOGACAO else "Produção",
+        "cnpj": CNPJ_EMITENTE,
+        "ie": IE_EMITENTE,
+    }
+
+
+async def status_sefaz() -> dict:
+    """Consulta status do webservice da SEFAZ-PR"""
+    cfg = verificar_configuracao()
+    if not cfg["configurado"]:
+        return {"online": False, "mensagem": "Configuração incompleta: " + ", ".join(cfg["problemas"])}
     try:
         from pynfe.processamento.comunicacao import ComunicacaoSefaz
-        
-        con = ComunicacaoSefaz(UF, CERTIFICADO_PATH, CERTIFICADO_SENHA, HOMOLOGACAO)
+        con = ComunicacaoSefaz(UF, CERT_PATH, CERT_SENHA, HOMOLOGACAO)
         xml = con.status_servico('nfce')
-        
-        # Parsear resposta
         from lxml import etree
         root = etree.fromstring(xml.content)
-        
         ns = {'nfe': 'http://www.portalfiscal.inf.br/nfe'}
         status = root.find('.//nfe:cStat', ns)
         motivo = root.find('.//nfe:xMotivo', ns)
-        
+        online = status is not None and status.text == '107'
         return {
-            "online": status is not None and status.text == '107',
+            "online": online,
             "codigo": status.text if status is not None else "N/A",
             "mensagem": motivo.text if motivo is not None else "N/A",
-            "ambiente": "Homologação" if HOMOLOGACAO else "Produção"
+            "ambiente": "Homologação" if HOMOLOGACAO else "Produção",
         }
     except Exception as e:
-        logger.error(f"Erro ao consultar status SEFAZ: {e}")
-        return {
-            "online": False,
-            "codigo": "ERR",
-            "mensagem": str(e),
-            "ambiente": "Homologação" if HOMOLOGACAO else "Produção"
-        }
+        logger.error(f"Erro ao consultar SEFAZ: {e}")
+        return {"online": False, "mensagem": str(e)}
 
 
-def emitir_nfce(dados: NFCeEmissao) -> NFCeResponse:
+async def _proximo_numero_nfce(db) -> int:
+    """Obtém o próximo número de NFC-e sequencial do banco"""
+    result = await db.configuracoes.find_one_and_update(
+        {"_id": "nfce_sequencia"},
+        {"$inc": {"numero": 1}},
+        upsert=True,
+        return_document=True,
+    )
+    return result.get("numero", 1)
+
+
+def _forma_pagamento_codigo(forma: str) -> str:
+    """Mapeia forma de pagamento do sistema para código NFC-e"""
+    mapa = {
+        "Dinheiro": "01",
+        "PIX": "17",
+        "Cartão de Crédito": "03",
+        "Cartão de Débito": "04",
+        "Cheque": "02",
+        "Transferência": "15",
+        "Outros": "99",
+    }
+    for k, v in mapa.items():
+        if k.lower() in forma.lower():
+            return v
+    return "99"
+
+
+async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
     """
-    Emite uma NFC-e na SEFAZ
+    Emite NFC-e na SEFAZ-PR usando pynfe.
     """
+    cfg = verificar_configuracao()
+    if not cfg["configurado"]:
+        return RespostaNFCe(
+            sucesso=False,
+            mensagem="Configuração incompleta: " + ", ".join(cfg["problemas"])
+        )
+
     try:
+        from pynfe.entidades.notafiscal import NotaFiscal
+        from pynfe.entidades.emitente import Emitente
+        from pynfe.entidades.cliente import Cliente
+        from pynfe.entidades.fonte_dados import _fonte_dados
         from pynfe.processamento.serializacao import SerializacaoXML
         from pynfe.processamento.assinatura import AssinaturaA1
         from pynfe.processamento.comunicacao import ComunicacaoSefaz
-        from pynfe.entidades.notafiscal import NotaFiscal
-        from pynfe.entidades.fonte_dados import _fonte_dados
+        from pynfe.utils.flags import (
+            MODELO_NFCE, TIPO_DOCUMENTO_SAIDA, TIPO_IMPRESSAO_DANFE_NFCE,
+            FORMA_EMISSAO_NORMAL, FINALIDADE_EMISSAO_NORMAL,
+            CLIENTE_FINAL_SIM, INDICADOR_PRESENCIAL_OPERACAO_PRESENCIAL,
+            INDICADOR_DESTINO_OPERACAO_INTERNA,
+        )
         from lxml import etree
-        
-        # Verificar se CSC está configurado
-        if not CSC_ID or not CSC_TOKEN:
-            return NFCeResponse(
-                success=False,
-                message="CSC não configurado. Configure CSC_ID e CSC_TOKEN nas variáveis de ambiente."
+        import hashlib, hmac
+
+        fonte = _fonte_dados
+
+        # === EMITENTE ===
+        emitente = Emitente()
+        emitente.cnpj = CNPJ_EMITENTE
+        emitente.ie = IE_EMITENTE
+        emitente.razao_social = "09.328.682 SUZETE CANDIDO XAVIER"
+        emitente.nome_fantasia = "Sussu Chocolates"
+        emitente.endereco_logradouro = "Rua Quintino Bocaiuva"
+        emitente.endereco_numero = "737"
+        emitente.endereco_complemento = ""
+        emitente.endereco_bairro = "Centro"
+        emitente.endereco_municipio = NOME_MUNICIPIO
+        emitente.endereco_uf = UF
+        emitente.endereco_cep = "86400000"
+        emitente.endereco_pais = "1058"
+        emitente.endereco_telefone = "43999676206"
+        emitente.codigo_regime_tributario = "1"  # Simples Nacional
+
+        # === DESTINATÁRIO (opcional em NFC-e) ===
+        cliente = Cliente()
+        if dados.cliente and dados.cliente.cpf:
+            cliente.cpf = _so_numeros(dados.cliente.cpf)
+            cliente.nome_razao_social = dados.cliente.nome or "CONSUMIDOR"
+        else:
+            cliente.nome_razao_social = "CONSUMIDOR"
+        cliente.email = ""
+        cliente.endereco_logradouro = ""
+        cliente.endereco_numero = ""
+        cliente.endereco_complemento = ""
+        cliente.endereco_bairro = ""
+        cliente.endereco_municipio = NOME_MUNICIPIO
+        cliente.endereco_uf = UF
+        cliente.endereco_cep = ""
+        cliente.endereco_pais = "1058"
+
+        # === NÚMERO DA NFC-e ===
+        if db:
+            numero_nf = await _proximo_numero_nfce(db)
+        else:
+            numero_nf = int(datetime.now().strftime('%H%M%S'))
+
+        # === NOTA FISCAL ===
+        nf = NotaFiscal()
+        nf.emitente = emitente
+        nf.cliente = cliente
+        nf.fonte_dados = fonte
+        nf.modelo = MODELO_NFCE          # 65
+        nf.serie = SERIE_NFCE
+        nf.numero_nf = str(numero_nf).zfill(9)
+        nf.data_emissao = datetime.now(timezone.utc)
+        nf.data_saida_entrada = datetime.now(timezone.utc)
+        nf.natureza_operacao = "VENDA AO CONSUMIDOR"
+        nf.tipo_documento = TIPO_DOCUMENTO_SAIDA       # 1 = Saída
+        nf.tipo_impressao_danfe = TIPO_IMPRESSAO_DANFE_NFCE  # 4
+        nf.forma_emissao = FORMA_EMISSAO_NORMAL        # 1
+        nf.finalidade_emissao = FINALIDADE_EMISSAO_NORMAL    # 1
+        nf.cliente_final = CLIENTE_FINAL_SIM           # 1
+        nf.indicador_presencial = INDICADOR_PRESENCIAL_OPERACAO_PRESENCIAL  # 1
+        nf.indicador_destino = INDICADOR_DESTINO_OPERACAO_INTERNA  # 1
+        nf.uf = UF
+        nf.municipio = COD_IBGE_MUNICIPIO
+        nf.processo_emissao = "0"
+        nf.indicador_intermediador = "0"
+        nf.informacoes_complementares = "Documento emitido por ME ou EPP optante pelo Simples Nacional"
+
+        # === ITENS ===
+        for i, item in enumerate(dados.items, 1):
+            nf.adicionar_produto_servico(
+                codigo=item.codigo or str(i).zfill(6),
+                descricao=item.descricao[:120],
+                ncm=_so_numeros(item.ncm)[:8].ljust(8, '0'),
+                cfop=item.cfop,
+                unidade_comercial=item.unidade,
+                quantidade_comercial=Decimal(str(item.quantidade)),
+                valor_unitario_comercial=Decimal(str(round(item.valor_unitario, 10))),
+                valor_unitario_tributavel=Decimal(str(round(item.valor_unitario, 10))),
+                unidade_tributavel=item.unidade,
+                quantidade_tributavel=Decimal(str(item.quantidade)),
+                valor_total_bruto=Decimal(str(round(item.valor_total, 2))),
+                numero_item=i,
+                # ICMS Simples Nacional
+                icms_modalidade=item.cst_icms,
+                icms_csosn=item.cst_icms,
+                icms_origem="0",
+                # PIS/COFINS
+                pis_modalidade=item.cst_pis,
+                pis_valor_base_calculo=Decimal("0.00"),
+                pis_aliquota_percentual=Decimal("0.00"),
+                pis_valor_pis=Decimal("0.00"),
+                cofins_modalidade=item.cst_cofins,
+                cofins_valor_base_calculo=Decimal("0.00"),
+                cofins_aliquota_percentual=Decimal("0.00"),
+                cofins_valor_cofins=Decimal("0.00"),
             )
-        
-        # Criar nota fiscal
-        # NOTA: Esta é uma implementação simplificada
-        # Em produção, seria necessário configurar todos os campos obrigatórios
-        
-        nfce_numero = _gerar_numero_nfce()
-        
-        # Montar XML da NFC-e
-        # ... (implementação completa do XML seria extensa)
-        
-        # Por enquanto, retornar resposta mockada para homologação
-        if HOMOLOGACAO:
-            chave = f"41{datetime.now().strftime('%y%m')}{CNPJ_EMITENTE}65001{str(nfce_numero).zfill(9)}1{str(nfce_numero).zfill(8)}0"
-            
-            return NFCeResponse(
-                success=True,
-                message="NFC-e emitida com sucesso (HOMOLOGAÇÃO)",
+
+        # === PAGAMENTOS ===
+        for pag in dados.pagamentos:
+            nf.adicionar_pagamento(
+                forma_pagamento=pag.forma,
+                valor=Decimal(str(round(pag.valor, 2))),
+                troco=Decimal(str(round(pag.troco, 2))) if pag.troco else Decimal("0.00"),
+            )
+
+        # === SERIALIZAR ===
+        serializer = SerializacaoXML(fonte, homologacao=HOMOLOGACAO)
+        xml_str = serializer.exportar(nf)
+
+        # === ASSINAR ===
+        assinatura = AssinaturaA1(CERT_PATH, CERT_SENHA)
+        xml_assinado = assinatura.assinar(xml_str)
+
+        # === TRANSMITIR ===
+        con = ComunicacaoSefaz(UF, CERT_PATH, CERT_SENHA, HOMOLOGACAO)
+        resposta = con.autorizacao(modelo="nfce", lote=[xml_assinado])
+
+        # === PROCESSAR RESPOSTA ===
+        root = etree.fromstring(resposta.content)
+        ns = {'nfe': 'http://www.portalfiscal.inf.br/nfe'}
+
+        c_stat = root.find('.//nfe:cStat', ns)
+        x_motivo = root.find('.//nfe:xMotivo', ns)
+        n_prot = root.find('.//nfe:nProt', ns)
+        dh_recbto = root.find('.//nfe:dhRecbto', ns)
+        ch_nfe = root.find('.//nfe:chNFe', ns)
+
+        codigo = c_stat.text if c_stat is not None else "000"
+        motivo = x_motivo.text if x_motivo is not None else "Sem resposta"
+
+        # Códigos de autorização: 100 (autorizado) ou 150 (autorizado fora prazo)
+        if codigo in ("100", "150"):
+            chave = ch_nfe.text if ch_nfe is not None else ""
+            protocolo = n_prot.text if n_prot is not None else ""
+            data_aut = dh_recbto.text if dh_recbto is not None else ""
+
+            # Gerar URL do QR Code SEFAZ-PR
+            ambiente = "2" if HOMOLOGACAO else "1"
+            csc_hex = CSC_TOKEN.upper()
+            qr_sem_hash = f"{chave}|{ambiente}|{CSC_ID}|"
+            hash_csc = hashlib.sha1((qr_sem_hash + csc_hex).encode()).hexdigest().upper()
+            base_qr = (
+                "https://homologacao.nfce.fazenda.pr.gov.br/nfce/qrcode"
+                if HOMOLOGACAO
+                else "https://nfce.fazenda.pr.gov.br/nfce/qrcode"
+            )
+            qrcode_url = f"{base_qr}?p={chave}|{ambiente}|{CSC_ID}|{hash_csc}"
+
+            # Gravar XML autorizado
+            xml_final = etree.tostring(root, encoding='unicode')
+
+            return RespostaNFCe(
+                sucesso=True,
+                mensagem=f"NFC-e autorizada! ({motivo})",
                 chave_acesso=chave,
-                numero_nfce=str(nfce_numero),
-                protocolo=f"141{datetime.now().strftime('%y%m%d%H%M%S')}",
-                data_autorizacao=datetime.now(timezone.utc).isoformat(),
-                qrcode_url=f"https://www.sefaz.pr.gov.br/nfce/qrcode?p={chave}|2|{CSC_ID}|{CSC_TOKEN[:8]}",
-                xml_autorizado=None,
-                danfe_url=None
+                numero_nfce=nf.numero_nf,
+                protocolo=protocolo,
+                data_autorizacao=data_aut,
+                qrcode_url=qrcode_url,
+                xml_autorizado=xml_final,
             )
-        
-        # Produção - implementar comunicação real com SEFAZ
-        return NFCeResponse(
-            success=False,
-            message="Emissão em produção ainda não implementada. Configure o ambiente para homologação."
-        )
-        
+        else:
+            return RespostaNFCe(
+                sucesso=False,
+                mensagem=f"SEFAZ rejeitou: [{codigo}] {motivo}",
+            )
+
     except Exception as e:
-        logger.error(f"Erro ao emitir NFC-e: {e}")
-        return NFCeResponse(
-            success=False,
-            message=f"Erro ao emitir NFC-e: {str(e)}"
-        )
+        logger.exception(f"Erro ao emitir NFC-e: {e}")
+        return RespostaNFCe(sucesso=False, mensagem=f"Erro interno: {str(e)}")
 
 
-def cancelar_nfce(chave_acesso: str, justificativa: str) -> dict:
-    """
-    Cancela uma NFC-e já autorizada
-    """
-    if len(justificativa) < 15:
-        return {"success": False, "message": "Justificativa deve ter no mínimo 15 caracteres"}
-    
+async def cancelar_nfce(chave_acesso: str, justificativa: str, db=None) -> dict:
+    """Cancela NFC-e autorizada (até 30 min em homologação, 24h em produção)"""
+    if len(justificativa.strip()) < 15:
+        return {"sucesso": False, "mensagem": "Justificativa deve ter no mínimo 15 caracteres"}
+    cfg = verificar_configuracao()
+    if not cfg["configurado"]:
+        return {"sucesso": False, "mensagem": "Configuração incompleta"}
     try:
-        # Em produção, implementar cancelamento via SEFAZ
-        if HOMOLOGACAO:
+        from pynfe.processamento.comunicacao import ComunicacaoSefaz
+        from pynfe.entidades.evento import Evento
+        from lxml import etree
+
+        con = ComunicacaoSefaz(UF, CERT_PATH, CERT_SENHA, HOMOLOGACAO)
+        evento = Evento()
+        evento.chave = chave_acesso
+        evento.cnpj = CNPJ_EMITENTE
+        evento.justificativa = justificativa
+        resposta = con.cancelamento(modelo="nfce", evento=evento)
+
+        root = etree.fromstring(resposta.content)
+        ns = {'nfe': 'http://www.portalfiscal.inf.br/nfe'}
+        c_stat = root.find('.//nfe:cStat', ns)
+        x_motivo = root.find('.//nfe:xMotivo', ns)
+        n_prot = root.find('.//nfe:nProt', ns)
+        codigo = c_stat.text if c_stat is not None else "000"
+        motivo = x_motivo.text if x_motivo is not None else ""
+
+        if codigo in ("101", "135", "155"):
             return {
-                "success": True,
-                "message": "NFC-e cancelada com sucesso (HOMOLOGAÇÃO)",
-                "protocolo_cancelamento": f"141{datetime.now().strftime('%y%m%d%H%M%S')}"
+                "sucesso": True,
+                "mensagem": f"NFC-e cancelada: {motivo}",
+                "protocolo": n_prot.text if n_prot is not None else "",
             }
-        
-        return {"success": False, "message": "Cancelamento em produção não implementado"}
+        return {"sucesso": False, "mensagem": f"[{codigo}] {motivo}"}
     except Exception as e:
-        return {"success": False, "message": str(e)}
-
-
-# Contador de NFC-e (em produção, usar sequência do banco)
-_nfce_counter = 1
-
-def _gerar_numero_nfce():
-    global _nfce_counter
-    _nfce_counter += 1
-    return _nfce_counter
+        logger.exception(f"Erro ao cancelar NFC-e: {e}")
+        return {"sucesso": False, "mensagem": str(e)}
