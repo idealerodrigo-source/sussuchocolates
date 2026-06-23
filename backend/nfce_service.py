@@ -14,7 +14,6 @@ import uuid
 logger = logging.getLogger(__name__)
 
 # ===== CONFIGURAÇÕES =====
-CERT_PATH = os.path.join(os.path.dirname(__file__), 'certificates', 'certificado.pfx')
 CERT_SENHA = os.environ.get('CERTIFICADO_SENHA', '')
 CSC_ID = os.environ.get('CSC_ID', '')
 CSC_TOKEN = os.environ.get('CSC_TOKEN', '')
@@ -25,6 +24,24 @@ UF = 'PR'
 COD_IBGE_MUNICIPIO = '4112207'  # Jacarezinho/PR
 NOME_MUNICIPIO = 'Jacarezinho'
 SERIE_NFCE = '001'
+
+# Caminho do certificado — carregado de variável de ambiente (base64) ou arquivo
+_CERT_PATH_DEFAULT = os.path.join(os.path.dirname(__file__), 'certificates', 'certificado.pfx')
+
+def _get_cert_path() -> str:
+    """Retorna caminho para o certificado. Se CERTIFICADO_BASE64 estiver definido,
+    decodifica e salva em arquivo temporário."""
+    b64 = os.environ.get('CERTIFICADO_BASE64', '')
+    if b64:
+        import base64, tempfile
+        tmp = os.path.join(tempfile.gettempdir(), 'sussu_cert.pfx')
+        if not os.path.exists(tmp):
+            with open(tmp, 'wb') as f:
+                f.write(base64.b64decode(b64))
+        return tmp
+    return _CERT_PATH_DEFAULT
+
+CERT_PATH = _get_cert_path()
 
 
 # ===== MODELOS =====
