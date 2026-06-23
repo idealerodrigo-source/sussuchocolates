@@ -3,6 +3,7 @@ import { pedidosAPI, clientesAPI, produtosAPI } from '../services/api';
 import { formatCurrency, formatDateTime, getStatusColor, getStatusLabel } from '../utils/formatters';
 import { Plus, ShoppingCart, Trash, PencilSimple, Eye, FilePdf, WhatsappLogo, UserPlus, Package, XCircle, MagnifyingGlass } from '@phosphor-icons/react';
 import { toast } from 'sonner';
+import { useLocation } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
 import { QuickCreateClienteModal, QuickCreateProdutoModal } from '../components/QuickCreateModals';
@@ -29,7 +30,15 @@ export default function PedidosPage() {
   const [clientes, setClientes] = useState([]);
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const location = useLocation();
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (location.state?.openNovoPedido) {
+      setDialogOpen(true);
+      window.history.replaceState({}, '');
+    }
+  }, [location.state]);
   const [editMode, setEditMode] = useState(false);
   const [editingPedidoId, setEditingPedidoId] = useState(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);

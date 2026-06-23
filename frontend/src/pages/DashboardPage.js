@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { dashboardAPI, estoqueAPI } from '../services/api';
 import { formatCurrency } from '../utils/formatters';
+import { useNavigate } from 'react-router-dom';
 import {
   Users,
   Package,
@@ -8,6 +9,10 @@ import {
   TrendUp,
   ChartLine,
   Factory,
+  Plus,
+  Receipt,
+  CalendarBlank,
+  ArrowRight,
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 
@@ -39,6 +44,7 @@ function SkeletonWide() {
 }
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [alertasEstoque, setAlertasEstoque] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -91,13 +97,58 @@ export default function DashboardPage() {
 
   return (
     <div data-testid="dashboard-page">
-      <div className="mb-8">
-        <h1 className="text-4xl sm:text-5xl font-serif font-bold tracking-tight text-[#3E2723] mb-2">
-          Dashboard
-        </h1>
-        <p className="text-base font-sans text-[#705A4D]">
-          Visão geral do sistema Sussu Chocolates
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-4xl sm:text-5xl font-serif font-bold tracking-tight text-[#3E2723] mb-2">
+            Dashboard
+          </h1>
+          <p className="text-base font-sans text-[#705A4D]">
+            Visão geral do sistema Sussu Chocolates
+          </p>
+        </div>
+
+        {/* Atalhos rápidos */}
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => navigate('/vendas', { state: { openNovaVenda: true } })}
+            className="flex items-center gap-2 px-5 py-3 bg-[#6B4423] text-[#F5E6D3] rounded-xl font-semibold text-sm hover:bg-[#8B5A3C] transition-colors shadow-sm"
+          >
+            <Plus size={18} weight="bold" />
+            Nova Venda
+          </button>
+          <button
+            onClick={() => navigate('/pedidos', { state: { openNovoPedido: true } })}
+            className="flex items-center gap-2 px-5 py-3 bg-[#FFFDF8] border border-[#8B5A3C]/30 text-[#6B4423] rounded-xl font-semibold text-sm hover:bg-[#F5E6D3] transition-colors shadow-sm"
+          >
+            <ShoppingCart size={18} weight="bold" />
+            Novo Pedido
+          </button>
+        </div>
+      </div>
+
+      {/* Atalhos de navegação rápida */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+        {[
+          { label: 'Vendas', icon: Receipt, path: '/vendas', cor: 'text-purple-600 bg-purple-50 border-purple-200' },
+          { label: 'Pedidos', icon: ShoppingCart, path: '/pedidos', cor: 'text-blue-600 bg-blue-50 border-blue-200' },
+          { label: 'Calendário', icon: CalendarBlank, path: '/calendario', cor: 'text-green-600 bg-green-50 border-green-200' },
+          { label: 'Relatórios', icon: ChartLine, path: '/relatorios', cor: 'text-[#6B4423] bg-[#F5E6D3]/60 border-[#8B5A3C]/30' },
+        ].map((atalho) => {
+          const Icon = atalho.icon;
+          return (
+            <button
+              key={atalho.path}
+              onClick={() => navigate(atalho.path)}
+              className={`flex items-center justify-between px-4 py-3 rounded-xl border font-medium text-sm transition-all hover:shadow-sm ${atalho.cor}`}
+            >
+              <div className="flex items-center gap-2">
+                <Icon size={18} weight="bold" />
+                <span>{atalho.label}</span>
+              </div>
+              <ArrowRight size={16} />
+            </button>
+          );
+        })}
       </div>
 
       {/* Cards de estatísticas */}

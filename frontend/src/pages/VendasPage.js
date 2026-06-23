@@ -3,6 +3,7 @@ import { vendasAPI, pedidosAPI, nfceAPI, clientesAPI, produtosAPI } from '../ser
 import { formatCurrency, formatDateTime } from '../utils/formatters';
 import { Plus, MagnifyingGlass, UserPlus, Factory, ShoppingBag } from '@phosphor-icons/react';
 import { toast } from 'sonner';
+import { useLocation } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
 import { QuickCreateClienteModal, QuickCreateProdutoModal } from '../components/QuickCreateModals';
@@ -29,7 +30,16 @@ export default function VendasPage() {
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [devedores, setDevedores] = useState({});
+  const location = useLocation();
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Abrir modal automaticamente se vier do Dashboard via atalho
+  useEffect(() => {
+    if (location.state?.openNovaVenda) {
+      setDialogOpen(true);
+      window.history.replaceState({}, '');
+    }
+  }, [location.state]);
   const [tipoVenda, setTipoVenda] = useState('pedido');
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('todos');
