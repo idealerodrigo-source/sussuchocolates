@@ -268,8 +268,17 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
         else:
             cliente.nome_razao_social = "CONSUMIDOR"
         cliente.ie = "ISENTO"
-        cliente.email = ""
         cliente.indicador_ie = "9"  # 9 = Não Contribuinte
+        cliente.email = ""
+        cliente.endereco_logradouro = "NAO INFORMADO"
+        cliente.endereco_numero = "0"
+        cliente.endereco_complemento = ""
+        cliente.endereco_bairro = "NAO INFORMADO"
+        cliente.endereco_municipio = NOME_MUNICIPIO
+        cliente.endereco_uf = UF
+        cliente.endereco_cep = "86400000"
+        cliente.endereco_pais = "1058"
+        cliente.endereco_telefone = ""
 
         # === NÚMERO DA NFC-e ===
         if db is not None:
