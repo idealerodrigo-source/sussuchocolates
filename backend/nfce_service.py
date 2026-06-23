@@ -262,28 +262,28 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
         emitente.codigo_de_regime_tributario = "1"  # Simples Nacional
 
         # === DESTINATÁRIO (opcional em NFC-e) ===
-        cliente = Cliente()
-        if dados.cliente and dados.cliente.cpf:
+        # Para NFC-e sem identificação, omitir o dest completamente
+        if dados.cliente and dados.cliente.cpf and len(_so_numeros(dados.cliente.cpf)) == 11:
+            cliente = Cliente()
             cliente.tipo_documento = "CPF"
             cliente.numero_documento = _so_numeros(dados.cliente.cpf)
             cliente.razao_social = dados.cliente.nome or "CONSUMIDOR"
+            cliente.inscricao_estadual = "ISENTO"
+            cliente.isento_icms = True
+            cliente.indicador_ie = 9
+            cliente.email = ""
+            cliente.endereco_logradouro = "NAO INFORMADO"
+            cliente.endereco_numero = "0"
+            cliente.endereco_complemento = ""
+            cliente.endereco_bairro = "NAO INFORMADO"
+            cliente.endereco_municipio = NOME_MUNICIPIO
+            cliente.endereco_uf = UF
+            cliente.endereco_cep = "86400000"
+            cliente.endereco_pais = "1058"
+            cliente.endereco_telefone = ""
+            nf.cliente = cliente
         else:
-            cliente.tipo_documento = "CPF"
-            cliente.numero_documento = "00000000000"  # CPF fictício para consumidor anônimo
-            cliente.razao_social = "CONSUMIDOR"
-        cliente.inscricao_estadual = "ISENTO"
-        cliente.isento_icms = True
-        cliente.indicador_ie = 9  # 9 = Não Contribuinte
-        cliente.email = ""
-        cliente.endereco_logradouro = "NAO INFORMADO"
-        cliente.endereco_numero = "0"
-        cliente.endereco_complemento = ""
-        cliente.endereco_bairro = "NAO INFORMADO"
-        cliente.endereco_municipio = NOME_MUNICIPIO
-        cliente.endereco_uf = UF
-        cliente.endereco_cep = "86400000"
-        cliente.endereco_pais = "1058"
-        cliente.endereco_telefone = ""
+            nf.cliente = None  # sem identificação — dest omitido na NFC-e
 
         # === NÚMERO DA NFC-e ===
         if db is not None:
@@ -294,7 +294,6 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
         # === NOTA FISCAL ===
         nf = NotaFiscal()
         nf.emitente = emitente
-        nf.cliente = cliente
         nf.fonte_dados = fonte
         nf.modelo = MODELO_NFCE          # 65
         nf.serie = SERIE_NFCE
