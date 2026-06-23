@@ -382,7 +382,8 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
         diff = valor_nf - total_pagamentos
         if diff > Decimal("0.01"):
             nf.adicionar_pagamento(
-                t_pag="99",   # 99 = Outros
+                t_pag="99",
+                x_pag="A Prazo",  # obrigatório para tipo 99
                 v_pag=diff,
                 ind_pag="1",  # 1 = A prazo
             )
