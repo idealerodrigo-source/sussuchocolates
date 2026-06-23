@@ -372,11 +372,6 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
         serializer = SerializacaoXML(fonte, homologacao=HOMOLOGACAO)
         xml_str = serializer.exportar(nf, valor_troco=float(valor_troco_total))
 
-        # DEBUG: retornar XML para inspeção (remover depois)
-        if os.environ.get('NFCE_DEBUG') == 'true':
-            xml_debug = etree.tostring(xml_str, encoding='unicode') if not isinstance(xml_str, str) else xml_str
-            return RespostaNFCe(sucesso=False, mensagem=f"DEBUG XML: {xml_debug[:2000]}")
-
         # === ASSINAR ===
         assinatura = AssinaturaA1(CERT_PATH, CERT_SENHA)
         xml_assinado = assinatura.assinar(xml_str)
