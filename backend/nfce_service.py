@@ -322,8 +322,18 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
                 quantidade_tributavel=Decimal(str(item.quantidade)),
                 valor_total_bruto=Decimal(str(round(item.valor_total, 2))),
                 numero_item=i,
-                ind_total=1,           # indTot=1: compõe o total da NF-e
-                compoe_valor_total=1,  # campo equivalente em outras versões
+                ind_total=1,
+                compoe_valor_total=1,
+                valor_tributos_aprox=Decimal("0.00"),
+                informacoes_adicionais="",
+                desconto=Decimal("0.00"),
+                total_frete=Decimal("0.00"),
+                total_seguro=Decimal("0.00"),
+                outras_despesas_acessorias=Decimal("0.00"),
+                ean="SEM GTIN",
+                ean_tributavel="SEM GTIN",
+                cest="",
+                cbenef="",
                 # ICMS Simples Nacional
                 icms_modalidade=item.cst_icms,
                 icms_csosn=item.cst_icms,
