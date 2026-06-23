@@ -316,9 +316,14 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
 
         # === ITENS ===
         for i, item in enumerate(dados.items, 1):
+            # Em homologação o 1º item deve ter descrição específica (obrigação SEFAZ)
+            if HOMOLOGACAO and i == 1:
+                descricao = "NOTA FISCAL EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL"
+            else:
+                descricao = item.descricao[:120]
             nf.adicionar_produto_servico(
                 codigo=item.codigo or str(i).zfill(6),
-                descricao=item.descricao[:120],
+                descricao=descricao,
                 ncm=_so_numeros(item.ncm)[:8].ljust(8, '0'),
                 cfop=item.cfop,
                 unidade_comercial=item.unidade,
