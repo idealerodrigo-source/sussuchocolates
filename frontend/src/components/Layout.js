@@ -152,6 +152,13 @@ export default function Layout() {
           <SignOut size={22} />
           <span className="font-medium text-sm">Sair</span>
         </button>
+        <div className="mt-3 px-3 pt-3 border-t border-[#6B4423]/50">
+          <p className="text-xs text-[#9A8476] leading-tight">
+            Desenvolvido por<br/>
+            <span className="text-[#C4A57B] font-medium">Karo & Figli Ltda</span><br/>
+            <span className="text-[#705A4D] text-[10px]">CNPJ: 29.808.302/0001-72</span>
+          </p>
+        </div>
       </div>
     </>
   );

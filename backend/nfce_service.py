@@ -316,10 +316,11 @@ async def emitir_nfce(dados: EmissaoNFCe, db=None) -> RespostaNFCe:
         nf.transporte_modalidade_frete = 9  # 9 = Sem frete (obrigatório NFC-e)
         nf.informacoes_complementares = "Documento emitido por ME ou EPP optante pelo Simples Nacional"
 
-        # === RESPONSÁVEL TÉCNICO (obrigatório NT 2018/003) ===
+        # === RESPONSÁVEL TÉCNICO (NT 2018/003) ===
+        # Karo & Figli Ltda — empresa desenvolvedora do sistema
         nf.adicionar_responsavel_tecnico(
-            cnpj=CNPJ_EMITENTE,
-            contato="Sussu Chocolates",
+            cnpj="29808302000172",
+            contato="Karo & Figli Ltda",
             email="sussuchocolates@hotmail.com",
             fone="43999676206",
         )
