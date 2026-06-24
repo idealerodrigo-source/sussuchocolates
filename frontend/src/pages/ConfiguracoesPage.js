@@ -3,7 +3,8 @@ import { usuariosAPI, empresaAPI, backupAPI } from '../services/api';
 import { formatDateTime } from '../utils/formatters';
 import { 
   Users, Buildings, Image, Plus, Trash, PencilSimple, 
-  Eye, EyeSlash, ShieldCheck, Upload, X, DownloadSimple, Database, Warning
+  Eye, EyeSlash, ShieldCheck, Upload, X, DownloadSimple, Database, Warning,
+  Receipt, CheckCircle, XCircle, WifiHigh, Certificate
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
@@ -40,13 +41,36 @@ export default function ConfiguracoesPage() {
   // Estados para Backup
   const [exportando, setExportando] = useState(false);
 
+  // Estados para NFC-e
+  const [nfceConfig, setNfceConfig] = useState(null);
+  const [nfceLoading, setNfceLoading] = useState(false);
+
   useEffect(() => {
     if (activeTab === 'usuarios') {
       fetchUsuarios();
     } else if (activeTab === 'empresa' || activeTab === 'logo') {
       fetchEmpresa();
+    } else if (activeTab === 'nfce') {
+      fetchNfceConfig();
     }
   }, [activeTab]);
+
+  const fetchNfceConfig = async () => {
+    setNfceLoading(true);
+    try {
+      const base = process.env.REACT_APP_BACKEND_URL + '/api';
+      const token = localStorage.getItem('token');
+      const [cfgRes, sefazRes] = await Promise.all([
+        fetch(base + '/nfce/configuracao', {headers: {'Authorization': 'Bearer ' + token}}).then(r => r.json()),
+        fetch(base + '/nfce/status-sefaz', {headers: {'Authorization': 'Bearer ' + token}}).then(r => r.json()),
+      ]);
+      setNfceConfig({ ...cfgRes, sefaz: sefazRes });
+    } catch {
+      toast.error('Erro ao carregar configuração NFC-e');
+    } finally {
+      setNfceLoading(false);
+    }
+  };
 
   const handleExportarBackup = async () => {
     setExportando(true);
@@ -282,6 +306,17 @@ export default function ConfiguracoesPage() {
         >
           <Database size={20} weight="bold" />
           Backup
+        </button>
+        <button
+          onClick={() => setActiveTab('nfce')}
+          className={`px-6 py-3 font-sans font-medium transition-colors flex items-center gap-2 ${
+            activeTab === 'nfce'
+              ? 'text-[#6B4423] border-b-2 border-[#6B4423]'
+              : 'text-[#705A4D] hover:text-[#6B4423]'
+          }`}
+        >
+          <Receipt size={20} weight="bold" />
+          NFC-e
         </button>
       </div>
 
@@ -792,6 +827,128 @@ export default function ConfiguracoesPage() {
               </ul>
             </div>
           </div>
+        </div>
+      )}
+      {/* Tab: NFC-e */}
+      {activeTab === 'nfce' && (
+        <div className="max-w-2xl space-y-6">
+          <div className="flex items-center justify-between">
+            <p className="text-[#705A4D]">Status do módulo de emissão de NFC-e para SEFAZ-PR.</p>
+            <Button onClick={fetchNfceConfig} variant="outline" size="sm" disabled={nfceLoading}
+              className="text-[#6B4423] border-[#8B5A3C]/30">
+              {nfceLoading ? 'Verificando...' : '↻ Atualizar'}
+            </Button>
+          </div>
+
+          {nfceLoading && (
+            <div className="space-y-3">
+              {[1,2,3].map(i => <div key={i} className="h-20 rounded-xl bg-[#F5E6D3]/50 animate-pulse" />)}
+            </div>
+          )}
+
+          {!nfceLoading && nfceConfig && (
+            <>
+              {/* Status SEFAZ */}
+              <div className={`rounded-xl p-5 border flex items-center gap-4 ${
+                nfceConfig.sefaz?.online
+                  ? 'bg-green-50 border-green-200'
+                  : 'bg-red-50 border-red-200'
+              }`}>
+                {nfceConfig.sefaz?.online
+                  ? <CheckCircle size={32} weight="fill" className="text-green-600 flex-shrink-0" />
+                  : <XCircle size={32} weight="fill" className="text-red-500 flex-shrink-0" />
+                }
+                <div>
+                  <p className={`font-semibold ${nfceConfig.sefaz?.online ? 'text-green-800' : 'text-red-700'}`}>
+                    SEFAZ-PR {nfceConfig.sefaz?.online ? 'Online' : 'Offline'}
+                  </p>
+                  <p className="text-sm text-[#705A4D]">{nfceConfig.sefaz?.mensagem || '—'}</p>
+                  <p className="text-xs text-[#8B5A3C] mt-1">
+                    Ambiente: <strong>{nfceConfig.ambiente}</strong>
+                  </p>
+                </div>
+              </div>
+
+              {/* Certificado */}
+              <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-5">
+                <div className="flex items-center gap-3 mb-4">
+                  <Certificate size={24} weight="bold" className="text-[#6B4423]" />
+                  <h3 className="font-serif font-semibold text-[#3E2723]">Certificado Digital A1</h3>
+                </div>
+                {nfceConfig.certificado?.valido ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle size={18} weight="fill" className="text-green-600" />
+                      <span className="text-sm font-semibold text-green-700">Certificado válido</span>
+                    </div>
+                    <p className="text-sm text-[#705A4D]">
+                      <strong>Titular:</strong> {nfceConfig.certificado.titular}
+                    </p>
+                    <p className="text-sm text-[#705A4D]">
+                      <strong>CNPJ:</strong> {nfceConfig.cnpj}
+                    </p>
+                    <p className="text-sm text-[#705A4D]">
+                      <strong>Validade:</strong> {nfceConfig.certificado.validade}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2">
+                    <XCircle size={18} weight="fill" className="text-red-500 mt-0.5" />
+                    <p className="text-sm text-red-700">{nfceConfig.certificado?.mensagem || 'Certificado inválido'}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Configuração */}
+              <div className="bg-[#FFFDF8] border border-[#8B5A3C]/15 rounded-xl p-5">
+                <h3 className="font-serif font-semibold text-[#3E2723] mb-4">Configuração</h3>
+                <div className="space-y-2">
+                  {[
+                    { label: 'CNPJ Emitente', value: nfceConfig.cnpj, ok: !!nfceConfig.cnpj },
+                    { label: 'IE Emitente', value: nfceConfig.ie, ok: !!nfceConfig.ie },
+                    { label: 'Certificado', value: nfceConfig.certificado?.valido ? 'Configurado' : 'Pendente', ok: nfceConfig.certificado?.valido },
+                    { label: 'CSC ID', value: nfceConfig.configurado ? 'Configurado' : 'Pendente', ok: nfceConfig.configurado },
+                    { label: 'CSC Token', value: nfceConfig.configurado ? 'Configurado' : 'Pendente', ok: nfceConfig.configurado },
+                    { label: 'Ambiente', value: nfceConfig.ambiente, ok: true },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center justify-between py-2 border-b border-[#8B5A3C]/10 last:border-0">
+                      <span className="text-sm text-[#705A4D]">{item.label}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-[#3E2723]">{item.value}</span>
+                        {item.ok
+                          ? <CheckCircle size={16} weight="fill" className="text-green-500" />
+                          : <Warning size={16} weight="fill" className="text-orange-500" />
+                        }
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Problemas */}
+              {nfceConfig.problemas?.length > 0 && (
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                  <p className="text-sm font-semibold text-orange-800 mb-2">⚠️ Pendências para emissão</p>
+                  <ul className="space-y-1">
+                    {nfceConfig.problemas.map((p, i) => (
+                      <li key={i} className="text-sm text-orange-700 flex items-start gap-2">
+                        <span className="mt-0.5">•</span> {p}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {nfceConfig.configurado && nfceConfig.certificado?.valido && nfceConfig.sefaz?.online && (
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
+                  <CheckCircle size={24} weight="fill" className="text-green-600" />
+                  <p className="text-sm font-semibold text-green-800">
+                    Sistema pronto para emissão de NFC-e!
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
