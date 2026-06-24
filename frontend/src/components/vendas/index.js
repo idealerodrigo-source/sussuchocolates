@@ -5,3 +5,4 @@ export { NFCePreviewModal, NFCeViewModal } from './NFCeModals';
 export { ProdutosExtrasSection } from './ProdutosExtrasSection';
 export { VendaViewModal } from './VendaViewModal';
 export { generateVendaPDF } from './VendaPDFGenerator';
+export { imprimirDANFE, gerarHtmlDANFE } from './DANFEGenerator';

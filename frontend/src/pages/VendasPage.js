@@ -18,7 +18,8 @@ import {
   NFCeViewModal,
   ProdutosExtrasSection,
   VendaViewModal,
-  generateVendaPDF
+  generateVendaPDF,
+  imprimirDANFE
 } from '../components/vendas';
 import CupomVendaModal from '../components/vendas/CupomVendaModal';
 
@@ -1507,7 +1508,7 @@ onEditarPagamento={handleEditarPagamento}
         open={viewNFCeOpen}
         onOpenChange={setViewNFCeOpen}
         venda={selectedVendaForNFCe}
-        onImprimir={imprimirCupom}
+        onImprimir={imprimirDANFE}
         onCancelar={handleCancelarNFCe}
       />
 
