@@ -32,6 +32,10 @@ export default function ProdutosPage() {
     categoria: '',
     preco: '',
     custo: '',
+    ncm: '18069000',
+    cfop: '5102',
+    cest: '',
+    unidade_comercial: 'UN',
     ncm_code: '18063210',
     unidade: 'UN',
   });
@@ -75,6 +79,10 @@ export default function ProdutosPage() {
         ...formData,
         preco: parseFloat(formData.preco),
         custo: parseFloat(formData.custo || 0),
+        ncm: formData.ncm || '18069000',
+        cfop: formData.cfop || '5102',
+        cest: formData.cest || null,
+        unidade_comercial: formData.unidade_comercial || 'UN',
       };
 
       // Verificar duplicatas apenas em novos cadastros
@@ -139,6 +147,10 @@ export default function ProdutosPage() {
       categoria: produto.categoria,
       preco: produto.preco.toString(),
       custo: (produto.custo || 0).toString(),
+      ncm: produto.ncm || '18069000',
+      cfop: produto.cfop || '5102',
+      cest: produto.cest || '',
+      unidade_comercial: produto.unidade_comercial || 'UN',
       ncm_code: produto.ncm_code || '18063210',
       unidade: produto.unidade || 'UN',
     });
@@ -152,6 +164,10 @@ export default function ProdutosPage() {
       categoria: '',
       preco: '',
       custo: '',
+      ncm: '18069000',
+      cfop: '5102',
+      cest: '',
+      unidade_comercial: 'UN',
       ncm_code: '18063210',
       unidade: 'UN',
     });
@@ -269,6 +285,74 @@ export default function ProdutosPage() {
                   />
                 </div>
               </div>
+
+              {/* Seção Fiscal */}
+              <div className="border-t border-[#8B5A3C]/15 pt-4">
+                <p className="text-sm font-semibold text-[#6B4423] mb-3">📋 Dados Fiscais (NFC-e)</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#6B4423] mb-1">
+                      NCM
+                      <span className="ml-1 text-xs text-[#8B5A3C] font-normal">(8 dígitos)</span>
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={8}
+                      placeholder="18069000"
+                      value={formData.ncm}
+                      onChange={(e) => setFormData({ ...formData, ncm: e.target.value.replace(/\D/g,'') })}
+                      className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#6B4423] mb-1">
+                      CFOP
+                      <span className="ml-1 text-xs text-[#8B5A3C] font-normal">(4 dígitos)</span>
+                    </label>
+                    <select
+                      value={formData.cfop}
+                      onChange={(e) => setFormData({ ...formData, cfop: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                    >
+                      <option value="5102">5102 — Venda de mercadoria adquirida</option>
+                      <option value="5101">5101 — Venda de produção do estabelecimento</option>
+                      <option value="5405">5405 — Venda c/ substituição tributária</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#6B4423] mb-1">
+                      Unidade Comercial
+                    </label>
+                    <select
+                      value={formData.unidade_comercial}
+                      onChange={(e) => setFormData({ ...formData, unidade_comercial: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                    >
+                      <option value="UN">UN — Unidade</option>
+                      <option value="CX">CX — Caixa</option>
+                      <option value="KG">KG — Quilograma</option>
+                      <option value="GR">GR — Grama</option>
+                      <option value="PC">PC — Pacote</option>
+                      <option value="BL">BL — Bloco</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#6B4423] mb-1">
+                      CEST
+                      <span className="ml-1 text-xs text-[#8B5A3C] font-normal">(opcional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={7}
+                      placeholder="Ex: 1700200"
+                      value={formData.cest}
+                      onChange={(e) => setFormData({ ...formData, cest: e.target.value.replace(/\D/g,'') })}
+                      className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="flex gap-3 justify-end pt-4">
                 <Button type="button" onClick={() => { setDialogOpen(false); resetForm(); }} variant="outline">
                   Cancelar

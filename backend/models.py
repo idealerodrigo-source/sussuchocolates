@@ -95,6 +95,11 @@ class Produto(BaseModel):
     estoque_minimo: int = 0
     ativo: bool = True
     data_cadastro: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Campos fiscais NFC-e
+    ncm: Optional[str] = "18069000"        # Chocolates e preparações com cacau
+    cfop: Optional[str] = "5102"           # Venda de mercadoria
+    cest: Optional[str] = None             # Código Especificador da Substituição Tributária
+    unidade_comercial: Optional[str] = "UN"
 
 
 class ProdutoCreate(BaseModel):
@@ -104,6 +109,11 @@ class ProdutoCreate(BaseModel):
     preco: float
     custo: float = 0.0
     estoque_minimo: int = 0
+    # Campos fiscais NFC-e
+    ncm: Optional[str] = "18069000"
+    cfop: Optional[str] = "5102"
+    cest: Optional[str] = None
+    unidade_comercial: Optional[str] = "UN"
 
 
 # Sabor para produtos com múltiplos sabores
