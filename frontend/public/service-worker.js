@@ -63,6 +63,9 @@ self.addEventListener('fetch', (event) => {
   // Ignorar requisições não-GET
   if (request.method !== 'GET') return;
 
+  // Ignorar requisições cross-origin (ex: Railway backend)
+  if (url.origin !== self.location.origin) return;
+
   // API: sempre ir para a rede (sem cache)
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
