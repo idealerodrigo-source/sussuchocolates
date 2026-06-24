@@ -46,6 +46,27 @@ app.add_middleware(
     max_age=3600,
 )
 
+# Middleware extra para garantir que OPTIONS preflight retorna 200
+from fastapi import Request
+from fastapi.responses import Response as FastAPIResponse
+
+@app.middleware("http")
+async def preflight_middleware(request: Request, call_next):
+    if request.method == "OPTIONS":
+        origin = request.headers.get("origin", "")
+        if not origin or origin in cors_origins:
+            return FastAPIResponse(
+                status_code=200,
+                headers={
+                    "Access-Control-Allow-Origin": origin or "*",
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+                    "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept, X-Requested-With",
+                    "Access-Control-Allow-Credentials": "true",
+                    "Access-Control-Max-Age": "3600",
+                }
+            )
+    return await call_next(request)
+
 # Incluir rotas
 app.include_router(api_router)
 
