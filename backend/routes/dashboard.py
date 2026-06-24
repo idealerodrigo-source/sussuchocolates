@@ -70,16 +70,20 @@ async def dashboard_stats(current_user: dict = Depends(get_current_user)):
     )
 
     # Top 5 produtos mais vendidos do mês (aggregation no banco)
-    pipeline_top = [
-        {"$match": {"data_venda": {"$regex": f"^{mes_atual}"}, "status_venda": {"$ne": "cancelada"}}},
-        {"$unwind": "$items"},
-        {"$group": {"_id": "$items.produto_id", "nome": {"$first": "$items.produto_nome"},
-                    "total": {"$sum": "$items.quantidade"}}},
-        {"$sort": {"total": -1}},
-        {"$limit": 5},
-    ]
-    top_produtos_raw = await db.vendas.aggregate(pipeline_top).to_list(5)
-    top_produtos = [{"nome": p["nome"], "total": p["total"]} for p in top_produtos_raw]
+    try:
+        pipeline_top = [
+            {"$match": {"data_venda": {"$regex": f"^{mes_atual}"}, "status_venda": {"$ne": "cancelada"}}},
+            {"$unwind": "$items"},
+            {"$group": {"_id": "$items.produto_id", "nome": {"$first": "$items.produto_nome"},
+                        "total": {"$sum": "$items.quantidade"}}},
+            {"$sort": {"total": -1}},
+            {"$limit": 5},
+        ]
+        cursor = db.vendas.aggregate(pipeline_top)
+        top_produtos_raw = await cursor.to_list(5)
+        top_produtos = [{"nome": p["nome"], "total": p["total"]} for p in top_produtos_raw]
+    except Exception:
+        top_produtos = []
 
     return {
         "total_clientes": total_clientes,
