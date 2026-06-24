@@ -145,9 +145,9 @@ export const nfceAPI = {
   configuracao: () => api.get('/nfce/configuracao'),
   statusSefaz: () => api.get('/nfce/status-sefaz'),
   emitir: (dados) => api.post('/nfce/emitir', dados),
-  cancelar: (chave, justificativa) => api.post(`/nfce/cancelar/${chave}?justificativa=${encodeURIComponent(justificativa)}`),
+  emitirVenda: (vendaId) => api.post(`/nfce/emitir-venda/${vendaId}`),
+  cancelar: (chave, justificativa) => api.post(`/nfce/cancelar/${chave}`, { justificativa }),
   historico: (limit = 50, skip = 0) => api.get(`/nfce/historico?limit=${limit}&skip=${skip}`),
-  obter: (id) => api.get(`/nfce/${id}`),
 };
 
 // ConfiguraÃ§Ãµes - UsuÃ¡rios

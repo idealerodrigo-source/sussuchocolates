@@ -21,6 +21,7 @@ import RelatoriosPage from './pages/RelatoriosPage';
 import ConfiguracoesPage from './pages/ConfiguracoesPage';
 import CatalogoPage from './pages/CatalogoPage';
 import CalendarioPage from './pages/CalendarioPage';
+import NFCeHistoricoPage from './pages/NFCeHistoricoPage';
 
 // Registrar Service Worker para PWA
 const registerServiceWorker = () => {
@@ -74,6 +75,7 @@ function App() {
               <Route path="relatorios" element={<RelatoriosPage />} />
               <Route path="configuracoes" element={<ConfiguracoesPage />} />
               <Route path="calendario" element={<CalendarioPage />} />
+              <Route path="nfce" element={<NFCeHistoricoPage />} />
             </Route>
           </Routes>
         </BrowserRouter>
