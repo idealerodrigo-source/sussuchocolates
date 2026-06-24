@@ -28,10 +28,21 @@ app = FastAPI(
 app.include_router(api_router)
 
 # Configurar CORS
+cors_origins_raw = os.environ.get('CORS_ORIGINS', '')
+if cors_origins_raw and cors_origins_raw != '*':
+    cors_origins = cors_origins_raw.split(',')
+else:
+    cors_origins = [
+        "https://www.sussuchocolates.com.br",
+        "https://sussuchocolates.com.br",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
