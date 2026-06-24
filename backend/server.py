@@ -24,13 +24,10 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# Incluir rotas
-app.include_router(api_router)
-
-# Configurar CORS
+# Configurar CORS — deve vir ANTES de include_router
 cors_origins_raw = os.environ.get('CORS_ORIGINS', '')
-if cors_origins_raw and cors_origins_raw != '*':
-    cors_origins = cors_origins_raw.split(',')
+if cors_origins_raw and cors_origins_raw.strip() not in ('', '*'):
+    cors_origins = [o.strip() for o in cors_origins_raw.split(',') if o.strip()]
 else:
     cors_origins = [
         "https://www.sussuchocolates.com.br",
@@ -41,11 +38,16 @@ else:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
     allow_origins=cors_origins,
-    allow_methods=["*"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
 )
+
+# Incluir rotas
+app.include_router(api_router)
 
 # Evento de shutdown
 @app.on_event("shutdown")
