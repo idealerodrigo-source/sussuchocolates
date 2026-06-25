@@ -100,3 +100,57 @@ async def deletar_cliente(cliente_id: str, current_user: dict = Depends(get_curr
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
     return {"message": "Cliente deletado com sucesso"}
+
+
+@router.get("/aniversariantes")
+async def listar_aniversariantes(
+    dias: int = 30,
+    current_user: dict = Depends(get_current_user)
+):
+    """Retorna clientes com aniversário nos próximos X dias"""
+    from datetime import datetime, timezone, timedelta
+
+    hoje = datetime.now(timezone.utc).date()
+    clientes = await db.clientes.find(
+        {"data_nascimento": {"$exists": True, "$ne": None, "$ne": ""}},
+        {"_id": 0}
+    ).to_list(10000)
+
+    aniversariantes = []
+    for c in clientes:
+        nasc_str = c.get("data_nascimento", "")
+        if not nasc_str:
+            continue
+        try:
+            nasc = datetime.strptime(str(nasc_str)[:10], "%Y-%m-%d").date()
+        except Exception:
+            continue
+
+        # Próximo aniversário no ano atual
+        try:
+            proximo = nasc.replace(year=hoje.year)
+        except ValueError:
+            proximo = nasc.replace(year=hoje.year, day=28)  # 29/fev em ano não bissexto
+
+        if proximo < hoje:
+            try:
+                proximo = nasc.replace(year=hoje.year + 1)
+            except ValueError:
+                proximo = nasc.replace(year=hoje.year + 1, day=28)
+
+        dias_faltam = (proximo - hoje).days
+
+        if 0 <= dias_faltam <= dias:
+            idade = hoje.year - nasc.year
+            if (hoje.month, hoje.day) < (nasc.month, nasc.day):
+                idade -= 1
+            aniversariantes.append({
+                **c,
+                "dias_faltam": dias_faltam,
+                "idade": idade,
+                "data_aniversario": proximo.isoformat(),
+                "hoje": dias_faltam == 0,
+            })
+
+    aniversariantes.sort(key=lambda x: x["dias_faltam"])
+    return aniversariantes

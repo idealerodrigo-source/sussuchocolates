@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { dashboardAPI, estoqueAPI } from '../services/api';
+import { dashboardAPI, estoqueAPI, clientesAPI } from '../services/api';
 import { formatCurrency } from '../utils/formatters';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -13,6 +13,7 @@ import {
   Receipt,
   CalendarBlank,
   ArrowRight,
+  Cake,
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 
@@ -47,6 +48,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [alertasEstoque, setAlertasEstoque] = useState(null);
+  const [aniversariantes, setAniversariantes] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -55,12 +57,14 @@ export default function DashboardPage() {
 
   const fetchStats = async () => {
     try {
-      const [statsRes, alertasRes] = await Promise.all([
+      const [statsRes, alertasRes, anivRes] = await Promise.all([
         dashboardAPI.stats(),
         estoqueAPI.alertas(),
+        clientesAPI.aniversariantes(7),
       ]);
       setStats(statsRes.data);
       setAlertasEstoque(alertasRes.data);
+      setAniversariantes(anivRes.data || []);
     } catch (error) {
       toast.error('Erro ao carregar estatísticas');
     } finally {
@@ -214,6 +218,47 @@ export default function DashboardPage() {
                 )}
               </div>
               <div className="p-4 rounded-xl bg-orange-100 text-orange-600 text-4xl">📦</div>
+            </div>
+          )}
+
+          {aniversariantes.length > 0 && (
+            <div className="bg-pink-50 border border-pink-200 rounded-xl p-6 shadow-sm mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 rounded-xl bg-pink-100 text-pink-600">
+                  <Cake size={24} weight="bold" />
+                </div>
+                <div>
+                  <p className="text-xs font-sans uppercase tracking-wider font-semibold text-pink-600">
+                    🎂 Aniversários nos próximos 7 dias
+                  </p>
+                  <p className="text-sm text-pink-700">{aniversariantes.length} cliente(s)</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {aniversariantes.map((a, i) => (
+                  <div key={i} className="flex items-center justify-between bg-white/60 rounded-lg px-4 py-2.5">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{a.hoje ? '🎉' : '🎂'}</span>
+                      <div>
+                        <p className="font-medium text-sm text-[#3E2723]">{a.nome}</p>
+                        <p className="text-xs text-pink-600">
+                          {a.hoje ? 'Hoje!' : `Em ${a.dias_faltam} dia(s)`} — {a.idade} anos
+                        </p>
+                      </div>
+                    </div>
+                    {a.telefone && (
+                      <a
+                        href={`https://wa.me/55${a.telefone.replace(/\D/g,'')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-200 transition-colors font-medium"
+                      >
+                        💬 WhatsApp
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </>

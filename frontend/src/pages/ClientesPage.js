@@ -169,6 +169,7 @@ export default function ClientesPage() {
       cidade: cliente.cidade || '',
       estado: cliente.estado || '',
       cep: cliente.cep || '',
+      data_nascimento: cliente.data_nascimento || '',
     });
     setDialogOpen(true);
   };
@@ -184,6 +185,7 @@ export default function ClientesPage() {
       cidade: '',
       estado: '',
       cep: '',
+      data_nascimento: '',
     });
     setEditingCliente(null);
   };
@@ -293,6 +295,21 @@ export default function ClientesPage() {
                   />
                 </div>
               </div>
+
+              {/* Data de nascimento */}
+              <div>
+                <label className="block text-sm font-medium text-[#6B4423] mb-1">
+                  🎂 Data de Nascimento
+                  <span className="ml-1 text-xs text-[#8B5A3C] font-normal">(opcional — para alertas de aniversário)</span>
+                </label>
+                <input
+                  type="date"
+                  value={formData.data_nascimento}
+                  onChange={(e) => setFormData({ ...formData, data_nascimento: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-[#FFFDF8] border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] font-sans"
+                />
+              </div>
+
               <div className="flex gap-3 justify-end pt-4">
                 <Button type="button" onClick={() => { setDialogOpen(false); resetForm(); }} variant="outline">
                   Cancelar

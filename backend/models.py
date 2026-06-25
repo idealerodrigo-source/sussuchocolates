@@ -69,6 +69,7 @@ class Cliente(BaseModel):
     cep: Optional[str] = None
     cpf_cnpj: Optional[str] = None
     observacoes: Optional[str] = None
+    data_nascimento: Optional[str] = None   # formato: YYYY-MM-DD
     data_cadastro: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -82,6 +83,7 @@ class ClienteCreate(BaseModel):
     cep: Optional[str] = None
     cpf_cnpj: Optional[str] = None
     observacoes: Optional[str] = None
+    data_nascimento: Optional[str] = None
 
 
 # Produto Models

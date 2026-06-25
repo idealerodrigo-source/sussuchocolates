@@ -24,6 +24,7 @@ export const clientesAPI = {
   atualizar: (id, data) => api.put(`/clientes/${id}`, data),
   deletar: (id) => api.delete(`/clientes/${id}`),
   historico: (id) => api.get(`/clientes/${id}/historico`),
+  aniversariantes: (dias = 30) => api.get(`/clientes/aniversariantes?dias=${dias}`),
 };
 
 export const produtosAPI = {
