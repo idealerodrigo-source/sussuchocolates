@@ -13,6 +13,7 @@ import {
   Phone
 } from '@phosphor-icons/react';
 import { Button } from '../components/ui/button';
+import PortalLayout from '../components/PortalLayout';
 import { toast, Toaster } from 'sonner';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
@@ -171,57 +172,26 @@ export default function CatalogoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5E6D3]">
+    <PortalLayout carrinhoCount={totalItens}>
+      <div className="min-h-screen bg-[#F5E6D3]">
       <Toaster position="top-center" />
-      
-      {/* Header */}
-      <header className="bg-[#3E2723] text-[#F5E6D3] sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {empresa?.logo ? (
-                <img src={empresa.logo} alt={empresa.nome_fantasia} className="h-12 object-contain" />
-              ) : (
-                <h1 className="text-2xl font-serif font-bold">{empresa?.nome_fantasia || 'Sussu Chocolates'}</h1>
-              )}
-            </div>
-            
-            {/* Botão Carrinho */}
-            <button
-              onClick={() => setCarrinhoAberto(true)}
-              className="relative bg-[#6B4423] hover:bg-[#8B5A3C] px-4 py-2 rounded-full flex items-center gap-2 transition-colors"
-            >
-              <ShoppingCart size={24} weight="fill" />
-              <span className="hidden sm:inline">Carrinho</span>
-              {totalItens > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">
-                  {totalItens}
-                </span>
-              )}
-            </button>
-          </div>
-          
-          {/* Info da empresa */}
-          <div className="mt-3 flex flex-wrap gap-4 text-sm text-[#E8D5C4]">
-            {empresa?.telefone && (
-              <span className="flex items-center gap-1">
-                <Phone size={16} />
-                {empresa.telefone}
-              </span>
-            )}
-            {empresa?.endereco && (
-              <span className="flex items-center gap-1">
-                <MapPin size={16} />
-                {empresa.endereco}
-              </span>
-            )}
-          </div>
-        </div>
-      </header>
 
-      {/* Filtros */}
-      <div className="bg-white/50 backdrop-blur-sm sticky top-[88px] z-30 border-b border-[#8B5A3C]/20">
-        <div className="max-w-7xl mx-auto px-4 py-3">
+      {/* Barra de filtros */}
+      <div className="bg-white/80 backdrop-blur-sm sticky top-[88px] z-30 border-b border-[#8B5A3C]/20">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+          {/* Botão carrinho visível na barra */}
+          <button
+            onClick={() => setCarrinhoAberto(true)}
+            className="relative bg-[#6B4423] hover:bg-[#8B5A3C] px-4 py-2 rounded-full flex items-center gap-2 transition-colors text-white flex-shrink-0"
+          >
+            <ShoppingCart size={20} weight="fill" />
+            <span className="hidden sm:inline text-sm font-semibold">Carrinho</span>
+            {totalItens > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                {totalItens}
+              </span>
+            )}
+          </button>
           <div className="flex flex-col sm:flex-row gap-3">
             {/* Busca */}
             <div className="relative flex-1">
@@ -447,17 +417,8 @@ export default function CatalogoPage() {
         </div>
       )}
 
-      {/* Botão flutuante do WhatsApp */}
-      {!carrinhoAberto && empresa?.whatsapp && (
-        <a
-          href={`https://wa.me/55${empresa.whatsapp.replace(/\D/g, '')}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="fixed bottom-6 right-6 bg-[#25D366] hover:bg-[#20BD5A] text-white p-4 rounded-full shadow-lg transition-transform hover:scale-110 z-30"
-        >
-          <WhatsappLogo size={32} weight="fill" />
-        </a>
-      )}
+      {/* Botão WhatsApp já está no PortalLayout */}
     </div>
+    </PortalLayout>
   );
 }
