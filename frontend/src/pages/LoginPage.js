@@ -25,7 +25,7 @@ export default function LoginPage() {
 
       if (result.success) {
         toast.success(isLogin ? 'Login realizado com sucesso!' : 'Conta criada com sucesso!');
-        navigate('/dashboard');
+        navigate('/sistema/dashboard');
       } else {
         toast.error(result.message);
       }

@@ -22,6 +22,8 @@ import ConfiguracoesPage from './pages/ConfiguracoesPage';
 import CatalogoPage from './pages/CatalogoPage';
 import CalendarioPage from './pages/CalendarioPage';
 import NFCeHistoricoPage from './pages/NFCeHistoricoPage';
+import PortalHomePage from './pages/PortalHomePage';
+import ContatoPage from './pages/ContatoPage';
 
 // Registrar Service Worker para PWA
 const registerServiceWorker = () => {
@@ -48,20 +50,22 @@ function App() {
       <EmpresaProvider>
         <BrowserRouter>
           <Routes>
-            {/* Rota pública - Catálogo para clientes */}
+            {/* ===== PORTAL PÚBLICO ===== */}
+            <Route path="/" element={<PortalHomePage />} />
             <Route path="/catalogo" element={<CatalogoPage />} />
-            
-            {/* Rotas de autenticação */}
+            <Route path="/contato" element={<ContatoPage />} />
+
+            {/* ===== SISTEMA DE GESTÃO (requer login) ===== */}
             <Route path="/login" element={<LoginPage />} />
             <Route
-              path="/"
+              path="/sistema"
               element={
                 <PrivateRoute>
                   <Layout />
                 </PrivateRoute>
               }
             >
-              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route index element={<Navigate to="/sistema/dashboard" replace />} />
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="clientes" element={<ClientesPage />} />
               <Route path="produtos" element={<ProdutosPage />} />
@@ -77,6 +81,16 @@ function App() {
               <Route path="calendario" element={<CalendarioPage />} />
               <Route path="nfce" element={<NFCeHistoricoPage />} />
             </Route>
+
+            {/* Compatibilidade: redirects das rotas antigas */}
+            <Route path="/dashboard" element={<Navigate to="/sistema/dashboard" replace />} />
+            <Route path="/clientes" element={<Navigate to="/sistema/clientes" replace />} />
+            <Route path="/produtos" element={<Navigate to="/sistema/produtos" replace />} />
+            <Route path="/pedidos" element={<Navigate to="/sistema/pedidos" replace />} />
+            <Route path="/vendas" element={<Navigate to="/sistema/vendas" replace />} />
+            <Route path="/estoque" element={<Navigate to="/sistema/estoque" replace />} />
+            <Route path="/relatorios" element={<Navigate to="/sistema/relatorios" replace />} />
+            <Route path="/configuracoes" element={<Navigate to="/sistema/configuracoes" replace />} />
           </Routes>
         </BrowserRouter>
         <Toaster position="top-right" />

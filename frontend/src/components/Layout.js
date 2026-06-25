@@ -78,20 +78,20 @@ export default function Layout() {
   const isOnline = useOnlineStatus();
 
   const menuItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: House },
-    { path: '/clientes', label: 'Clientes', icon: Users },
-    { path: '/produtos', label: 'Produtos', icon: Package },
-    { path: '/pedidos', label: 'Pedidos', icon: ShoppingCart },
-    { path: '/calendario', label: 'Calendário', icon: CalendarBlank },
-    { path: '/producao', label: 'Produção', icon: Factory },
-    { path: '/embalagem', label: 'Embalagem', icon: Archive },
-    { path: '/estoque', label: 'Estoque', icon: List },
-    { path: '/vendas', label: 'Vendas', icon: Receipt },
-    { path: '/nfce', label: 'NFC-e', icon: Receipt },
-    { path: '/compras', label: 'Compras', icon: Truck },
-    { path: '/lucratividade', label: 'Lucratividade', icon: ChartBar },
-    { path: '/relatorios', label: 'Relatórios', icon: ChartBar },
-    { path: '/configuracoes', label: 'Configurações', icon: Gear },
+    { path: '/sistema/dashboard', label: 'Dashboard', icon: House },
+    { path: '/sistema/clientes', label: 'Clientes', icon: Users },
+    { path: '/sistema/produtos', label: 'Produtos', icon: Package },
+    { path: '/sistema/pedidos', label: 'Pedidos', icon: ShoppingCart },
+    { path: '/sistema/calendario', label: 'Calendário', icon: CalendarBlank },
+    { path: '/sistema/producao', label: 'Produção', icon: Factory },
+    { path: '/sistema/embalagem', label: 'Embalagem', icon: Archive },
+    { path: '/sistema/estoque', label: 'Estoque', icon: List },
+    { path: '/sistema/vendas', label: 'Vendas', icon: Receipt },
+    { path: '/sistema/nfce', label: 'NFC-e', icon: Receipt },
+    { path: '/sistema/compras', label: 'Compras', icon: Truck },
+    { path: '/sistema/lucratividade', label: 'Lucratividade', icon: ChartBar },
+    { path: '/sistema/relatorios', label: 'Relatórios', icon: ChartBar },
+    { path: '/sistema/configuracoes', label: 'Configurações', icon: Gear },
   ];
 
   const handleLogout = () => {
