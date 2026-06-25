@@ -1,14 +1,90 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { List, X, WhatsappLogo, InstagramLogo, FacebookLogo, ShoppingCart } from '@phosphor-icons/react';
+import { List, X, WhatsappLogo, InstagramLogo, FacebookLogo, ShoppingCart, Warning, ArrowRight } from '@phosphor-icons/react';
 
 const WHATSAPP = '5543999676206';
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP}?text=Ol%C3%A1%21+Gostaria+de+fazer+um+pedido+%F0%9F%8D%AB`;
 
+function PopupConstrucao({ onFechar }) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
+      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden animate-[fadeIn_0.3s_ease]">
+        {/* Header marrom */}
+        <div className="bg-gradient-to-br from-[#3E2723] to-[#6B4423] p-8 text-center">
+          <div className="text-6xl mb-3">🍫</div>
+          <img
+            src="https://customer-assets.emergentagent.com/job_sussu-manage/artifacts/kgl5rby1_Logo_Sussu_Chocolates-01.png"
+            alt="Sussu Chocolates"
+            className="h-14 mx-auto mb-4"
+          />
+          <div className="inline-flex items-center gap-2 bg-yellow-400 text-yellow-900 text-xs font-bold px-4 py-1.5 rounded-full">
+            <Warning size={14} weight="fill" />
+            SITE EM CONSTRUÇÃO
+          </div>
+        </div>
+
+        {/* Conteúdo */}
+        <div className="p-8 text-center">
+          <h2 className="text-xl font-serif font-bold text-[#3E2723] mb-3">
+            Estamos preparando algo especial para você!
+          </h2>
+          <p className="text-[#705A4D] text-sm leading-relaxed mb-6">
+            Nosso site está em fase de construção e alguns conteúdos ainda podem estar incompletos ou sujeitos a alterações. Para pedidos, dúvidas ou informações, fale diretamente conosco pelo <strong className="text-green-700">WhatsApp</strong> ou pelo <strong className="text-pink-600">Instagram</strong>.
+          </p>
+
+          {/* Botões de contato */}
+          <div className="flex flex-col gap-3 mb-6">
+            <a
+              href={WHATSAPP_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-full font-bold text-sm transition-colors"
+            >
+              <WhatsappLogo size={18} weight="fill" />
+              Falar pelo WhatsApp: (43) 99967-6206
+            </a>
+            <a
+              href="https://www.instagram.com/sussu_chocolates/"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 text-white px-6 py-3 rounded-full font-bold text-sm transition-opacity"
+            >
+              <InstagramLogo size={18} weight="fill" />
+              @sussu_chocolates no Instagram
+            </a>
+          </div>
+
+          <button
+            onClick={onFechar}
+            className="flex items-center justify-center gap-2 w-full border-2 border-[#D4B896] text-[#6B4423] hover:bg-[#F5E6D3] px-6 py-2.5 rounded-full font-semibold text-sm transition-colors"
+          >
+            Entendi, quero explorar o site
+            <ArrowRight size={16} weight="bold" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PortalLayout({ children, carrinhoCount = 0 }) {
   const [menuAberto, setMenuAberto] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [popupAberto, setPopupAberto] = useState(false);
   const { pathname } = useLocation();
+
+  // Mostrar popup uma vez por sessão
+  useEffect(() => {
+    const jaViu = sessionStorage.getItem('sussu_aviso_construcao');
+    if (!jaViu) {
+      setPopupAberto(true);
+    }
+  }, []);
+
+  const fecharPopup = () => {
+    sessionStorage.setItem('sussu_aviso_construcao', 'true');
+    setPopupAberto(false);
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -29,6 +105,8 @@ export default function PortalLayout({ children, carrinhoCount = 0 }) {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ fontFamily: "'Georgia', serif", background: '#FDF8F3' }}>
+
+      {popupAberto && <PopupConstrucao onFechar={fecharPopup} />}
 
       {/* Header */}
       <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'shadow-md bg-[#3E2723]/97 backdrop-blur' : 'bg-[#3E2723]'}`}>
