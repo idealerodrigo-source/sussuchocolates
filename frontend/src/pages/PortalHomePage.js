@@ -17,7 +17,7 @@ const CATEGORIAS = [
 ];
 
 const DIFERENCIAIS = [
-  { icon: Star, titulo: 'Quase 40 anos', texto: 'Tradição familiar desde 1986, com receitas que atravessam gerações.' },
+  { icon: Star, titulo: 'Há 40 anos', texto: 'Tradição familiar desde 1986, com receitas que atravessam gerações.' },
   { icon: Heart, titulo: 'Feito com amor', texto: 'Cada chocolate é produzido artesanalmente com ingredientes selecionados.' },
   { icon: Gift, titulo: 'Personalizado', texto: 'Criamos produtos especiais para datas comemorativas e eventos.' },
   { icon: Truck, titulo: 'Entregamos', texto: 'Fazemos entregas em Jacarezinho e região. Consulte disponibilidade.' },
@@ -244,7 +244,7 @@ export default function PortalHomePage() {
           </h2>
           <div className="w-20 h-1 bg-[#C4A57B] rounded mx-auto mb-8" />
           <p className="text-[#705A4D] text-lg leading-relaxed mb-6">
-            A Sussu Chocolates nasceu da paixão por chocolates artesanais e da dedicação de uma família ao ofício de criar momentos especiais. Com quase <strong className="text-[#3E2723]">40 anos de história</strong> em Jacarezinho/PR, cada produto que sai de nossa cozinha carrega o cuidado, o amor e a tradição que passamos de geração em geração.
+            A Sussu Chocolates nasceu da paixão por chocolates artesanais e da dedicação de uma família ao ofício de criar momentos especiais. Com <strong className="text-[#3E2723]">40 anos de história</strong> em Jacarezinho/PR, cada produto que sai de nossa cozinha carrega o cuidado, o amor e a tradição que passamos de geração em geração.
           </p>
           <p className="text-[#705A4D] text-lg leading-relaxed mb-10">
             Desde bombons e trufas até ovos de Páscoa e cestas de presente, trabalhamos com ingredientes selecionados para garantir que cada mordida seja uma experiência inesquecível.
