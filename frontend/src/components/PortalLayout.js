@@ -231,7 +231,7 @@ export default function PortalLayout({ children, carrinhoCount = 0, onCarrinhoCl
               className="h-16 w-auto mb-4 opacity-90"
             />
             <p className="text-sm text-[#9A7B5C] leading-relaxed">
-              Chocolates artesanais feitos com amor e tradição familiar há quase 40 anos. Cada peça é um momento especial.
+              Chocolates artesanais feitos com amor e tradição familiar há 40 anos. Cada peça é um momento especial.
             </p>
           </div>
 
