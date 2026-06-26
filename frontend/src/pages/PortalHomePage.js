@@ -7,13 +7,27 @@ const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 const WHATSAPP = '5543999676206';
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP}?text=Ol%C3%A1%21+Gostaria+de+fazer+um+pedido+%F0%9F%8D%AB`;
 
+const FOTO_POR_CATEGORIA = {
+  'Ovos Tradicionais': `${BASE_IMG}/ovo-ao-leite.jpg`,
+  'Ovo ao Leite': `${BASE_IMG}/ovo-ao-leite.jpg`,
+  'Ovo Branco': `${BASE_IMG}/ovo-branco.jpg`,
+  'Ovo Mesclado': `${BASE_IMG}/ovo-mesclado.jpg`,
+  'Linha Premium': `${BASE_IMG}/linha-premium.jpg`,
+  'Ovos Premium': `${BASE_IMG}/linha-premium.jpg`,
+  'Casca Recheada': `${BASE_IMG}/casca-recheada-amarula.jpg`,
+  'Corações': `${BASE_IMG}/coracao-ao-leite.jpg`,
+  'Coração': `${BASE_IMG}/coracao-ao-leite.jpg`,
+  'Ovo de Colher': `${BASE_IMG}/ovo-de-colher.jpg`,
+  'Ovo em Fatias': `${BASE_IMG}/ovo-em-fatias.jpg`,
+};
+
 const CATEGORIAS = [
-  { emoji: '🍫', nome: 'Bombons', desc: 'Recheios especiais' },
-  { emoji: '🥚', nome: 'Ovos de Páscoa', desc: 'Tradição especial' },
-  { emoji: '🎁', nome: 'Cestas', desc: 'Para presentear' },
-  { emoji: '🍬', nome: 'Trufas', desc: 'Sabores únicos' },
-  { emoji: '🎂', nome: 'Datas Especiais', desc: 'Personalizado para você' },
-  { emoji: '🧁', nome: 'Variados', desc: 'Muito mais opções' },
+  { img: `${BASE_IMG}/ovo-ao-leite.jpg`,      nome: 'Ovos Tradicionais', desc: 'Ao Leite, Branco, Mesclado' },
+  { img: `${BASE_IMG}/linha-premium.jpg`,     nome: 'Linha Premium',     desc: 'Callebaut 54,5% e 70% cacau' },
+  { img: `${BASE_IMG}/casca-recheada-amarula.jpg`, nome: 'Casca Recheada', desc: 'Prestígio, Nutella, Amarula...' },
+  { img: `${BASE_IMG}/coracao-ao-leite.jpg`,  nome: 'Corações',          desc: 'Tradicionais e recheados' },
+  { img: `${BASE_IMG}/ovo-de-colher.jpg`,     nome: 'Ovo de Colher',     desc: 'Com recheio cremoso' },
+  { img: `${BASE_IMG}/ovo-em-fatias.jpg`,     nome: 'Ovo em Fatias',     desc: '3 recheios em 1 ovo' },
 ];
 
 const DIFERENCIAIS = [
@@ -138,11 +152,15 @@ export default function PortalHomePage() {
               <Link
                 key={i}
                 to="/catalogo"
-                className="group flex flex-col items-center p-5 bg-white rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all border border-[#F0E4D4]"
+                className="group flex flex-col items-center bg-white rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all border border-[#F0E4D4] overflow-hidden"
               >
-                <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">{cat.emoji}</div>
-                <p className="font-serif font-bold text-[#3E2723] text-sm text-center">{cat.nome}</p>
-                <p className="text-xs text-[#8B5A3C] text-center mt-1">{cat.desc}</p>
+                <div className="w-full h-32 overflow-hidden">
+                  <img src={cat.img} alt={cat.nome} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                </div>
+                <div className="p-3 text-center">
+                  <p className="font-serif font-bold text-[#3E2723] text-sm">{cat.nome}</p>
+                  <p className="text-xs text-[#8B5A3C] mt-0.5">{cat.desc}</p>
+                </div>
               </Link>
             ))}
           </div>
@@ -160,36 +178,37 @@ export default function PortalHomePage() {
               <p className="text-[#705A4D]">Selecione seu favorito e faça seu pedido</p>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
-              {produtos.map((prod, i) => (
-                <div
-                  key={prod.id || i}
-                  className="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 overflow-hidden border border-[#F0E4D4] group"
-                >
-                  {/* Imagem placeholder */}
-                  <div className="h-40 bg-gradient-to-br from-[#F5E6D3] to-[#E8D0B0] flex items-center justify-center">
-                    <span className="text-5xl group-hover:scale-110 transition-transform">🍫</span>
-                  </div>
-                  <div className="p-4">
-                    <p className="font-serif font-bold text-[#3E2723] text-sm leading-tight mb-1 line-clamp-2">{prod.nome}</p>
-                    {prod.categoria && (
-                      <span className="text-xs text-[#8B5A3C] bg-[#F5E6D3] px-2 py-0.5 rounded-full">{prod.categoria}</span>
-                    )}
-                    <div className="flex items-center justify-between mt-3">
-                      <p className="font-bold text-[#6B4423] text-base">
-                        R$ {Number(prod.preco || 0).toFixed(2).replace('.', ',')}
-                      </p>
-                      <a
-                        href={`https://wa.me/${WHATSAPP}?text=Ol%C3%A1%21+Quero+pedir+${encodeURIComponent(prod.nome)}+%F0%9F%8D%AB`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="w-8 h-8 bg-green-500 hover:bg-green-600 rounded-full flex items-center justify-center transition-colors"
-                      >
-                        <WhatsappLogo size={16} weight="fill" className="text-white" />
-                      </a>
+              {produtos.map((prod, i) => {
+                const foto = FOTO_POR_CATEGORIA[prod.categoria] ||
+                  FOTO_POR_CATEGORIA[prod.nome?.split(' ').slice(0,2).join(' ')] ||
+                  `${BASE_IMG}/ovo-ao-leite.jpg`;
+                return (
+                  <div key={prod.id || i} className="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 overflow-hidden border border-[#F0E4D4] group">
+                    <div className="h-44 overflow-hidden">
+                      <img src={foto} alt={prod.nome} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    </div>
+                    <div className="p-4">
+                      <p className="font-serif font-bold text-[#3E2723] text-sm leading-tight mb-1 line-clamp-2">{prod.nome}</p>
+                      {prod.categoria && (
+                        <span className="text-xs text-[#8B5A3C] bg-[#F5E6D3] px-2 py-0.5 rounded-full">{prod.categoria}</span>
+                      )}
+                      <div className="flex items-center justify-between mt-3">
+                        <p className="font-bold text-[#6B4423] text-base">
+                          R$ {Number(prod.preco || 0).toFixed(2).replace('.', ',')}
+                        </p>
+                        <a
+                          href={`https://wa.me/${WHATSAPP}?text=Ol%C3%A1%21+Quero+pedir+${encodeURIComponent(prod.nome)}+%F0%9F%8D%AB`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-8 h-8 bg-green-500 hover:bg-green-600 rounded-full flex items-center justify-center transition-colors"
+                        >
+                          <WhatsappLogo size={16} weight="fill" className="text-white" />
+                        </a>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className="text-center mt-10">
               <Link
