@@ -67,7 +67,7 @@ function PopupConstrucao({ onFechar }) {
   );
 }
 
-export default function PortalLayout({ children, carrinhoCount = 0 }) {
+export default function PortalLayout({ children, carrinhoCount = 0, onCarrinhoClick = null }) {
   const [menuAberto, setMenuAberto] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [popupAberto, setPopupAberto] = useState(false);
@@ -156,14 +156,30 @@ export default function PortalLayout({ children, carrinhoCount = 0 }) {
               <WhatsappLogo size={18} weight="fill" />
               Pedir agora
             </a>
-            <Link to="/catalogo" className="relative p-2 text-[#C4A57B] hover:text-white">
-              <ShoppingCart size={24} weight="bold" />
-              {carrinhoCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                  {carrinhoCount}
-                </span>
-              )}
-            </Link>
+            {/* Carrinho */}
+            {onCarrinhoClick ? (
+              <button
+                onClick={onCarrinhoClick}
+                className="relative p-2 text-[#C4A57B] hover:text-white"
+                title="Abrir carrinho"
+              >
+                <ShoppingCart size={24} weight="bold" />
+                {carrinhoCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                    {carrinhoCount}
+                  </span>
+                )}
+              </button>
+            ) : (
+              <Link to="/catalogo" className="relative p-2 text-[#C4A57B] hover:text-white">
+                <ShoppingCart size={24} weight="bold" />
+                {carrinhoCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                    {carrinhoCount}
+                  </span>
+                )}
+              </Link>
+            )}
             {/* Menu mobile */}
             <button
               className="md:hidden text-[#C4A57B] hover:text-white p-1"

@@ -164,7 +164,7 @@ export default function CatalogoPage() {
   }
 
   return (
-    <PortalLayout carrinhoCount={totalItens}>
+    <PortalLayout carrinhoCount={totalItens} onCarrinhoClick={() => setCarrinhoAberto(true)}>
       <div className="min-h-screen bg-[#F5E6D3]">
       <Toaster position="top-center" />
 
@@ -291,92 +291,75 @@ export default function CatalogoPage() {
             </div>
             
             {/* Conteúdo do carrinho */}
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto">
               {carrinho.length === 0 ? (
-                <div className="text-center py-12">
+                <div className="text-center py-12 px-4">
                   <ShoppingCart size={64} className="text-[#8B5A3C]/30 mx-auto mb-4" />
                   <p className="text-[#705A4D]">Seu carrinho está vazio</p>
                   <p className="text-sm text-[#8B5A3C] mt-1">Adicione produtos para fazer seu pedido</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {/* Itens do carrinho */}
-                  {carrinho.map(item => (
-                    <div 
-                      key={item.id}
-                      className="bg-white rounded-xl p-3 shadow-sm flex gap-3"
-                    >
-                      <div className="w-16 h-16 bg-[#F5E6D3] rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Package size={24} className="text-[#8B5A3C]" />
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-[#3E2723] text-sm line-clamp-1">
-                          {item.nome}
-                        </h4>
-                        <p className="text-[#6B4423] font-semibold text-sm">
-                          {formatCurrency(item.preco)}
-                        </p>
-                        
-                        <div className="flex items-center justify-between mt-2">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => atualizarQuantidade(item.id, -1)}
-                              className="w-7 h-7 bg-[#F5E6D3] hover:bg-[#E8D5C4] rounded-full flex items-center justify-center transition-colors"
-                            >
-                              <Minus size={14} weight="bold" className="text-[#6B4423]" />
-                            </button>
-                            <span className="w-8 text-center font-medium text-[#3E2723]">
-                              {item.quantidade}
-                            </span>
-                            <button
-                              onClick={() => atualizarQuantidade(item.id, 1)}
-                              className="w-7 h-7 bg-[#6B4423] hover:bg-[#8B5A3C] rounded-full flex items-center justify-center transition-colors"
-                            >
-                              <Plus size={14} weight="bold" className="text-white" />
+                <div>
+                  {/* Itens */}
+                  <div className="p-4 space-y-3">
+                    {carrinho.map(item => (
+                      <div key={item.id} className="bg-white rounded-xl p-3 shadow-sm flex gap-3">
+                        <div className="w-14 h-14 bg-[#F5E6D3] rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Package size={22} className="text-[#8B5A3C]" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-[#3E2723] text-sm line-clamp-1">{item.nome}</h4>
+                          <p className="text-[#6B4423] font-semibold text-sm">{formatCurrency(item.preco)}</p>
+                          <div className="flex items-center justify-between mt-2">
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => atualizarQuantidade(item.id, -1)} className="w-7 h-7 bg-[#F5E6D3] hover:bg-[#E8D5C4] rounded-full flex items-center justify-center">
+                                <Minus size={14} weight="bold" className="text-[#6B4423]" />
+                              </button>
+                              <span className="w-8 text-center font-medium text-[#3E2723]">{item.quantidade}</span>
+                              <button onClick={() => atualizarQuantidade(item.id, 1)} className="w-7 h-7 bg-[#6B4423] hover:bg-[#8B5A3C] rounded-full flex items-center justify-center">
+                                <Plus size={14} weight="bold" className="text-white" />
+                              </button>
+                            </div>
+                            <button onClick={() => removerDoCarrinho(item.id)} className="text-red-400 hover:text-red-600 p-1">
+                              <Trash size={18} />
                             </button>
                           </div>
-                          
-                          <button
-                            onClick={() => removerDoCarrinho(item.id)}
-                            className="text-red-500 hover:text-red-600 p-1"
-                          >
-                            <Trash size={18} />
-                          </button>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                  
-                  {/* Dados do cliente */}
-                  <div className="border-t border-[#8B5A3C]/15 pt-4 mt-4">
-                    <h3 className="font-semibold text-[#3E2723] mb-3">📋 Seus dados</h3>
-                    <div className="space-y-3">
+                    ))}
+                  </div>
+
+                  {/* Dados do cliente — seção destacada */}
+                  <div className="bg-[#F5E6D3]/50 border-t border-b border-[#8B5A3C]/20 px-4 py-4">
+                    <h3 className="font-semibold text-[#3E2723] mb-3 flex items-center gap-2">
+                      📋 Seus dados para entrega
+                    </h3>
+                    <div className="space-y-2.5">
                       <input
                         type="text"
                         placeholder="Seu nome *"
                         value={nomeCliente}
                         onChange={(e) => setNomeCliente(e.target.value)}
-                        className="w-full px-4 py-2.5 bg-white border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723]"
+                        className="w-full px-4 py-2.5 bg-white border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] text-sm"
                       />
                       <input
                         type="tel"
                         placeholder="WhatsApp (ex: 43 99999-9999)"
                         value={telefoneCliente}
                         onChange={(e) => setTelefoneCliente(e.target.value)}
-                        className="w-full px-4 py-2.5 bg-white border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723]"
+                        className="w-full px-4 py-2.5 bg-white border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] text-sm"
                       />
                       <input
                         type="text"
                         placeholder="Endereço de entrega *"
                         value={enderecoCliente}
                         onChange={(e) => setEnderecoCliente(e.target.value)}
-                        className="w-full px-4 py-2.5 bg-white border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723]"
+                        className="w-full px-4 py-2.5 bg-white border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] text-sm"
                       />
                       <select
                         value={formaPagamento}
                         onChange={(e) => setFormaPagamento(e.target.value)}
-                        className="w-full px-4 py-2.5 bg-white border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723]"
+                        className="w-full px-4 py-2.5 bg-white border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] text-sm"
                       >
                         <option value="PIX">💸 PIX</option>
                         <option value="Dinheiro">💵 Dinheiro</option>
@@ -388,7 +371,7 @@ export default function CatalogoPage() {
                         value={observacoes}
                         onChange={(e) => setObservacoes(e.target.value)}
                         rows="2"
-                        className="w-full px-4 py-2.5 bg-white border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] resize-none"
+                        className="w-full px-4 py-2.5 bg-white border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723] resize-none text-sm"
                       />
                     </div>
                   </div>
