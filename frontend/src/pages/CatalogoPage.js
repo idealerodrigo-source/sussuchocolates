@@ -16,6 +16,7 @@ import { Button } from '../components/ui/button';
 import PortalLayout from '../components/PortalLayout';
 import { toast, Toaster } from 'sonner';
 
+const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 const BASE_IMG = '/images/produtos';
 
 const getFotoProduto = (produto) => {
