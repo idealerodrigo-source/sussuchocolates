@@ -310,3 +310,4 @@ export default function PortalLayout({ children, carrinhoCount = 0, onCarrinhoCl
     </div>
   );
 }
+// force rebuild Fri Jun 26 01:01:23 UTC 2026
