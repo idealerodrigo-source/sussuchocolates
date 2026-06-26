@@ -16,7 +16,57 @@ import { Button } from '../components/ui/button';
 import PortalLayout from '../components/PortalLayout';
 import { toast, Toaster } from 'sonner';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
+const BASE_IMG = '/images/produtos';
+
+const getFotoProduto = (produto) => {
+  const nome = (produto.nome || '').toLowerCase();
+  const cat  = (produto.categoria || '').toLowerCase();
+
+  // Corações
+  if (nome.includes('coração') || nome.includes('coracao') || cat.includes('coração') || cat.includes('coracao')) {
+    if (nome.includes('casca') || nome.includes('recheado') || nome.includes('recheada')) {
+      if (nome.includes('amarula'))    return `${BASE_IMG}/casca-recheada-amarula.jpg`;
+      if (nome.includes('nutella'))    return `${BASE_IMG}/casca-recheada-nutella.jpg`;
+      if (nome.includes('prestígio') || nome.includes('prestigio')) return `${BASE_IMG}/casca-recheada-prestigio.jpg`;
+      if (nome.includes('cereja'))     return `${BASE_IMG}/casca-recheada-cereja.jpg`;
+      if (nome.includes('ovomaltine')) return `${BASE_IMG}/casca-recheada-ovomaltine.jpg`;
+      return `${BASE_IMG}/casca-recheada-amarula.jpg`;
+    }
+    if (nome.includes('branco'))       return `${BASE_IMG}/coracao-branco.jpg`;
+    return `${BASE_IMG}/coracao-ao-leite.jpg`;
+  }
+
+  // Ovo de Colher
+  if (nome.includes('colher'))         return `${BASE_IMG}/ovo-de-colher.jpg`;
+
+  // Ovo em Fatias
+  if (nome.includes('fatia') || nome.includes('fatiado')) return `${BASE_IMG}/ovo-em-fatias.jpg`;
+
+  // Linha Premium / Callebaut
+  if (nome.includes('premium') || nome.includes('callebaut') || nome.includes('54,5') || nome.includes('70%')) {
+    return `${BASE_IMG}/linha-premium.jpg`;
+  }
+
+  // Ovos com casca recheada
+  if (nome.includes('recheado') || nome.includes('recheada') || nome.includes('casca')) {
+    if (nome.includes('amarula'))    return `${BASE_IMG}/casca-recheada-amarula.jpg`;
+    if (nome.includes('nutella'))    return `${BASE_IMG}/casca-recheada-nutella.jpg`;
+    if (nome.includes('prestígio') || nome.includes('prestigio')) return `${BASE_IMG}/casca-recheada-prestigio.jpg`;
+    if (nome.includes('cereja'))     return `${BASE_IMG}/casca-recheada-cereja.jpg`;
+    if (nome.includes('ovomaltine')) return `${BASE_IMG}/casca-recheada-ovomaltine.jpg`;
+    if (nome.includes('brigadeiro')) return `${BASE_IMG}/casca-recheada-prestígio.jpg`;
+    if (nome.includes('maracujá') || nome.includes('maracuja')) return `${BASE_IMG}/casca-recheada-cereja.jpg`;
+    if (nome.includes('tradicional')) return `${BASE_IMG}/casca-recheada-nutella.jpg`;
+    return `${BASE_IMG}/casca-recheada-amarula.jpg`;
+  }
+
+  // Ovos tradicionais por tipo de chocolate
+  if (nome.includes('branco'))         return `${BASE_IMG}/ovo-branco.jpg`;
+  if (nome.includes('mesclado') || nome.includes('misto')) return `${BASE_IMG}/ovo-mesclado.jpg`;
+
+  // Default — ao leite
+  return `${BASE_IMG}/ovo-ao-leite.jpg`;
+};
 
 export default function CatalogoPage() {
   const [produtos, setProdutos] = useState([]);
@@ -230,9 +280,17 @@ export default function CatalogoPage() {
                 key={produto.id}
                 className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden group"
               >
-                {/* Imagem placeholder */}
-                <div className="aspect-square bg-gradient-to-br from-[#8B5A3C]/10 to-[#6B4423]/10 flex items-center justify-center">
-                  <Package size={48} className="text-[#8B5A3C]/40" />
+                {/* Foto do produto */}
+                <div className="aspect-square overflow-hidden bg-[#F5E6D3]">
+                  <img
+                    src={getFotoProduto(produto)}
+                    alt={produto.nome}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}
+                  />
+                  <div className="w-full h-full items-center justify-center hidden">
+                    <Package size={48} className="text-[#8B5A3C]/40" />
+                  </div>
                 </div>
                 
                 <div className="p-4">
