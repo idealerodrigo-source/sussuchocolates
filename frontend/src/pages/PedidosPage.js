@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { pedidosAPI, clientesAPI, produtosAPI } from '../services/api';
 import { formatCurrency, formatDateTime, getStatusColor, getStatusLabel } from '../utils/formatters';
-import { Plus, ShoppingCart, Trash, PencilSimple, Eye, FilePdf, WhatsappLogo, UserPlus, Package, XCircle, MagnifyingGlass } from '@phosphor-icons/react';
+import { Plus, ShoppingCart, Trash, PencilSimple, Eye, FilePdf, WhatsappLogo, UserPlus, Package, XCircle, MagnifyingGlass, DownloadSimple } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { useLocation } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
@@ -32,6 +32,45 @@ export default function PedidosPage() {
   const [loading, setLoading] = useState(true);
   const location = useLocation();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importTexto, setImportTexto] = useState('');
+  const [importPreview, setImportPreview] = useState(null);
+
+  const parsearPedidoWhatsApp = (texto) => {
+    const match = texto.match(/---PEDIDO_SUSSU---([\s\S]*?)---FIM_PEDIDO---/);
+    if (!match) return null;
+    const bloco = match[1];
+    const get = (campo) => { const m = bloco.match(new RegExp(`${campo}:(.+)`)); return m ? m[1].trim() : ''; };
+    const itensStr = get('ITENS');
+    const itens = itensStr ? itensStr.split(';').map(i => {
+      const [qtd, nome, prodId, preco] = i.split('|');
+      return { quantidade: Number(qtd), nome, produto_id: prodId, preco_unitario: Number(preco) };
+    }) : [];
+    return { nome: get('NOME'), telefone: get('TEL'), endereco: get('END'), pagamento: get('PAG'), total: parseFloat(get('TOTAL') || '0'), observacoes: get('OBS'), itens };
+  };
+
+  const handleImportarPedido = () => {
+    const dados = parsearPedidoWhatsApp(importTexto);
+    if (!dados) { toast.error('Pedido estruturado não encontrado. O cliente deve usar o catálogo online.'); return; }
+    const clienteEncontrado = clientes.find(c =>
+      c.nome?.toLowerCase() === dados.nome?.toLowerCase() ||
+      (dados.telefone && c.telefone?.replace(/\D/g,'') === dados.telefone.replace(/\D/g,''))
+    );
+    setImportPreview({ ...dados, cliente: clienteEncontrado });
+  };
+
+  const handleCriarDaImportacao = async () => {
+    if (!importPreview) return;
+    const { nome, telefone, endereco, pagamento, observacoes, itens, cliente } = importPreview;
+    const itensPedido = itens.map(i => ({ produto_id: i.produto_id, produto_nome: i.nome, quantidade: i.quantidade, preco_unitario: i.preco_unitario, subtotal: i.quantidade * i.preco_unitario }));
+    const payload = { cliente_id: cliente?.id || null, cliente_nome: nome, items: itensPedido, valor_total: itens.reduce((s, i) => s + i.quantidade * i.preco_unitario, 0), forma_pagamento: pagamento, endereco_entrega: endereco, observacoes: [observacoes, telefone ? `Tel: ${telefone}` : ''].filter(Boolean).join(' | '), origem: 'whatsapp', status: 'pendente' };
+    try {
+      await pedidosAPI.criar(payload);
+      toast.success(`Pedido de ${nome} criado!`);
+      setImportModalOpen(false); setImportTexto(''); setImportPreview(null);
+      fetchPedidos();
+    } catch { toast.error('Erro ao criar pedido'); }
+  };
 
   useEffect(() => {
     if (location.state?.openNovoPedido) {
@@ -424,7 +463,79 @@ export default function PedidosPage() {
           <h1 className="text-4xl sm:text-5xl font-serif font-bold tracking-tight text-[#3E2723] mb-2">Pedidos</h1>
           <p className="text-base font-sans text-[#705A4D]">Gerencie os pedidos dos clientes</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+        <div className="flex gap-3">
+          {/* Botão importar do WhatsApp */}
+          <Button
+            onClick={() => { setImportModalOpen(true); setImportTexto(''); setImportPreview(null); }}
+            variant="outline"
+            className="border-green-600 text-green-700 hover:bg-green-50 flex items-center gap-2"
+          >
+            <WhatsappLogo size={20} weight="fill" />
+            Importar do WhatsApp
+          </Button>
+
+          {/* Modal de importação */}
+          {importModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.5)'}}>
+              <div className="bg-[#FFFDF8] rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-serif font-bold text-[#3E2723] flex items-center gap-2">
+                    <WhatsappLogo size={22} weight="fill" className="text-green-600" />
+                    Importar Pedido do WhatsApp
+                  </h2>
+                  <button onClick={() => setImportModalOpen(false)} className="text-[#8B5A3C] hover:text-[#3E2723]">✕</button>
+                </div>
+
+                {!importPreview ? (
+                  <>
+                    <p className="text-sm text-[#705A4D]">
+                      Cole abaixo a mensagem completa recebida pelo WhatsApp (do pedido feito pelo catálogo online):
+                    </p>
+                    <textarea
+                      rows={8}
+                      value={importTexto}
+                      onChange={e => setImportTexto(e.target.value)}
+                      placeholder="Cole aqui a mensagem do WhatsApp com o pedido..."
+                      className="w-full px-4 py-3 border border-[#8B5A3C]/30 rounded-xl text-sm text-[#3E2723] resize-none focus:outline-none focus:border-[#6B4423] bg-white font-mono"
+                    />
+                    <div className="flex gap-3">
+                      <Button onClick={() => setImportModalOpen(false)} variant="outline" className="flex-1">Cancelar</Button>
+                      <Button onClick={handleImportarPedido} className="flex-1 bg-[#6B4423] text-white hover:bg-[#8B5A3C]">
+                        <DownloadSimple size={18} className="mr-2" />
+                        Processar
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2 text-sm">
+                      <p className="font-bold text-green-800">✅ Pedido identificado!</p>
+                      <p><strong>Cliente:</strong> {importPreview.nome} {importPreview.cliente ? <span className="text-green-600">(cadastrado)</span> : <span className="text-orange-500">(novo)</span>}</p>
+                      {importPreview.telefone && <p><strong>Tel:</strong> {importPreview.telefone}</p>}
+                      <p><strong>Endereço:</strong> {importPreview.endereco}</p>
+                      <p><strong>Pagamento:</strong> {importPreview.pagamento}</p>
+                      <div className="border-t border-green-200 pt-2 mt-2">
+                        <p className="font-semibold mb-1">Itens:</p>
+                        {importPreview.itens.map((i, idx) => (
+                          <p key={idx} className="text-xs">• {i.quantidade}x {i.nome} — R$ {(i.quantidade * i.preco_unitario).toFixed(2)}</p>
+                        ))}
+                      </div>
+                      <p className="font-bold text-base pt-1">Total: R$ {importPreview.total.toFixed(2)}</p>
+                      {importPreview.observacoes && <p><strong>Obs:</strong> {importPreview.observacoes}</p>}
+                    </div>
+                    <div className="flex gap-3">
+                      <Button onClick={() => setImportPreview(null)} variant="outline" className="flex-1">← Voltar</Button>
+                      <Button onClick={handleCriarDaImportacao} className="flex-1 bg-green-600 text-white hover:bg-green-700">
+                        ✓ Criar Pedido
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
             <Button data-testid="btn-add-pedido" className="bg-[#6B4423] text-[#F5E6D3] hover:bg-[#8B5A3C]">
               <Plus size={20} weight="bold" className="mr-2" />

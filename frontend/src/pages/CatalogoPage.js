@@ -29,6 +29,8 @@ export default function CatalogoPage() {
   const [busca, setBusca] = useState('');
   const [nomeCliente, setNomeCliente] = useState('');
   const [telefoneCliente, setTelefoneCliente] = useState('');
+  const [enderecoCliente, setEnderecoCliente] = useState('');
+  const [formaPagamento, setFormaPagamento] = useState('PIX');
   const [observacoes, setObservacoes] = useState('');
 
   useEffect(() => {
@@ -110,53 +112,43 @@ export default function CatalogoPage() {
   };
 
   const enviarPedidoWhatsApp = () => {
-    if (carrinho.length === 0) {
-      toast.error('Adicione produtos ao carrinho');
-      return;
-    }
+    if (carrinho.length === 0) { toast.error('Adicione produtos ao carrinho'); return; }
+    if (!nomeCliente.trim()) { toast.error('Informe seu nome'); return; }
+    if (!enderecoCliente.trim()) { toast.error('Informe o endereço de entrega'); return; }
 
-    if (!nomeCliente.trim()) {
-      toast.error('Informe seu nome');
-      return;
-    }
-
-    // Montar mensagem
-    let mensagem = `*NOVO PEDIDO - SUSSU CHOCOLATES*\n\n`;
-    mensagem += `*Cliente:* ${nomeCliente}\n`;
-    if (telefoneCliente) {
-      mensagem += `*Telefone:* ${telefoneCliente}\n`;
-    }
+    // === MENSAGEM LEGÍVEL ===
+    let mensagem = `🍫 *NOVO PEDIDO — SUSSU CHOCOLATES* 🍫\n\n`;
+    mensagem += `👤 *Cliente:* ${nomeCliente}\n`;
+    if (telefoneCliente) mensagem += `📱 *WhatsApp:* ${telefoneCliente}\n`;
+    mensagem += `📍 *Endereço:* ${enderecoCliente}\n`;
+    mensagem += `💳 *Pagamento:* ${formaPagamento}\n`;
     mensagem += `\n*ITENS DO PEDIDO:*\n`;
     mensagem += `━━━━━━━━━━━━━━━━━━━━\n`;
-    
-    carrinho.forEach((item, index) => {
-      mensagem += `${index + 1}. ${item.nome}\n`;
-      mensagem += `   Qtd: ${item.quantidade} x ${formatCurrency(item.preco)}\n`;
-      mensagem += `   Subtotal: ${formatCurrency(item.quantidade * item.preco)}\n\n`;
+    carrinho.forEach((item, i) => {
+      mensagem += `${i + 1}. *${item.nome}*\n`;
+      mensagem += `   ${item.quantidade} x ${formatCurrency(item.preco)} = *${formatCurrency(item.quantidade * item.preco)}*\n`;
     });
-    
     mensagem += `━━━━━━━━━━━━━━━━━━━━\n`;
     mensagem += `*TOTAL: ${formatCurrency(totalCarrinho)}*\n`;
-    
-    if (observacoes) {
-      mensagem += `\n*Observacoes:* ${observacoes}\n`;
-    }
-    
-    mensagem += `\n_Pedido enviado pelo catálogo online_`;
+    if (observacoes) mensagem += `\n📝 *Obs:* ${observacoes}\n`;
 
-    // Formatar número do WhatsApp
-    let telefoneEmpresa = empresa?.whatsapp || empresa?.telefone || '';
-    telefoneEmpresa = telefoneEmpresa.replace(/\D/g, '');
-    if (telefoneEmpresa.length === 11) {
-      telefoneEmpresa = '55' + telefoneEmpresa;
-    }
+    // === BLOCO ESTRUTURADO (para importação no sistema) ===
+    const itensStr = carrinho.map(i =>
+      `${i.quantidade}|${i.nome}|${i.id}|${i.preco.toFixed(2)}`
+    ).join(';');
 
-    // Criar link do WhatsApp
-    const urlWhatsApp = `https://wa.me/${telefoneEmpresa}?text=${encodeURIComponent(mensagem)}`;
-    
-    // Abrir WhatsApp
-    window.open(urlWhatsApp, '_blank');
-    
+    mensagem += `\n---PEDIDO_SUSSU---\n`;
+    mensagem += `NOME:${nomeCliente}\n`;
+    mensagem += `TEL:${telefoneCliente || ''}\n`;
+    mensagem += `END:${enderecoCliente}\n`;
+    mensagem += `PAG:${formaPagamento}\n`;
+    mensagem += `ITENS:${itensStr}\n`;
+    mensagem += `TOTAL:${totalCarrinho.toFixed(2)}\n`;
+    if (observacoes) mensagem += `OBS:${observacoes}\n`;
+    mensagem += `---FIM_PEDIDO---`;
+
+    const tel = ('55' + (empresa?.whatsapp || empresa?.telefone || '43999676206').replace(/\D/g, '')).slice(-13);
+    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(mensagem)}`, '_blank');
     toast.success('Redirecionando para o WhatsApp...');
   };
 
@@ -358,8 +350,7 @@ export default function CatalogoPage() {
                   
                   {/* Dados do cliente */}
                   <div className="border-t border-[#8B5A3C]/15 pt-4 mt-4">
-                    <h3 className="font-medium text-[#3E2723] mb-3">Seus dados</h3>
-                    
+                    <h3 className="font-semibold text-[#3E2723] mb-3">📋 Seus dados</h3>
                     <div className="space-y-3">
                       <input
                         type="text"
@@ -368,17 +359,32 @@ export default function CatalogoPage() {
                         onChange={(e) => setNomeCliente(e.target.value)}
                         className="w-full px-4 py-2.5 bg-white border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723]"
                       />
-                      
                       <input
                         type="tel"
-                        placeholder="Seu telefone (opcional)"
+                        placeholder="WhatsApp (ex: 43 99999-9999)"
                         value={telefoneCliente}
                         onChange={(e) => setTelefoneCliente(e.target.value)}
                         className="w-full px-4 py-2.5 bg-white border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723]"
                       />
-                      
+                      <input
+                        type="text"
+                        placeholder="Endereço de entrega *"
+                        value={enderecoCliente}
+                        onChange={(e) => setEnderecoCliente(e.target.value)}
+                        className="w-full px-4 py-2.5 bg-white border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723]"
+                      />
+                      <select
+                        value={formaPagamento}
+                        onChange={(e) => setFormaPagamento(e.target.value)}
+                        className="w-full px-4 py-2.5 bg-white border border-[#8B5A3C]/30 rounded-lg focus:border-[#6B4423] focus:ring-1 focus:ring-[#6B4423] outline-none text-[#3E2723]"
+                      >
+                        <option value="PIX">💸 PIX</option>
+                        <option value="Dinheiro">💵 Dinheiro</option>
+                        <option value="Cartão de Crédito">💳 Cartão de Crédito</option>
+                        <option value="Cartão de Débito">💳 Cartão de Débito</option>
+                      </select>
                       <textarea
-                        placeholder="Observacoes (opcional)"
+                        placeholder="Observações (opcional)"
                         value={observacoes}
                         onChange={(e) => setObservacoes(e.target.value)}
                         rows="2"
