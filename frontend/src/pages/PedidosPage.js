@@ -1022,7 +1022,8 @@ export default function PedidosPage() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
+        </div>{/* fecha flex gap-3 */}
+      </div>{/* fecha flex items-center justify-between */}
 
       {/* Campo de Pesquisa */}
       <div className="mb-4">
