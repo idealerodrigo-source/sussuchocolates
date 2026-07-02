@@ -62,11 +62,19 @@ const getFotoProduto = (produto) => {
   }
 
   // Ovos tradicionais por tipo de chocolate
-  if (nome.includes('branco'))         return `${BASE_IMG}/ovo-branco.jpg`;
-  if (nome.includes('mesclado') || nome.includes('misto')) return `${BASE_IMG}/ovo-mesclado.jpg`;
+  if (nome.includes('ovo') || cat.includes('ovo') || cat.includes('páscoa') || cat.includes('pascoa')) {
+    if (nome.includes('branco'))     return `${BASE_IMG}/ovo-branco.jpg`;
+    if (nome.includes('mesclado') || nome.includes('misto')) return `${BASE_IMG}/ovo-mesclado.jpg`;
+    return `${BASE_IMG}/ovo-ao-leite.jpg`;
+  }
 
-  // Default — ao leite
-  return `${BASE_IMG}/ovo-ao-leite.jpg`;
+  // Bombons / trufas
+  if (nome.includes('bombom') || nome.includes('trufa') || cat.includes('bombom') || cat.includes('trufa')) {
+    return `${BASE_IMG}/casca-recheada-prestigio.jpg`;
+  }
+
+  // Sem correspondência — caixas, coelhos, pelúcia, embalagens, kits, etc.
+  return null;
 };
 
 export default function CatalogoPage() {
@@ -282,14 +290,16 @@ export default function CatalogoPage() {
                 className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden group"
               >
                 {/* Foto do produto */}
-                <div className="aspect-square overflow-hidden bg-[#F5E6D3]">
-                  <img
-                    src={getFotoProduto(produto)}
-                    alt={produto.nome}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}
-                  />
-                  <div className="w-full h-full items-center justify-center hidden">
+                <div className="aspect-square overflow-hidden bg-[#F5E6D3] flex items-center justify-center">
+                  {getFotoProduto(produto) ? (
+                    <img
+                      src={getFotoProduto(produto)}
+                      alt={produto.nome}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}
+                    />
+                  ) : null}
+                  <div className={`w-full h-full items-center justify-center ${getFotoProduto(produto) ? 'hidden' : 'flex'}`}>
                     <Package size={48} className="text-[#8B5A3C]/40" />
                   </div>
                 </div>
