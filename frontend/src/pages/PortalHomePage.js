@@ -7,6 +7,8 @@ const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 const WHATSAPP = '5543999676206';
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP}?text=Ol%C3%A1%21+Gostaria+de+fazer+um+pedido+%F0%9F%8D%AB`;
 
+const BASE_IMG = '/images/produtos';
+
 const FOTO_POR_CATEGORIA = {
   'Ovos Tradicionais': `${BASE_IMG}/ovo-ao-leite.jpg`,
   'Ovo ao Leite': `${BASE_IMG}/ovo-ao-leite.jpg`,
