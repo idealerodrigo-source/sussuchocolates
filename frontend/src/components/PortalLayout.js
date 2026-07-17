@@ -71,6 +71,16 @@ export default function PortalLayout({ children, carrinhoCount = 0, onCarrinhoCl
   const [menuAberto, setMenuAberto] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [popupAberto, setPopupAberto] = useState(false);
+  const [novaVersao, setNovaVersao] = useState(false);
+
+  // Detectar nova versão disponível via Service Worker
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (e) => {
+        if (e.data?.type === 'NEW_VERSION') setNovaVersao(true);
+      });
+    }
+  }, []);
   const { pathname } = useLocation();
 
   // Mostrar popup uma vez por sessão
@@ -107,6 +117,19 @@ export default function PortalLayout({ children, carrinhoCount = 0, onCarrinhoCl
     <div className="min-h-screen flex flex-col" style={{ fontFamily: "'Georgia', serif", background: '#FDF8F3' }}>
 
       {popupAberto && <PopupConstrucao onFechar={fecharPopup} />}
+
+      {/* Banner nova versão */}
+      {novaVersao && (
+        <div className="fixed top-0 left-0 right-0 z-[200] bg-[#6B4423] text-white text-sm py-2 px-4 flex items-center justify-between">
+          <span>🍫 Nova versão disponível!</span>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-white text-[#6B4423] font-bold px-4 py-1 rounded-full text-xs hover:bg-[#F5E6D3] transition-colors"
+          >
+            Atualizar agora
+          </button>
+        </div>
+      )}
 
       {/* Header */}
       <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'shadow-md bg-[#3E2723]/97 backdrop-blur' : 'bg-[#3E2723]'}`}>

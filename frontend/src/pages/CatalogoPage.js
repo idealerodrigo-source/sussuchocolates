@@ -91,6 +91,7 @@ export default function CatalogoPage() {
   const [enderecoCliente, setEnderecoCliente] = useState('');
   const [formaPagamento, setFormaPagamento] = useState('PIX');
   const [observacoes, setObservacoes] = useState('');
+  const [produtoSelecionado, setProdutoSelecionado] = useState(null);
 
   useEffect(() => {
     fetchDados();
@@ -287,7 +288,8 @@ export default function CatalogoPage() {
             {produtosFiltrados.map(produto => (
               <div
                 key={produto.id}
-                className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden group"
+                className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden group cursor-pointer"
+                onClick={() => setProdutoSelecionado(produto)}
               >
                 {/* Foto do produto */}
                 <div className="aspect-square overflow-hidden bg-[#F5E6D3] flex items-center justify-center">
@@ -321,7 +323,7 @@ export default function CatalogoPage() {
                     </span>
                     
                     <button
-                      onClick={() => adicionarAoCarrinho(produto)}
+                      onClick={(e) => { e.stopPropagation(); adicionarAoCarrinho(produto); }}
                       className="bg-[#6B4423] hover:bg-[#8B5A3C] text-white p-2 rounded-full transition-colors"
                     >
                       <Plus size={20} weight="bold" />
@@ -471,6 +473,70 @@ export default function CatalogoPage() {
                 </p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal detalhe do produto */}
+      {produtoSelecionado && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          style={{ background: 'rgba(0,0,0,0.6)' }}
+          onClick={() => setProdutoSelecionado(null)}>
+          <div
+            className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Foto */}
+            <div className="relative h-56 bg-[#F5E6D3] flex items-center justify-center">
+              {getFotoProduto(produtoSelecionado) ? (
+                <img src={getFotoProduto(produtoSelecionado)} alt={produtoSelecionado.nome}
+                  className="w-full h-full object-cover" />
+              ) : (
+                <Package size={72} className="text-[#8B5A3C]/30" />
+              )}
+              <button onClick={() => setProdutoSelecionado(null)}
+                className="absolute top-3 right-3 bg-white/90 hover:bg-white rounded-full w-9 h-9 flex items-center justify-center shadow-md text-[#3E2723] font-bold text-lg">
+                ×
+              </button>
+              {produtoSelecionado.categoria && (
+                <span className="absolute bottom-3 left-3 bg-[#6B4423] text-white text-xs px-3 py-1 rounded-full font-medium">
+                  {produtoSelecionado.categoria}
+                </span>
+              )}
+            </div>
+
+            {/* Info */}
+            <div className="p-5">
+              <h2 className="font-serif font-bold text-xl text-[#3E2723] leading-tight mb-2">
+                {produtoSelecionado.nome}
+              </h2>
+              {produtoSelecionado.descricao && (
+                <p className="text-sm text-[#705A4D] mb-3 leading-relaxed">{produtoSelecionado.descricao}</p>
+              )}
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#F0E4D4]">
+                <div>
+                  <p className="text-xs text-[#8B5A3C]">Preço</p>
+                  <p className="text-2xl font-bold text-[#6B4423]">{formatCurrency(produtoSelecionado.preco)}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const msg = `Olá! Quero pedir: *${produtoSelecionado.nome}* 🍫`;
+                      window.open(`https://wa.me/5543999676206?text=${encodeURIComponent(msg)}`, '_blank');
+                    }}
+                    className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2.5 rounded-full font-semibold text-sm transition-colors"
+                  >
+                    <WhatsappLogo size={18} weight="fill" /> Pedir
+                  </button>
+                  <button
+                    onClick={() => { adicionarAoCarrinho(produtoSelecionado); setProdutoSelecionado(null); }}
+                    className="flex items-center gap-2 bg-[#6B4423] hover:bg-[#8B5A3C] text-white px-4 py-2.5 rounded-full font-semibold text-sm transition-colors"
+                  >
+                    <Plus size={18} weight="bold" /> Carrinho
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
